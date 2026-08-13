@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>VTuber Face Live Prototype</title>
+<style>
+:root{--bg:#070a10;--card:#10151f;--line:rgba(255,255,255,.1);--muted:#8f9bae;--accent:#7890ff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{display:flex;align-items:center;justify-content:center}.app{width:min(1500px,100vw);height:min(980px,100vh);padding:10px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 22px 70px rgba(0,0,0,.4)}
+.preview{position:relative;min-height:0;background:linear-gradient(180deg,#0b1020,#03050a)}
+#video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px}
+#avatarCanvas{position:absolute;right:0;bottom:0;left:auto;top:auto;width:48%;height:92%;pointer-events:none;z-index:3;transform-origin:center bottom;transition:width .18s ease,height .18s ease}
+.gameStage{position:absolute;inset:0;z-index:0;overflow:hidden;background:linear-gradient(135deg,#111827,#0b1220 45%,#18243b)}
+.gameStage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+.gameGrid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 48px;opacity:.35}
+.gameHud{position:absolute;inset:0;padding:18px;display:flex;justify-content:space-between;align-items:flex-start;color:rgba(255,255,255,.9);font-weight:800;font-size:11px;pointer-events:none}
+.gameHud .pill{padding:7px 10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
+.streamLabel{position:absolute;left:18px;bottom:18px;z-index:7;padding:8px 11px;border-radius:10px;background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.08);font-size:10px;color:#dce5ff;backdrop-filter:blur(8px)}
+.avatarFrame{position:absolute;inset:0;z-index:3;pointer-events:none}
+.streamSafe{position:absolute;inset:0;pointer-events:none;z-index:2}
+.streamSafe:after{content:"";position:absolute;right:18px;bottom:16px;width:34%;height:86%;border:1px dashed rgba(255,255,255,.10);border-radius:24px;opacity:.45}
+.previewMode{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.previewMode .btn.active{background:#5b80ff;border-color:transparent}
+.previewControls{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.previewControls .box{padding:8px}
+.previewControls input[type=range]{width:100%}
+.fileLine{display:flex;gap:7px;align-items:center}.fileLine input{min-width:0;flex:1}
+@media(max-width:930px){.previewControls{grid-template-columns:repeat(2,1fr)}}
+.top{position:absolute;z-index:5;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px}.badge{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.56);backdrop-filter:blur(10px);font-size:11px;border:1px solid rgba(255,255,255,.1)}
+.btn:disabled{opacity:.45;cursor:not-allowed}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#777;margin-right:6px}.dot.ok{background:#31e394}
+.start{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 22px;border:0;border-radius:14px;background:#5b80ff;color:#fff;font-weight:850;cursor:pointer}
+.avatarTag{position:absolute;z-index:4;right:12px;bottom:12px;padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.55);font-size:11px}
+.panel{padding:14px;display:flex;flex-direction:column;gap:9px;overflow:auto}.section{font-size:11px;font-weight:850;color:#acb7c8}.hero{padding:13px;border-radius:16px;background:linear-gradient(135deg,rgba(91,128,255,.2),rgba(160,90,255,.1));border:1px solid rgba(255,255,255,.08)}
+.row{display:flex;align-items:center;gap:10px}.emo{font-size:40px}.name{font-size:23px;font-weight:900}.desc{font-size:10px;color:#a1adbf}.score{display:flex;justify-content:space-between;margin-top:9px;font-size:10px;color:#98a6ba}.track{height:7px;background:#262d3a;border-radius:99px;overflow:hidden;margin-top:5px}.fill{height:100%;width:0;background:var(--accent);border-radius:99px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.box{padding:9px;background:#121823;border:1px solid rgba(255,255,255,.06);border-radius:11px}.lab{font-size:10px;color:#8795aa}.val{font-size:13px;font-weight:800;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:#171f2c;color:#fff;font-weight:750;font-size:11px;cursor:pointer}.buttons{display:flex;gap:7px}.buttons .btn{flex:1}.note{font-size:10px;line-height:1.5;color:#7d8a9e}.muted{font-size:10px;color:var(--muted)}
+.uploads{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.upload{padding:8px;border-radius:11px;background:#0d131d;border:1px dashed rgba(255,255,255,.11)}.upload label{display:block;font-size:10px;color:#aeb8c8;margin-bottom:5px}.upload input{width:100%;font-size:10px;color:#9aa6b7}.previewMini{height:62px;border-radius:8px;background:#05070b;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px}.previewMini img{max-width:100%;max-height:100%;object-fit:contain}
+.bar{display:flex;gap:6px}.bar .btn{flex:1}.status{font-size:10px;color:#8fa0b7;margin-top:3px}.rank{display:flex;flex-direction:column;gap:4px}.r{display:grid;grid-template-columns:74px 1fr 35px;gap:6px;align-items:center;font-size:9px}.bt{height:5px;background:#252c38;border-radius:999px;overflow:hidden}.bf{height:100%;background:#748fff;border-radius:99px}
+@media(max-width:930px){.app{height:100%;grid-template-columns:1fr;padding:6px}.preview{height:52vh;min-height:280px}.panel{height:48vh}}
+
+/* Stage 4: 配信向けUI */
+.quickBar{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.quickBar .btn.on{background:#5b80ff;border-color:transparent}
+.savedDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#31e394;margin-right:5px}
+.settingsCard{padding:10px;border-radius:12px;background:#0d131d;border:1px solid rgba(255,255,255,.06)}
+.cleanHint{font-size:9px;color:#7f8ba0;line-height:1.45;margin-top:5px}
+#cleanExit{position:absolute;z-index:30;right:14px;top:14px;display:none}
+.preview.clean .streamSafe:after{display:none}.preview.clean .top,.preview.clean .streamLabel,.preview.clean .emotionBadge,.preview.clean .avatarTag,.preview.clean .gameHud{display:none}
+@media(max-width:930px){.quickBar{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+<section class="card preview">
+  <div class="gameStage" id="gameStage">
+    <img id="gameImage" alt="ゲーム画面">
+    <video id="gameVideo" muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"></video>
+    <div class="gameGrid" id="gameGrid"></div>
+    <div class="streamSafe"></div>
+    <div class="gameHud"><div class="pill">LIVE GAME PREVIEW</div><div class="pill" id="layoutState">右下配信レイアウト</div></div>
+    <div class="streamLabel">表情連動VTuberプレビュー</div>
+  </div>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="avatarCanvas"></canvas>
+  <div id="emptyAvatar" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(circle at 50% 35%,rgba(91,128,255,.16),transparent 42%),#050810;z-index:2">
+    <div><div style="font-size:54px">🧍</div><div style="font-size:18px;font-weight:900;margin-top:10px">最初の立ち絵を設定してください</div><div style="font-size:11px;color:#8996aa;margin-top:5px">初期設定で登録した立ち絵は端末に保存され、次回から自動で表示されます</div></div>
+  </div>
+  <div id="emotionBadge" style="position:absolute;z-index:6;left:14px;bottom:14px;padding:9px 13px;border-radius:999px;background:rgba(0,0,0,.58);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:900">😐 無表情</div>
+  <div class="top"><div class="badge"><span id="dot" class="dot"></span><span id="status">停止中</span></div><div class="badge">顔 <b id="faces">0</b>　FPS <b id="fps">0</b></div></div>
+  <button class="start" id="start">カメラを開始</button><button class="btn" id="cleanExit">✕ 設定に戻る</button>
+  <div class="avatarTag">立ち絵: <b id="avatarName">neutral</b></div>
+  <div id="firstSetup" style="position:absolute;inset:0;z-index:10;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,5,10,.82);backdrop-filter:blur(14px)">
+    <div style="width:min(520px,92%);padding:20px;border-radius:20px;background:#10151f;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 70px rgba(0,0,0,.5)">
+      <div style="font-size:13px;color:#9eabd0;font-weight:850">INITIAL SETUP</div>
+      <div style="font-size:24px;font-weight:950;margin-top:4px">最初の立ち絵を登録</div>
+      <div style="font-size:11px;color:#8f9bae;line-height:1.6;margin-top:7px">ここで登録した通常立ち絵を初期画像として保存します。カメラ映像は画面に表示せず、表情認識だけに使います。</div>
+      <div style="margin-top:14px;padding:12px;border:1px dashed rgba(255,255,255,.14);border-radius:14px;background:#0b1018">
+        <div class="previewMini" style="height:240px"><img id="setupPreview" alt="初期立ち絵プレビュー"></div>
+        <input id="setupFile" type="file" accept="image/png,image/jpeg,image/webp" style="width:100%;font-size:11px;color:#9aa6b7">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="setupSave" disabled style="flex:1;background:#5b80ff;border-color:transparent">この画像を初期立ち絵として保存</button><button class="btn" id="setupSkip" style="flex:0 0 auto">後で設定</button></div>
+      <div id="setupStatus" class="status" style="margin-top:8px">初回だけ設定できます。保存後は端末に残ります。</div>
+    </div>
+  </div>
+</section>
+<aside class="card panel">
+  <div><b style="font-size:18px">VTuber Face Live</b><div class="muted">表情連動立ち絵・配信向けプロトタイプ</div></div>
+  <div class="hero"><div class="row"><div class="emo" id="emo">😐</div><div><div class="name" id="name">待機中</div><div class="desc" id="desc">カメラを開始してください</div></div></div><div class="score"><span>現在の判定</span><b id="score">0%</b></div><div class="track"><div id="fill" class="fill"></div></div></div>
+
+  <div class="section">① 最初に立ち絵を設定</div>
+  <div class="box" style="margin-bottom:2px"><div class="lab">通常・ニュートラル（必須）</div><div class="previewMini"><img id="mini_neutral_main" ></div><input id="neutralFirst" type="file" accept="image/png,image/jpeg,image/webp" style="width:100%;font-size:10px;color:#9aa6b7"><div class="muted" style="margin-top:5px">最初にこの1枚を選ぶと、カメラ映像は表示せず、この立ち絵だけをプレビューします。</div></div>
+  <div class="section">② 表情ごとの立ち絵（登録した画像は端末に保存）</div>
+  <div class="uploads" id="uploads"></div>
+  <div class="bar"><button class="btn" id="useDemo">デモ画像を作る</button><button class="btn" id="clearImages">画像をリセット</button></div>
+  <div class="status" id="imageStatus">画像未設定でも判定テスト可能</div>
+
+  <div class="section">③ 配信プレビュー</div>
+  <div class="box">
+    <div class="lab">ゲーム画面</div>
+    <div class="fileLine"><input id="gameFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="btn" id="clearGame">初期背景</button></div>
+    <div class="fileLine" style="margin-top:6px"><input id="gameVideoFile" type="file" accept="video/mp4,video/webm,video/ogg"><button class="btn" id="clearGameVideo">動画解除</button></div>
+    <div class="muted" style="margin-top:5px">画像だけでなく、ローカル動画もゲーム画面として再生できます。</div>
+  </div>
+  <div class="previewMode">
+    <button class="btn active" id="modeBottomRight">右下配信</button>
+    <button class="btn" id="modeFull">全画面テスト</button>
+  </div>
+  <div class="previewControls">
+    <div class="box"><div class="lab">立ち絵サイズ <b id="scaleVal">100%</b></div><input id="avatarScale" type="range" min="50" max="150" value="100"></div>
+    <div class="box"><div class="lab">透明感 <b id="opacityVal">100%</b></div><input id="avatarOpacity" type="range" min="40" max="100" value="100"></div>
+    <div class="box"><div class="lab">左右位置 <b id="posXVal">0</b></div><input id="avatarX" type="range" min="-35" max="35" value="10"></div>
+    <div class="box"><div class="lab">上下位置 <b id="posYVal">0</b></div><input id="avatarY" type="range" min="-35" max="35" value="6"></div>
+  </div>
+  <div class="quickBar">
+    <button class="btn" id="saveLayout">💾 配置を保存</button>
+    <button class="btn" id="loadLayout">↩ 配置を読込</button>
+    <button class="btn" id="resetLayout">↺ 初期配置</button>
+    <button class="btn" id="fullscreenPreview">⛶ 全画面プレビュー</button>
+    <button class="btn" id="cleanPreview">🎬 配信表示</button>
+    <button class="btn" id="cameraStop">◼ カメラ停止</button>
+  </div>
+  <div class="settingsCard"><div class="lab"><span class="savedDot"></span><b id="saveState">自動保存: OFF</b></div><div class="cleanHint">「配信表示」は設定パネルを隠して、ゲーム画面＋立ち絵だけの確認用表示にします。OBS連携はありません。</div></div>
+
+  <div class="section">切り替え設定</div>
+  <div class="grid">
+    <div class="box"><div class="lab">フェード秒</div><div class="val" id="fadeVal">0.20</div><input id="fade" type="range" min="0.05" max="0.60" step="0.01" value="0.20" style="width:100%"></div>
+    <div class="box"><div class="lab">切替感度</div><div class="val" id="stabVal">標準</div><input id="stab" type="range" min="1" max="8" step="1" value="4" style="width:100%"></div>
+  </div>
+
+  <div class="section">判定エンジン</div>
+  <div class="grid">
+    <div class="box"><div class="lab">直接判定</div><div class="val" id="direct">待機</div></div>
+    <div class="box"><div class="lab">Emotion AI</div><div class="val" id="ai">待機</div></div>
+    <div class="box"><div class="lab">左目</div><div class="val" id="le">—</div></div>
+    <div class="box"><div class="lab">右目</div><div class="val" id="re">—</div></div>
+    <div class="box"><div class="lab">口</div><div class="val" id="mo">—</div></div>
+    <div class="box"><div class="lab">向き</div><div class="val" id="yaw">—</div></div>
+  </div>
+  <div class="buttons"><button class="btn" id="calibrate">🙂 ニュートラル補正</button><button class="btn" id="reset">補正リセット</button></div>
+  <div class="section">表情ランキング</div><div class="rank" id="rank"></div>
+  <div class="note">※ 第6段階。PC・スマホ・タブレットに対応したHTML単体版。ゲーム画面＋表情連動立ち絵＋配置保存＋全画面プレビューを使用できます。OBS連携は使用しません。</div>
+</aside>
+</div>
+
+<script type="module">
+import {FaceLandmarker,FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm";
+const $=id=>document.getElementById(id);
+const video=$('video'),canvas=$('avatarCanvas'),ctx=canvas.getContext('2d');
+const MODEL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+let mp=null,stream=null,running=false,lastT=-1,lastResult=null;let detectBusy=false,lastDetectMs=0,lastDetectErrorMs=0;const DETECT_INTERVAL=1000/24;let rafId=0;let cameraRestarting=false;let avatarScale=1,avatarOpacity=1,avatarX=10,avatarY=6;let previewMode="bottomRight";let gameObjectUrl=null;let autoSaveTimer=null;let firstSetupDone=localStorage.getItem('vtFaceInitialSetupDone')==='1';let smooth={},neutral={};let stableKey='neutral',candidateKey='neutral',candidateCount=0;let frames=0,fpsAt=performance.now();let fadeSec=.20;let activeKey='neutral',prevKey='neutral',transitionStart=performance.now();let images=JSON.parse(localStorage.getItem('vtFaceImages')||'{}');
+const labels={neutral:['無表情','😐','通常表情'],happy:['笑顔','😄','口角・頬が上がっています'],laugh:['大笑い','🤣','笑顔と開口が強い'],surprise:['驚き','😮','目・眉・口が開いています'],fearful:['恐怖','😨','目と眉が強く反応'],sad:['悲しみ','😢','口角が下がっています'],angry:['怒り','😠','眉が下がり表情が緊張'],disgusted:['嫌悪','🤢','鼻・上唇周辺が収縮'],winkL:['左ウィンク','😉','左目だけ閉じています'],winkR:['右ウィンク','😉','右目だけ閉じています'],blink:['瞬き','😌','一瞬、両目を閉じています'],eyesClosed:['両目閉じ','😑','両目が閉じています'],puff:['頬ぷく','😗','頬を膨らませています'],mouthOpen:['口を開ける','😮','顎が開いています']};
+const uploadKeys=Object.keys(labels).filter(k=>k!=='neutral');
+function makeUploads(){const box=$('uploads');box.innerHTML=uploadKeys.map(k=>`<div class="upload"><label>${labels[k][1]} ${labels[k][0]}</label><div class="previewMini"><img id="mini_${k}" ${images[k]?`src="${images[k]}"`:''}></div><input type="file" accept="image/png,image/jpeg,image/webp" data-key="${k}"></div>`).join('');box.querySelectorAll('input').forEach(inp=>inp.onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);images[e.target.dataset.key]=url;localStorage.setItem('vtFaceImages',JSON.stringify(images));$('mini_'+e.target.dataset.key).src=url;$('imageStatus').textContent='画像設定を保存しました';});}
+async function compressImage(file){const bitmap=await createImageBitmap(file);const s=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));const c=document.createElement('canvas');c.width=Math.max(1,bitmap.width*s);c.height=Math.max(1,bitmap.height*s);c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);return c.toDataURL('image/webp',.86)}
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+const cache={};
+async function getImage(k){if(!images[k])return null;if(!cache[k])cache[k]=await loadImg(images[k]);return cache[k]}
+function refreshInitialAvatar(){const src=images.neutral||'';const img=$('mini_neutral_main');if(img)img.src=src;$('emptyAvatar').style.display=src?'none':'flex';$('firstSetup').style.display=(!src&&!firstSetupDone)?'flex':'none';if(src){cache.neutral=null;getImage('neutral').then(()=>{activeKey='neutral';prevKey='neutral';transitionStart=performance.now();$('avatarName').textContent='neutral'}).catch(()=>{})}}
+function resize(){const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0)}
+function drawAvatar(now){
+  const r=canvas.getBoundingClientRect();
+  canvas.style.opacity=avatarOpacity;
+  if(previewMode==='bottomRight'){
+    canvas.style.width='48%';
+    canvas.style.height='92%';
+    canvas.style.right='0';
+    canvas.style.bottom='0';
+  }else{
+    canvas.style.width='100%';
+    canvas.style.height='100%';
+    canvas.style.right='0';
+    canvas.style.bottom='0';
+  }
+  canvas.style.transform=`translate(${avatarX}%,${avatarY}%) scale(${avatarScale})`;
+  ctx.clearRect(0,0,r.width,r.height);
+  const total=Math.max(.01,fadeSec*1000);
+  let t=Math.min(1,(now-transitionStart)/total);
+  const from=cache[prevKey],to=cache[activeKey];
+  if(prevKey===activeKey)t=1;
+  if(from&&prevKey!==activeKey){ctx.globalAlpha=1-t;drawImageContain(from,r.width,r.height)}
+  if(to){ctx.globalAlpha=t;drawImageContain(to,r.width,r.height)}
+  ctx.globalAlpha=1;
+}
+function drawImageContain(img,w,h){const pad=Math.min(24,w*.04);const aw=w-pad*2,ah=h-pad*2;const s=Math.min(aw/img.naturalWidth,ah/img.naturalHeight);const dw=img.naturalWidth*s,dh=img.naturalHeight*s;ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh)}
+function setActiveKey(k){if(k===activeKey)return;if(!images[k]&&images.neutral)k='neutral';if(!images[k])k='neutral';prevKey=activeKey;activeKey=k;transitionStart=performance.now();$('avatarName').textContent=k;$('emptyAvatar').style.display=images[k]?'none':'flex';if(images[k]&&!cache[k])getImage(k).catch(()=>{})}
+function raw(result){const b={};for(const c of result?.faceBlendshapes?.[0]?.categories||[])b[c.categoryName]=c.score;return b}
+function filtered(b){
+  const out={};
+  for(const[k,x]of Object.entries(b)){
+    smooth[k]=(smooth[k]??x)*.72+x*.28;
+    const base=neutral[k]??0;
+    // ニュートラル補正で表情そのものを消さない。基準値の35%だけ引き、
+    // 元スコアも少し残すことで小さな表情変化を拾う。
+    const corrected=Math.max(0,smooth[k]-base*.35);
+    out[k]=Math.max(corrected,smooth[k]*.22);
+  }
+  return out;
+}
+function V(b,k){return b[k]??0} function A(b,...k){return k.reduce((s,x)=>s+V(b,x),0)/Math.max(1,k.length)} function avg(...x){return x.reduce((a,b)=>a+b,0)/Math.max(1,x.length)} function clamp(x){return Math.max(0,Math.min(1,x))}
+function geom(p){if(!p?.length)return null;const d=(a,b)=>Math.hypot(p[a].x-p[b].x,p[a].y-p[b].y);return{eyeL:d(159,145)/Math.max(.001,d(33,133)),eyeR:d(386,374)/Math.max(.001,d(362,263)),mouth:d(13,14)/Math.max(.001,d(61,291)),yaw:(p[1].x-(p[234].x+p[454].x)/2)/Math.max(.001,Math.abs(p[454].x-p[234].x))}}
+function eventScores(b,g){
+  const smile=A(b,'mouthSmileLeft','mouthSmileRight');
+  const cheek=A(b,'cheekSquintLeft','cheekSquintRight');
+  const blinkL=V(b,'eyeBlinkLeft'),blinkR=V(b,'eyeBlinkRight');
+  const eyeSquint=A(b,'eyeSquintLeft','eyeSquintRight');
+  const wide=A(b,'eyeWideLeft','eyeWideRight');
+  const browUp=V(b,'browInnerUp');
+  const browDown=A(b,'browDownLeft','browDownRight');
+  const frown=A(b,'mouthFrownLeft','mouthFrownRight');
+  const sneer=A(b,'noseSneerLeft','noseSneerRight');
+  const upper=A(b,'mouthUpperUpLeft','mouthUpperUpRight');
+  const press=A(b,'mouthPressLeft','mouthPressRight');
+  const stretch=A(b,'mouthStretchLeft','mouthStretchRight');
+  const jaw=V(b,'jawOpen');
+  const puff=V(b,'cheekPuff');
+
+  // 小さな変化を拾うため、弱い値を少し持ち上げる。
+  const boost=x=>clamp(Math.pow(clamp(x),.68)*1.12);
+
+  const eyeCloseL=g?clamp(blinkL*.48+clamp((.086-g.eyeL)/.032)*.52):blinkL;
+  const eyeCloseR=g?clamp(blinkR*.48+clamp((.086-g.eyeR)/.032)*.52):blinkR;
+  const bothClose=Math.min(eyeCloseL,eyeCloseR);
+  const oneEyeL=clamp(eyeCloseL-eyeCloseR*.42);
+  const oneEyeR=clamp(eyeCloseR-eyeCloseL*.42);
+
+  const open=clamp(jaw*.55+(g?clamp((g.mouth-.035)/.070)*.45:0));
+  const smileStrong=clamp(boost(smile*.86+cheek*.14));
+  const smileMouth=clamp(boost(smile*.80+cheek*.08));
+
+  // 笑顔。普通の笑顔は口角、頬の2系統が中心。
+  const happy=clamp(smileStrong*.92+smileMouth*.08);
+
+  // 大笑いは「笑顔 + かなりの開口」が揃った時だけ。
+  const laugh=clamp(
+    Math.min(smileStrong,clamp((smileStrong-.24)/.52))*.56+
+    boost(clamp((open-.10)/.58))*.44
+  );
+
+  // 驚き。少し目が開いただけでも反応するが、眉か口も必要。
+  const surprise=clamp(
+    boost(wide)*.47+
+    boost(browUp)*.22+
+    boost(open)*.31-
+    smile*.12
+  );
+
+  // 恐怖。目を見開く + 眉内側を特に重視。
+  const fearful=clamp(
+    boost(wide)*.42+
+    boost(browUp)*.33+
+    boost(eyeSquint)*.08+
+    boost(open)*.17-
+    smile*.22
+  );
+
+  // 怒り。browDownだけでなく目の細まり・口の圧力も加点。
+  const angryCore=clamp(
+    boost(browDown)*.46+
+    boost(eyeSquint)*.22+
+    boost(press)*.15+
+    boost(sneer)*.09+
+    boost(upper)*.08
+  );
+  const angry=clamp(
+    angryCore*
+    clamp(.88+browDown*.24)*
+    clamp(1-smile*.92)*
+    clamp(1-browUp*.22)
+  );
+
+  // 悲しみ。口角下げ + 眉内側を強く拾う。弱い表情でも判定可能。
+  const sadCore=clamp(
+    boost(frown)*.53+
+    boost(browUp)*.30+
+    boost(stretch)*.09+
+    boost(press)*.08
+  );
+  const sad=clamp(
+    sadCore*
+    clamp(.90+browUp*.28)*
+    clamp(1-smile*.96)*
+    clamp(1-jaw*.28)
+  );
+
+  // 嫌悪。鼻・上唇・口の圧力。
+  const disgusted=clamp(
+    boost(sneer)*.48+
+    boost(upper)*.30+
+    boost(press)*.22-
+    smile*.10
+  );
+
+
+  const puffScore=clamp(boost(puff)*.96);
+  const mouthOpen=clamp(boost(open));
+
+  const winkL=clamp(oneEyeL*(1-bothClose*.78));
+  const winkR=clamp(oneEyeR*(1-bothClose*.78));
+  const blink=clamp(bothClose);
+  const eyesClosed=clamp(Math.min(eyeCloseL,eyeCloseR));
+
+  // 表情が何もない時だけニュートラル。
+  const peak=Math.max(
+    happy,laugh,surprise,fearful,angry,sad,disgusted,
+    puffScore,mouthOpen,winkL,winkR,blink,eyesClosed
+  );
+  const neutralScore=clamp(.46-peak*.42);
+
+  return{
+    neutral:neutralScore,happy,laugh,surprise,fearful,sad,angry,disgusted,
+    winkL,winkR,blink,eyesClosed,puff:puffScore,mouthOpen
+  };
+}
+function top(s){
+  let best='neutral',bestV=0;
+  for(const[k,v0]of Object.entries(s)){
+    if(k==='neutral')continue;
+    const v=Number(v0)||0;
+    if(v>bestV){bestV=v;best=k;}
+  }
+  // 非ニュートラルが最低0.25を超えたら、その表情を優先。
+  // これで「無表情」が高すぎて全表情を吸収する問題を防止。
+  if(bestV>=.16)return{k:best,score:bestV};
+  return{k:'neutral',score:Math.max(.16,Number(s.neutral)||0)};
+}
+function stabilize(key){
+  if(key!==stableKey){
+    if(candidateKey===key)candidateCount++;
+    else{candidateKey=key;candidateCount=1}
+    let n=Number($('stab').value);
+    if(['blink','winkL','winkR'].includes(key))n=2;
+    else if(key==='eyesClosed')n=2;
+        else if(['surprise','fearful','angry','sad','disgusted','mouthOpen'].includes(key))n=Math.max(1,n-2);
+    else if(key==='laugh')n=Math.max(3,n);
+    else if(key==='neutral')n=Math.max(3,n-1);
+    if(candidateCount>=n){stableKey=key;candidateCount=0}
+  }else candidateCount=0;
+  return stableKey;
+}
+async function loadMP(){const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm');return FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL},runningMode:'VIDEO',numFaces:1,minFaceDetectionConfidence:.65,minFacePresenceConfidence:.65,minTrackingConfidence:.65,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:true})}
+function render(result,events,g){const main=top(events);const key=stabilize(main.k);const L=labels[key]||labels.neutral;$('emotionBadge').textContent=L[1]+' '+L[0];$('name').textContent=L[0];$('emo').textContent=L[1];$('desc').textContent=L[2];$('score').textContent=Math.round(main.score*100)+'%';$('fill').style.width=Math.round(main.score*100)+'%';$('direct').textContent=(labels[top(events).k]||labels.neutral)[0];if(g){const b=filtered(raw(result));$('le').textContent=events.winkL>.45||V(b,'eyeBlinkLeft')>.43?'閉':'開';$('re').textContent=events.winkR>.45||V(b,'eyeBlinkRight')>.43?'閉':'開';$('mo').textContent=g.mouth>.11||events.mouthOpen>.4?'開':'閉';$('yaw').textContent=g.yaw<-.16?'左':g.yaw>.16?'右':'正面'}setActiveKey(key);$('faces').textContent=result?.faceLandmarks?.length||0;const rank={...events};$('rank').innerHTML=Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([k,v])=>`<div class="r"><span>${(labels[k]||['無表情'])[0]}</span><div class="bt"><div class="bf" style="width:${Math.round(v*100)}%"></div></div><b>${Math.round(v*100)}%</b></div>`).join('')}
+function loop(now){if(!running)return;const videoReady=video.readyState>=2;const currentTime=video.currentTime;const due=(now-lastDetectMs)>=DETECT_INTERVAL;if(videoReady&&currentTime!==lastT&&due&&!detectBusy){lastT=currentTime;lastDetectMs=now;detectBusy=true;try{const r=mp.detectForVideo(video,now),b=filtered(raw(r)),g=geom(r.faceLandmarks?.[0]),ev=eventScores(b,g);lastResult=r;render(r,ev,g);frames++}catch(e){if(now-lastDetectErrorMs>3000){console.error(e);lastDetectErrorMs=now}}finally{detectBusy=false}}drawAvatar(now);if(performance.now()-fpsAt>1000){$('fps').textContent=frames;frames=0;fpsAt=performance.now()}rafId=requestAnimationFrame(loop)}
+function layoutState(){return {avatarScale,avatarOpacity,avatarX,avatarY,previewMode,fadeSec,stab:Number($('stab').value)}}
+function applyLayout(o){if(!o)return;avatarScale=Number(o.avatarScale??1);avatarOpacity=Number(o.avatarOpacity??1);avatarX=Number(o.avatarX??10);avatarY=Number(o.avatarY??6);previewMode=o.previewMode||'bottomRight';fadeSec=Number(o.fadeSec??.2);$('stab').value=String(o.stab??4);$('scaleVal').textContent=Math.round(avatarScale*100)+'%';$('opacityVal').textContent=Math.round(avatarOpacity*100)+'%';$('posXVal').textContent=avatarX;$('posYVal').textContent=avatarY;$('fade').value=fadeSec;$('fadeVal').textContent=fadeSec.toFixed(2);$('stabVal').textContent=['','即時','超高感度','高感度','標準','安定','高安定','超安定','固定'][Number($('stab').value)]||'標準';$('modeBottomRight').classList.toggle('active',previewMode==='bottomRight');$('modeFull').classList.toggle('active',previewMode==='full');$('layoutState').textContent=previewMode==='bottomRight'?'右下配信レイアウト':'全画面テスト';resize()}
+function saveLayout(auto=false){localStorage.setItem('vtFaceLayout',JSON.stringify(layoutState()));$('saveState').textContent=auto?'自動保存: ON':'保存済み';if(!auto)setTimeout(()=>$('saveState').textContent='自動保存: OFF',1200)}
+function scheduleSave(){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>saveLayout(true),350)}
+function enterClean(){const box=document.querySelector('.preview');box.classList.add('clean');$('cleanExit').style.display='block'}
+function exitClean(){const box=document.querySelector('.preview');box.classList.remove('clean');$('cleanExit').style.display='none'}
+async function start(){try{$('start').disabled=true;$('status').textContent='AI読み込み中…';if(!mp)mp=await loadMP();stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960,max:1280},height:{ideal:540,max:720},frameRate:{ideal:24,max:30}},audio:false});video.srcObject=stream;await video.play();running=true;lastT=-1;lastDetectMs=0;detectBusy=false;$('dot').classList.add('ok');$('status').textContent=isMobileLike?'表情認識中 · モバイル最適化':'表情認識中 · PC最適化';$('start').style.display='none';resize();cancelAnimationFrame(rafId);rafId=requestAnimationFrame(loop)}catch(e){console.error(e);$('status').textContent='起動失敗: '+(e?.message||e);$('start').disabled=false}}
+$('calibrate').onclick=()=>{if(!running)return;$('calibrate').textContent='補正中…普通の顔';let n=0;const t=setInterval(()=>{if(!lastResult)return;const b=raw(lastResult);for(const[k,x]of Object.entries(b))neutral[k]=neutral[k]===undefined?x:neutral[k]*.85+x*.15;if(++n>=25){clearInterval(t);$('calibrate').textContent='✅ 補正済み';setTimeout(()=>$('calibrate').textContent='🙂 ニュートラル補正',1200)}},40)};
+$('reset').onclick=()=>{neutral={};smooth={};stableKey='neutral';candidateKey='neutral';candidateCount=0;setActiveKey('neutral');$('calibrate').textContent='🙂 ニュートラル補正'};
+$('clearImages').onclick=()=>{images={};for(const k of Object.keys(cache))delete cache[k];localStorage.removeItem('vtFaceImages');localStorage.removeItem('vtFaceInitialSetupDone');firstSetupDone=false;try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();$('setupPreview').src='';$('setupFile').value='';$('setupSave').disabled=true;$('imageStatus').textContent='画像をリセットしました。初期立ち絵をもう一度設定できます。'};
+$('neutralFirst').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);images.neutral=url;localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;$('imageStatus').textContent='通常の立ち絵を保存しました';refreshInitialAvatar();$('firstSetup').style.display='none';};
+$('useDemo').onclick=()=>{const keys=uploadKeys;keys.forEach((k,i)=>{const c=document.createElement('canvas');c.width=700;c.height=900;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,700,900);g.addColorStop(0,'#202a50');g.addColorStop(1,'#0b0f1c');x.fillStyle=g;x.fillRect(0,0,700,900);x.fillStyle='#fff';x.font='900 80px system-ui';x.textAlign='center';x.fillText(labels[k][1],350,360);x.font='700 44px system-ui';x.fillText(labels[k][0],350,440);x.font='24px system-ui';x.fillStyle='#9fb0ff';x.fillText('VTuber Face Live DEMO',350,520);images[k]=c.toDataURL('image/webp',.9)});localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();$('imageStatus').textContent='デモ画像を作成して保存しました'};
+$('setupFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);$('setupPreview').src=url;$('setupSave').disabled=false;$('setupStatus').textContent='この画像を初期立ち絵として保存できます。'};
+$('setupSave').onclick=async()=>{const src=$('setupPreview').src;if(!src||src==='')return;images.neutral=src;localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;$('setupStatus').textContent='保存しました。次回からこの立ち絵が自動表示されます。';refreshInitialAvatar();setTimeout(()=>$('firstSetup').style.display='none',450)};
+$('setupSkip').onclick=()=>{firstSetupDone=true;localStorage.setItem('vtFaceInitialSetupDone','1');$('firstSetup').style.display='none';};
+$('avatarScale').oninput=e=>{avatarScale=Number(e.target.value)/100;$('scaleVal').textContent=Math.round(avatarScale*100)+'%';scheduleSave();};
+$('avatarOpacity').oninput=e=>{avatarOpacity=Number(e.target.value)/100;$('opacityVal').textContent=Math.round(avatarOpacity*100)+'%';scheduleSave();};
+$('avatarX').oninput=e=>{avatarX=Number(e.target.value);$('posXVal').textContent=avatarX;scheduleSave();};
+$('avatarY').oninput=e=>{avatarY=Number(e.target.value);$('posYVal').textContent=avatarY;scheduleSave();};
+$('saveLayout').onclick=()=>saveLayout(false);
+$('loadLayout').onclick=()=>{try{applyLayout(JSON.parse(localStorage.getItem('vtFaceLayout')||'{}'));$('saveState').textContent='読み込み完了'}catch(e){$('saveState').textContent='読み込み失敗'}};
+$('resetLayout').onclick=()=>{applyLayout({avatarScale:1,avatarOpacity:1,avatarX:10,avatarY:6,previewMode:'bottomRight',fadeSec:.2,stab:4});saveLayout(false)};
+$('fullscreenPreview').onclick=async()=>{const el=$('gameStage').parentElement;try{await el.requestFullscreen?.();}catch(e){console.warn(e)}};
+$('cleanPreview').onclick=()=>enterClean();
+$('cleanExit').onclick=()=>exitClean();
+$('cameraStop').onclick=()=>{running=false;cancelAnimationFrame(rafId);stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;detectBusy=false;$('dot').classList.remove('ok');$('status').textContent='停止中';$('start').style.display='block';$('start').disabled=false};
+video.addEventListener('ended',()=>{});
+video.addEventListener('emptied',()=>{if(running)$('status').textContent='カメラ待機中…'});
+if('mediaDevices' in navigator){const onDeviceChange=()=>{if(running&&!stream?.active&&!cameraRestarting){cameraRestarting=true;running=false;stream=null;$('status').textContent='カメラ再接続中…';setTimeout(async()=>{cameraRestarting=false;$('start').style.display='block';$('start').disabled=false;try{await start()}catch(e){console.error(e)}},600)}};navigator.mediaDevices.addEventListener?.('devicechange',onDeviceChange)}
+addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop());});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(running)$('status').textContent='バックグラウンド中 · 認識一時停止'}else if(running)$('status').textContent='表情認識中 · 軽量モード'});
+$('fade').oninput=e=>{$('fadeVal').textContent=Number(e.target.value).toFixed(2);fadeSec=Number(e.target.value);scheduleSave()};
+$('stab').oninput=e=>{$('stabVal').textContent=['','即時','超高感度','高感度','標準','安定','高安定','超安定','固定'][Number(e.target.value)]||'標準';scheduleSave()};
+$('modeBottomRight').onclick=()=>{previewMode='bottomRight';$('modeBottomRight').classList.add('active');$('modeFull').classList.remove('active');$('layoutState').textContent='右下配信レイアウト';};
+$('modeFull').onclick=()=>{previewMode='full';$('modeFull').classList.add('active');$('modeBottomRight').classList.remove('active');$('layoutState').textContent='全画面テスト';};
+$('gameFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);$('gameImage').src=url;$('gameImage').style.display='block';$('gameVideo').style.display='none';$('gameGrid').style.display='none';};
+$('gameVideoFile').onchange=e=>{const f=e.target.files?.[0];if(!f)return;if(gameObjectUrl)URL.revokeObjectURL(gameObjectUrl);gameObjectUrl=URL.createObjectURL(f);const v=$('gameVideo');v.src=gameObjectUrl;v.style.display='block';$('gameImage').style.display='none';$('gameGrid').style.display='none';v.play().catch(()=>{})};
+$('clearGameVideo').onclick=()=>{const v=$('gameVideo');v.pause();v.removeAttribute('src');v.load();v.style.display='none';if(gameObjectUrl)URL.revokeObjectURL(gameObjectUrl);gameObjectUrl=null;$('gameVideoFile').value='';if(!$('gameImage').src)$('gameGrid').style.display='block'};
+$('clearGame').onclick=()=>{$('gameImage').removeAttribute('src');$('gameImage').style.display='none';$('gameGrid').style.display='block';$('gameFile').value='';};
+$('start').onclick=start;addEventListener('resize',resize);addEventListener('beforeunload',()=>stream?.getTracks().forEach(t=>t.stop()));try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();
+</script>
+</body></html>

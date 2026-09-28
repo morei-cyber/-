@@ -2,385 +2,6193 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>VTuber Face Live Prototype</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>文明都市放置記</title>
 <style>
-:root{--bg:#070a10;--card:#10151f;--line:rgba(255,255,255,.1);--muted:#8f9bae;--accent:#7890ff}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-body{display:flex;align-items:center;justify-content:center}.app{width:min(1500px,100vw);height:min(980px,100vh);padding:10px;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(360px,.7fr);gap:10px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 22px 70px rgba(0,0,0,.4)}
-.preview{position:relative;min-height:0;background:linear-gradient(180deg,#0b1020,#03050a)}
-#video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px}
-#avatarCanvas{position:absolute;right:0;bottom:0;left:auto;top:auto;width:48%;height:92%;pointer-events:none;z-index:3;transform-origin:center bottom;transition:width .18s ease,height .18s ease}
-.gameStage{position:absolute;inset:0;z-index:0;overflow:hidden;background:linear-gradient(135deg,#111827,#0b1220 45%,#18243b)}
-.gameStage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
-.gameGrid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:48px 48px;opacity:.35}
-.gameHud{position:absolute;inset:0;padding:18px;display:flex;justify-content:space-between;align-items:flex-start;color:rgba(255,255,255,.9);font-weight:800;font-size:11px;pointer-events:none}
-.gameHud .pill{padding:7px 10px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
-.streamLabel{position:absolute;left:18px;bottom:18px;z-index:7;padding:8px 11px;border-radius:10px;background:rgba(0,0,0,.38);border:1px solid rgba(255,255,255,.08);font-size:10px;color:#dce5ff;backdrop-filter:blur(8px)}
-.avatarFrame{position:absolute;inset:0;z-index:3;pointer-events:none}
-.streamSafe{position:absolute;inset:0;pointer-events:none;z-index:2}
-.streamSafe:after{content:"";position:absolute;right:18px;bottom:16px;width:34%;height:86%;border:1px dashed rgba(255,255,255,.10);border-radius:24px;opacity:.45}
-.previewMode{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.previewMode .btn.active{background:#5b80ff;border-color:transparent}
-.previewControls{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
-.previewControls .box{padding:8px}
-.previewControls input[type=range]{width:100%}
-.fileLine{display:flex;gap:7px;align-items:center}.fileLine input{min-width:0;flex:1}
-@media(max-width:930px){.previewControls{grid-template-columns:repeat(2,1fr)}}
-.top{position:absolute;z-index:5;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px}.badge{padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.56);backdrop-filter:blur(10px);font-size:11px;border:1px solid rgba(255,255,255,.1)}
-.btn:disabled{opacity:.45;cursor:not-allowed}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#777;margin-right:6px}.dot.ok{background:#31e394}
-.start{position:absolute;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 22px;border:0;border-radius:14px;background:#5b80ff;color:#fff;font-weight:850;cursor:pointer}
-.avatarTag{position:absolute;z-index:4;right:12px;bottom:12px;padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.55);font-size:11px}
-.panel{padding:14px;display:flex;flex-direction:column;gap:9px;overflow:auto}.section{font-size:11px;font-weight:850;color:#acb7c8}.hero{padding:13px;border-radius:16px;background:linear-gradient(135deg,rgba(91,128,255,.2),rgba(160,90,255,.1));border:1px solid rgba(255,255,255,.08)}
-.row{display:flex;align-items:center;gap:10px}.emo{font-size:40px}.name{font-size:23px;font-weight:900}.desc{font-size:10px;color:#a1adbf}.score{display:flex;justify-content:space-between;margin-top:9px;font-size:10px;color:#98a6ba}.track{height:7px;background:#262d3a;border-radius:99px;overflow:hidden;margin-top:5px}.fill{height:100%;width:0;background:var(--accent);border-radius:99px}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.box{padding:9px;background:#121823;border:1px solid rgba(255,255,255,.06);border-radius:11px}.lab{font-size:10px;color:#8795aa}.val{font-size:13px;font-weight:800;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btn{padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:#171f2c;color:#fff;font-weight:750;font-size:11px;cursor:pointer}.buttons{display:flex;gap:7px}.buttons .btn{flex:1}.note{font-size:10px;line-height:1.5;color:#7d8a9e}.muted{font-size:10px;color:var(--muted)}
-.uploads{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.upload{padding:8px;border-radius:11px;background:#0d131d;border:1px dashed rgba(255,255,255,.11)}.upload label{display:block;font-size:10px;color:#aeb8c8;margin-bottom:5px}.upload input{width:100%;font-size:10px;color:#9aa6b7}.previewMini{height:62px;border-radius:8px;background:#05070b;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px}.previewMini img{max-width:100%;max-height:100%;object-fit:contain}
-.bar{display:flex;gap:6px}.bar .btn{flex:1}.status{font-size:10px;color:#8fa0b7;margin-top:3px}.rank{display:flex;flex-direction:column;gap:4px}.r{display:grid;grid-template-columns:74px 1fr 35px;gap:6px;align-items:center;font-size:9px}.bt{height:5px;background:#252c38;border-radius:999px;overflow:hidden}.bf{height:100%;background:#748fff;border-radius:99px}
-@media(max-width:930px){.app{height:100%;grid-template-columns:1fr;padding:6px}.preview{height:52vh;min-height:280px}.panel{height:48vh}}
+:root{
+  --bg:#080b12;
+  --panel:rgba(17,21,30,.9);
+  --panel2:rgba(23,28,39,.92);
+  --line:rgba(255,255,255,.09);
+  --text:#f7f2e9;
+  --muted:#9ca4b4;
+  --gold:#e9be68;
+  --green:#75d79a;
+  --red:#e77b7b;
+  --blue:#7ebaf1;
+}
 
-/* Stage 4: 配信向けUI */
-.quickBar{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.quickBar .btn.on{background:#5b80ff;border-color:transparent}
-.savedDot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#31e394;margin-right:5px}
-.settingsCard{padding:10px;border-radius:12px;background:#0d131d;border:1px solid rgba(255,255,255,.06)}
-.cleanHint{font-size:9px;color:#7f8ba0;line-height:1.45;margin-top:5px}
-#cleanExit{position:absolute;z-index:30;right:14px;top:14px;display:none}
-.preview.clean .streamSafe:after{display:none}.preview.clean .top,.preview.clean .streamLabel,.preview.clean .emotionBadge,.preview.clean .avatarTag,.preview.clean .gameHud{display:none}
-@media(max-width:930px){.quickBar{grid-template-columns:repeat(2,1fr)}}
+*{
+  box-sizing:border-box
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:
+    Inter,
+    "Hiragino Kaku Gothic ProN",
+    "Yu Gothic",
+    Meiryo,
+    sans-serif;
+  overflow:hidden
+}
+
+button{
+  font:inherit
+}
+
+#app{
+  width:100%;
+  height:100%;
+  display:grid;
+  grid-template-rows:64px 1fr 72px;
+  background:
+    radial-gradient(
+      circle at 50% 25%,
+      #17212b 0,
+      #0b1119 40%,
+      #070a10 100%
+    )
+}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  border-bottom:1px solid var(--line);
+  background:rgba(7,9,14,.88);
+  backdrop-filter:blur(18px);
+  z-index:30
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0
+}
+
+.brand-mark{
+  width:35px;
+  height:35px;
+  border-radius:11px;
+  background:
+    linear-gradient(
+      145deg,
+      #eed48e,
+      #b57c34
+    );
+  display:grid;
+  place-items:center;
+  color:#17120a;
+  font-weight:1000;
+  box-shadow:
+    0 6px 24px rgba(226,169,77,.2)
+}
+
+.brand-name{
+  font-weight:1000;
+  letter-spacing:.03em;
+  font-size:16px
+}
+
+.brand-sub{
+  font-size:10px;
+  color:var(--muted);
+  margin-top:2px
+}
+
+.top-right{
+  display:flex;
+  align-items:center;
+  gap:9px
+}
+
+.era-pill{
+  padding:8px 11px;
+  border:1px solid rgba(233,190,104,.25);
+  border-radius:12px;
+  background:rgba(233,190,104,.07);
+  font-size:11px;
+  font-weight:900;
+  color:#f1ce83
+}
+
+.year{
+  font-size:12px;
+  color:#c1c7d2
+}
+
+.year b{
+  color:#fff
+}
+
+
+/* =============================
+   MAIN
+============================= */
+
+.main{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 360px;
+  min-height:0;
+  gap:0
+}
+
+
+/* =============================
+   MAP
+============================= */
+
+.map-shell{
+  position:relative;
+  min-width:0;
+  min-height:0;
+  overflow:hidden;
+  background:
+    linear-gradient(
+      #13202b,
+      #091118
+    )
+}
+
+#map{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  min-width:1px;
+  min-height:1px;
+  touch-action:none;
+  overflow:hidden;
+  isolation:isolate;
+  background:#a9c8d7;
+}
+
+#map canvas{
+  position:absolute;
+  inset:0;
+  display:block;
+  width:100% !important;
+  height:100% !important;
+  z-index:0;
+  opacity:1;
+}
+
+.map-vignette{
+  pointer-events:none;
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(
+      circle at 45% 45%,
+      transparent 42%,
+      rgba(2,4,8,.16) 100%
+    )
+}
+
+.map-hud{
+  position:absolute;
+  left:16px;
+  top:16px;
+  display:flex;
+  gap:8px;
+  pointer-events:none
+}
+
+.hud-card{
+  background:rgba(10,14,20,.72);
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:9px 11px;
+  backdrop-filter:blur(12px)
+}
+
+.hud-label{
+  font-size:9px;
+  color:var(--muted)
+}
+
+.hud-value{
+  font-size:14px;
+  font-weight:1000;
+  margin-top:2px
+}
+
+.map-help{
+  position:absolute;
+  left:16px;
+  bottom:16px;
+  background:rgba(10,14,20,.65);
+  border:1px solid var(--line);
+  padding:8px 10px;
+  border-radius:10px;
+  color:#9ea6b3;
+  font-size:10px;
+  pointer-events:none
+}
+
+.map-help b{
+  color:#eee
+}
+
+
+/* =============================
+   SIDE PANEL
+============================= */
+
+.side{
+  min-height:0;
+  border-left:1px solid var(--line);
+  background:rgba(10,13,19,.94);
+  display:grid;
+  grid-template-rows:auto auto 1fr auto;
+  overflow:hidden
+}
+
+.side-header{
+  padding:17px;
+  border-bottom:1px solid var(--line)
+}
+
+.side-kicker{
+  font-size:10px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:.12em
+}
+
+.side-title{
+  font-size:24px;
+  font-weight:1000;
+  margin-top:3px
+}
+
+.side-desc{
+  color:#a7aebc;
+  font-size:11px;
+  line-height:1.55;
+  margin-top:5px
+}
+
+.side-body{
+  min-height:0;
+  overflow:auto;
+  padding:14px
+}
+
+.section{
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:rgba(255,255,255,.022);
+  margin-bottom:11px
+}
+
+.section:last-child{
+  margin-bottom:0
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  margin-bottom:9px
+}
+
+.section-title{
+  font-size:11px;
+  font-weight:1000;
+  color:#e8e2d7
+}
+
+.muted{
+  color:var(--muted)
+}
+
+.big-level{
+  font-size:27px;
+  font-weight:1000
+}
+
+.level-row{
+  display:flex;
+  align-items:end;
+  justify-content:space-between
+}
+
+.bar{
+  height:7px;
+  background:#0b0e15;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:999px;
+  overflow:hidden;
+  margin-top:8px
+}
+
+.bar i{
+  display:block;
+  height:100%;
+  width:0;
+  background:
+    linear-gradient(
+      90deg,
+      #6b8ee8,
+      #e8bd66
+    );
+  transition:width .3s
+}
+
+.stat-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px
+}
+
+.mini-stat{
+  background:rgba(0,0,0,.18);
+  border-radius:10px;
+  padding:9px
+}
+
+.mini-label{
+  font-size:9px;
+  color:var(--muted)
+}
+
+.mini-value{
+  font-weight:1000;
+  font-size:15px;
+  margin-top:2px
+}
+
+.prod{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px
+}
+
+.prod div{
+  font-size:10px;
+  color:#aeb4bf;
+  background:rgba(0,0,0,.15);
+  padding:6px 7px;
+  border-radius:8px
+}
+
+.prod b{
+  color:#eff3f7
+}
+
+.primary{
+  width:100%;
+  border:0;
+  border-radius:11px;
+  padding:11px;
+  background:
+    linear-gradient(
+      135deg,
+      #e9bd69,
+      #b87935
+    );
+  color:#171106;
+  font-weight:1000;
+  cursor:pointer;
+  box-shadow:
+    0 9px 25px rgba(211,147,62,.16)
+}
+
+.primary:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+  box-shadow:none
+}
+
+.secondary{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:11px;
+  padding:10px;
+  background:#151a24;
+  color:#e8ecf1;
+  font-weight:900;
+  cursor:pointer
+}
+
+.action-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px
+}
+
+.side-footer{
+  padding:12px;
+  border-top:1px solid var(--line);
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px
+}
+
+.footer-btn{
+  padding:9px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#131821;
+  color:#cfd5df;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer
+}
+
+
+/* =============================
+   RESOURCE BAR
+============================= */
+
+.bottom{
+  display:grid;
+  grid-template-columns:
+    1.4fr
+    1fr
+    1fr
+    1fr
+    1fr
+    1fr;
+
+  gap:7px;
+  padding:9px 12px;
+  border-top:1px solid var(--line);
+  background:rgba(7,9,14,.94);
+  z-index:20
+}
+
+.res{
+  min-width:0;
+  padding:7px 9px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:rgba(255,255,255,.018)
+}
+
+.res-name{
+  font-size:9px;
+  color:var(--muted);
+  white-space:nowrap
+}
+
+.res-val{
+  font-size:14px;
+  font-weight:1000;
+  margin-top:1px;
+  white-space:nowrap
+}
+
+.res-rate{
+  font-size:9px;
+  color:var(--green);
+  white-space:nowrap
+}
+
+
+/* =============================
+   MODAL
+============================= */
+
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(3,5,9,.76);
+  backdrop-filter:blur(12px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+  padding:18px
+}
+
+.overlay.show{
+  display:flex
+}
+
+.modal{
+  width:min(460px,100%);
+  border:1px solid var(--line);
+  border-radius:19px;
+  background:#111722;
+  padding:20px;
+  box-shadow:0 25px 90px rgba(0,0,0,.55)
+}
+
+.modal h2{
+  margin:0;
+  font-size:22px
+}
+
+.modal p{
+  font-size:12px;
+  color:#b9bfca;
+  line-height:1.7
+}
+
+.modal .modal-actions{
+  display:flex;
+  gap:8px;
+  margin-top:15px
+}
+
+
+/* =============================
+   TOAST
+============================= */
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:92px;
+  transform:translate(-50%,20px);
+  opacity:0;
+  pointer-events:none;
+  z-index:120;
+  background:rgba(11,15,22,.96);
+  border:1px solid var(--line);
+  padding:10px 13px;
+  border-radius:11px;
+  font-size:11px;
+  transition:.22s;
+  box-shadow:0 15px 35px rgba(0,0,0,.3)
+}
+
+.toast.show{
+  transform:translate(-50%,0);
+  opacity:1
+}
+
+
+/* =============================
+   TABLET
+============================= */
+
+@media(max-width:980px){
+
+  #app{
+    grid-template-rows:58px 1fr auto
+  }
+
+  .main{
+    grid-template-columns:1fr
+  }
+
+  .side{
+    position:absolute;
+    z-index:25;
+    right:10px;
+    top:10px;
+    bottom:10px;
+    width:min(360px,calc(100vw - 20px));
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:0 25px 70px rgba(0,0,0,.5);
+    transform:
+      translateX(
+        calc(100% + 18px)
+      );
+    transition:.25s
+  }
+
+  .side.open{
+    transform:translateX(0)
+  }
+
+  .bottom{
+    position:relative;
+    grid-template-columns:
+      repeat(6,1fr);
+    gap:5px;
+    padding:7px
+  }
+
+  .res{
+    padding:6px
+  }
+
+  .res-name{
+    font-size:8px
+  }
+
+  .res-val{
+    font-size:12px
+  }
+
+  .res-rate{
+    font-size:8px
+  }
+
+  .map-help{
+    bottom:12px;
+    left:12px
+  }
+
+  .map-hud{
+    top:12px;
+    left:12px
+  }
+
+  .year{
+    display:none
+  }
+}
+
+
+/* =============================
+   PHONE
+============================= */
+
+@media(max-width:620px){
+
+  .topbar{
+    padding:0 10px
+  }
+
+  .brand-name{
+    font-size:14px
+  }
+
+  .brand-sub{
+    font-size:8px
+  }
+
+  .era-pill{
+    font-size:10px;
+    padding:7px 8px
+  }
+
+  .bottom{
+    grid-template-columns:
+      repeat(3,1fr);
+    grid-auto-rows:48px;
+    overflow:auto
+  }
+
+  .res{
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:center;
+    column-gap:5px
+  }
+
+  .res-name{
+    grid-column:1
+  }
+
+  .res-val{
+    grid-column:2;
+    grid-row:1
+  }
+
+  .res-rate{
+    grid-column:1 / -1
+  }
+
+  .map-hud{
+    gap:5px
+  }
+
+  .hud-card{
+    padding:7px 8px
+  }
+
+  .hud-card:nth-child(3){
+    display:none
+  }
+}
+
 </style>
 </head>
+
 <body>
-<div class="app">
-<section class="card preview">
-  <div class="gameStage" id="gameStage">
-    <img id="gameImage" alt="ゲーム画面">
-    <video id="gameVideo" muted loop playsinline style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none"></video>
-    <div class="gameGrid" id="gameGrid"></div>
-    <div class="streamSafe"></div>
-    <div class="gameHud"><div class="pill">LIVE GAME PREVIEW</div><div class="pill" id="layoutState">右下配信レイアウト</div></div>
-    <div class="streamLabel">表情連動VTuberプレビュー</div>
-  </div>
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="avatarCanvas"></canvas>
-  <div id="emptyAvatar" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:radial-gradient(circle at 50% 35%,rgba(91,128,255,.16),transparent 42%),#050810;z-index:2">
-    <div><div style="font-size:54px">🧍</div><div style="font-size:18px;font-weight:900;margin-top:10px">最初の立ち絵を設定してください</div><div style="font-size:11px;color:#8996aa;margin-top:5px">初期設定で登録した立ち絵は端末に保存され、次回から自動で表示されます</div></div>
-  </div>
-  <div id="emotionBadge" style="position:absolute;z-index:6;left:14px;bottom:14px;padding:9px 13px;border-radius:999px;background:rgba(0,0,0,.58);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);font-size:13px;font-weight:900">😐 無表情</div>
-  <div class="top"><div class="badge"><span id="dot" class="dot"></span><span id="status">停止中</span></div><div class="badge">顔 <b id="faces">0</b>　FPS <b id="fps">0</b></div></div>
-  <button class="start" id="start">カメラを開始</button><button class="btn" id="cleanExit">✕ 設定に戻る</button>
-  <div class="avatarTag">立ち絵: <b id="avatarName">neutral</b></div>
-  <div id="firstSetup" style="position:absolute;inset:0;z-index:10;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(2,5,10,.82);backdrop-filter:blur(14px)">
-    <div style="width:min(520px,92%);padding:20px;border-radius:20px;background:#10151f;border:1px solid rgba(255,255,255,.12);box-shadow:0 20px 70px rgba(0,0,0,.5)">
-      <div style="font-size:13px;color:#9eabd0;font-weight:850">INITIAL SETUP</div>
-      <div style="font-size:24px;font-weight:950;margin-top:4px">最初の立ち絵を登録</div>
-      <div style="font-size:11px;color:#8f9bae;line-height:1.6;margin-top:7px">ここで登録した通常立ち絵を初期画像として保存します。カメラ映像は画面に表示せず、表情認識だけに使います。</div>
-      <div style="margin-top:14px;padding:12px;border:1px dashed rgba(255,255,255,.14);border-radius:14px;background:#0b1018">
-        <div class="previewMini" style="height:240px"><img id="setupPreview" alt="初期立ち絵プレビュー"></div>
-        <input id="setupFile" type="file" accept="image/png,image/jpeg,image/webp" style="width:100%;font-size:11px;color:#9aa6b7">
+
+<div id="app">
+
+  <!-- TOP -->
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="brand-mark">
+        C
       </div>
-      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" id="setupSave" disabled style="flex:1;background:#5b80ff;border-color:transparent">この画像を初期立ち絵として保存</button><button class="btn" id="setupSkip" style="flex:0 0 auto">後で設定</button></div>
-      <div id="setupStatus" class="status" style="margin-top:8px">初回だけ設定できます。保存後は端末に残ります。</div>
+
+      <div>
+
+        <div class="brand-name">
+          文明都市放置記
+        </div>
+
+        <div class="brand-sub"
+             id="brandSub">
+          小さな集落から星へ
+        </div>
+
+      </div>
+
     </div>
-  </div>
-</section>
-<aside class="card panel">
-  <div><b style="font-size:18px">VTuber Face Live</b><div class="muted">表情連動立ち絵・配信向けプロトタイプ</div></div>
-  <div class="hero"><div class="row"><div class="emo" id="emo">😐</div><div><div class="name" id="name">待機中</div><div class="desc" id="desc">カメラを開始してください</div></div></div><div class="score"><span>現在の判定</span><b id="score">0%</b></div><div class="track"><div id="fill" class="fill"></div></div></div>
 
-  <div class="section">① 最初に立ち絵を設定</div>
-  <div class="box" style="margin-bottom:2px"><div class="lab">通常・ニュートラル（必須）</div><div class="previewMini"><img id="mini_neutral_main" ></div><input id="neutralFirst" type="file" accept="image/png,image/jpeg,image/webp" style="width:100%;font-size:10px;color:#9aa6b7"><div class="muted" style="margin-top:5px">最初にこの1枚を選ぶと、カメラ映像は表示せず、この立ち絵だけをプレビューします。</div></div>
-  <div class="section">② 表情ごとの立ち絵（登録した画像は端末に保存）</div>
-  <div class="uploads" id="uploads"></div>
-  <div class="bar"><button class="btn" id="useDemo">デモ画像を作る</button><button class="btn" id="clearImages">画像をリセット</button></div>
-  <div class="status" id="imageStatus">画像未設定でも判定テスト可能</div>
+    <div class="top-right">
 
-  <div class="section">③ 配信プレビュー</div>
-  <div class="box">
-    <div class="lab">ゲーム画面</div>
-    <div class="fileLine"><input id="gameFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="btn" id="clearGame">初期背景</button></div>
-    <div class="fileLine" style="margin-top:6px"><input id="gameVideoFile" type="file" accept="video/mp4,video/webm,video/ogg"><button class="btn" id="clearGameVideo">動画解除</button></div>
-    <div class="muted" style="margin-top:5px">画像だけでなく、ローカル動画もゲーム画面として再生できます。</div>
-  </div>
-  <div class="previewMode">
-    <button class="btn active" id="modeBottomRight">右下配信</button>
-    <button class="btn" id="modeFull">全画面テスト</button>
-  </div>
-  <div class="previewControls">
-    <div class="box"><div class="lab">立ち絵サイズ <b id="scaleVal">100%</b></div><input id="avatarScale" type="range" min="50" max="150" value="100"></div>
-    <div class="box"><div class="lab">透明感 <b id="opacityVal">100%</b></div><input id="avatarOpacity" type="range" min="40" max="100" value="100"></div>
-    <div class="box"><div class="lab">左右位置 <b id="posXVal">0</b></div><input id="avatarX" type="range" min="-35" max="35" value="10"></div>
-    <div class="box"><div class="lab">上下位置 <b id="posYVal">0</b></div><input id="avatarY" type="range" min="-35" max="35" value="6"></div>
-  </div>
-  <div class="quickBar">
-    <button class="btn" id="saveLayout">💾 配置を保存</button>
-    <button class="btn" id="loadLayout">↩ 配置を読込</button>
-    <button class="btn" id="resetLayout">↺ 初期配置</button>
-    <button class="btn" id="fullscreenPreview">⛶ 全画面プレビュー</button>
-    <button class="btn" id="cleanPreview">🎬 配信表示</button>
-    <button class="btn" id="cameraStop">◼ カメラ停止</button>
-  </div>
-  <div class="settingsCard"><div class="lab"><span class="savedDot"></span><b id="saveState">自動保存: OFF</b></div><div class="cleanHint">「配信表示」は設定パネルを隠して、ゲーム画面＋立ち絵だけの確認用表示にします。OBS連携はありません。</div></div>
+      <div class="year">
+        YEAR
+        <b id="year">1</b>
+      </div>
 
-  <div class="section">切り替え設定</div>
-  <div class="grid">
-    <div class="box"><div class="lab">フェード秒</div><div class="val" id="fadeVal">0.20</div><input id="fade" type="range" min="0.05" max="0.60" step="0.01" value="0.20" style="width:100%"></div>
-    <div class="box"><div class="lab">切替感度</div><div class="val" id="stabVal">標準</div><input id="stab" type="range" min="1" max="8" step="1" value="4" style="width:100%"></div>
-  </div>
+      <div class="era-pill"
+           id="eraPill">
+        原始時代
+      </div>
 
-  <div class="section">判定エンジン</div>
-  <div class="grid">
-    <div class="box"><div class="lab">直接判定</div><div class="val" id="direct">待機</div></div>
-    <div class="box"><div class="lab">Emotion AI</div><div class="val" id="ai">待機</div></div>
-    <div class="box"><div class="lab">左目</div><div class="val" id="le">—</div></div>
-    <div class="box"><div class="lab">右目</div><div class="val" id="re">—</div></div>
-    <div class="box"><div class="lab">口</div><div class="val" id="mo">—</div></div>
-    <div class="box"><div class="lab">向き</div><div class="val" id="yaw">—</div></div>
-  </div>
-  <div class="buttons"><button class="btn" id="calibrate">🙂 ニュートラル補正</button><button class="btn" id="reset">補正リセット</button></div>
-  <div class="section">表情ランキング</div><div class="rank" id="rank"></div>
-  <div class="note">※ 第6段階。PC・スマホ・タブレットに対応したHTML単体版。ゲーム画面＋表情連動立ち絵＋配置保存＋全画面プレビューを使用できます。OBS連携は使用しません。</div>
-</aside>
+    </div>
+
+  </header>
+
+
+  <!-- MAIN -->
+  <main class="main">
+
+
+    <!-- 3D MAP -->
+    <section class="map-shell">
+
+      <div id="map"></div>
+
+      <div class="map-vignette"></div>
+
+
+      <div class="map-hud">
+
+        <div class="hud-card">
+
+          <div class="hud-label">
+            人口
+          </div>
+
+          <div class="hud-value"
+               id="hudPop">
+            28 / 40
+          </div>
+
+        </div>
+
+
+        <div class="hud-card">
+
+          <div class="hud-label">
+            幸福度
+          </div>
+
+          <div class="hud-value"
+               id="hudHappy">
+            82%
+          </div>
+
+        </div>
+
+
+        <div class="hud-card">
+
+          <div class="hud-label">
+            住居
+          </div>
+
+          <div class="hud-value"
+               id="hudHousing">
+            0 / 0
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="map-help">
+
+        <b>地区をタップ</b>
+        → 強化　　
+        ドラッグ → マップ移動　　
+        ホイール/ピンチ → ズーム
+
+      </div>
+
+    </section>
+
+
+    <!-- SIDE -->
+    <aside class="side"
+           id="side">
+
+      <div class="side-header">
+
+        <div class="side-kicker">
+          SELECTED DISTRICT
+        </div>
+
+        <div class="side-title"
+             id="districtTitle">
+          首都広場
+        </div>
+
+        <div class="side-desc"
+             id="districtDesc">
+          文明の中心。人口上限と金生産を支えます。
+        </div>
+
+      </div>
+
+
+      <div class="side-body"
+           id="sideBody">
+      </div>
+
+
+      <div class="side-footer">
+
+        <button class="footer-btn"
+                onclick="saveGame()">
+          💾 セーブ
+        </button>
+
+        <button class="footer-btn"
+                onclick="resetGame()">
+          ↻ リセット
+        </button>
+
+      </div>
+
+    </aside>
+
+  </main>
+
+
+  <!-- RESOURCE BAR -->
+  <footer class="bottom">
+
+    <div class="res">
+
+      <div class="res-name">
+        🍖 食料
+      </div>
+
+      <div class="res-val"
+           id="food">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="foodRate">
+        +0/s
+      </div>
+
+    </div>
+
+
+    <div class="res">
+
+      <div class="res-name">
+        🌲 木材
+      </div>
+
+      <div class="res-val"
+           id="wood">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="woodRate">
+        +0/s
+      </div>
+
+    </div>
+
+
+    <div class="res">
+
+      <div class="res-name">
+        🪨 石材
+      </div>
+
+      <div class="res-val"
+           id="stone">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="stoneRate">
+        +0/s
+      </div>
+
+    </div>
+
+
+    <div class="res">
+
+      <div class="res-name">
+        ⛓ 鉄
+      </div>
+
+      <div class="res-val"
+           id="iron">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="ironRate">
+        +0/s
+      </div>
+
+    </div>
+
+
+    <div class="res">
+
+      <div class="res-name">
+        💰 金
+      </div>
+
+      <div class="res-val"
+           id="gold">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="goldRate">
+        +0/s
+      </div>
+
+    </div>
+
+
+    <div class="res">
+
+      <div class="res-name">
+        🔬 科学
+      </div>
+
+      <div class="res-val"
+           id="science">
+        0
+      </div>
+
+      <div class="res-rate"
+           id="scienceRate">
+        +0/s
+      </div>
+
+    </div>
+
+  </footer>
+
 </div>
 
-<script type="module">
-import {FaceLandmarker,FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/+esm";
-const $=id=>document.getElementById(id);
-const video=$('video'),canvas=$('avatarCanvas'),ctx=canvas.getContext('2d');
-const MODEL="https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-let mp=null,stream=null,running=false,lastT=-1,lastResult=null;let detectBusy=false,lastDetectMs=0,lastDetectErrorMs=0;const DETECT_INTERVAL=1000/24;let rafId=0;let cameraRestarting=false;let avatarScale=1,avatarOpacity=1,avatarX=10,avatarY=6;let previewMode="bottomRight";let gameObjectUrl=null;let autoSaveTimer=null;let firstSetupDone=localStorage.getItem('vtFaceInitialSetupDone')==='1';let smooth={},neutral={};let stableKey='neutral',candidateKey='neutral',candidateCount=0;let frames=0,fpsAt=performance.now();let fadeSec=.20;let activeKey='neutral',prevKey='neutral',transitionStart=performance.now();let images=JSON.parse(localStorage.getItem('vtFaceImages')||'{}');
-const labels={neutral:['無表情','😐','通常表情'],happy:['笑顔','😄','口角・頬が上がっています'],laugh:['大笑い','🤣','笑顔と開口が強い'],surprise:['驚き','😮','目・眉・口が開いています'],fearful:['恐怖','😨','目と眉が強く反応'],sad:['悲しみ','😢','口角が下がっています'],angry:['怒り','😠','眉が下がり表情が緊張'],disgusted:['嫌悪','🤢','鼻・上唇周辺が収縮'],winkL:['左ウィンク','😉','左目だけ閉じています'],winkR:['右ウィンク','😉','右目だけ閉じています'],blink:['瞬き','😌','一瞬、両目を閉じています'],eyesClosed:['両目閉じ','😑','両目が閉じています'],puff:['頬ぷく','😗','頬を膨らませています'],mouthOpen:['口を開ける','😮','顎が開いています']};
-const uploadKeys=Object.keys(labels).filter(k=>k!=='neutral');
-function makeUploads(){const box=$('uploads');box.innerHTML=uploadKeys.map(k=>`<div class="upload"><label>${labels[k][1]} ${labels[k][0]}</label><div class="previewMini"><img id="mini_${k}" ${images[k]?`src="${images[k]}"`:''}></div><input type="file" accept="image/png,image/jpeg,image/webp" data-key="${k}"></div>`).join('');box.querySelectorAll('input').forEach(inp=>inp.onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);images[e.target.dataset.key]=url;localStorage.setItem('vtFaceImages',JSON.stringify(images));$('mini_'+e.target.dataset.key).src=url;$('imageStatus').textContent='画像設定を保存しました';});}
-async function compressImage(file){const bitmap=await createImageBitmap(file);const s=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));const c=document.createElement('canvas');c.width=Math.max(1,bitmap.width*s);c.height=Math.max(1,bitmap.height*s);c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);return c.toDataURL('image/webp',.86)}
-function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
-const cache={};
-async function getImage(k){if(!images[k])return null;if(!cache[k])cache[k]=await loadImg(images[k]);return cache[k]}
-function refreshInitialAvatar(){const src=images.neutral||'';const img=$('mini_neutral_main');if(img)img.src=src;$('emptyAvatar').style.display=src?'none':'flex';$('firstSetup').style.display=(!src&&!firstSetupDone)?'flex':'none';if(src){cache.neutral=null;getImage('neutral').then(()=>{activeKey='neutral';prevKey='neutral';transitionStart=performance.now();$('avatarName').textContent='neutral'}).catch(()=>{})}}
-function resize(){const r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0)}
-function drawAvatar(now){
-  const r=canvas.getBoundingClientRect();
-  canvas.style.opacity=avatarOpacity;
-  if(previewMode==='bottomRight'){
-    canvas.style.width='48%';
-    canvas.style.height='92%';
-    canvas.style.right='0';
-    canvas.style.bottom='0';
-  }else{
-    canvas.style.width='100%';
-    canvas.style.height='100%';
-    canvas.style.right='0';
-    canvas.style.bottom='0';
+
+<!-- MODAL -->
+<div class="overlay"
+     id="overlay">
+
+  <div class="modal">
+
+    <h2 id="modalTitle">
+      文明
+    </h2>
+
+    <p id="modalText"></p>
+
+    <div class="modal-actions">
+
+      <button class="primary"
+              onclick="closeModal()">
+        OK
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<div class="toast"
+     id="toast">
+</div>
+
+
+<script type="importmap">
+{
+  "imports":{
+    "three":
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+    "three/addons/":
+      "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
   }
-  canvas.style.transform=`translate(${avatarX}%,${avatarY}%) scale(${avatarScale})`;
-  ctx.clearRect(0,0,r.width,r.height);
-  const total=Math.max(.01,fadeSec*1000);
-  let t=Math.min(1,(now-transitionStart)/total);
-  const from=cache[prevKey],to=cache[activeKey];
-  if(prevKey===activeKey)t=1;
-  if(from&&prevKey!==activeKey){ctx.globalAlpha=1-t;drawImageContain(from,r.width,r.height)}
-  if(to){ctx.globalAlpha=t;drawImageContain(to,r.width,r.height)}
-  ctx.globalAlpha=1;
 }
-function drawImageContain(img,w,h){const pad=Math.min(24,w*.04);const aw=w-pad*2,ah=h-pad*2;const s=Math.min(aw/img.naturalWidth,ah/img.naturalHeight);const dw=img.naturalWidth*s,dh=img.naturalHeight*s;ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh)}
-function setActiveKey(k){if(k===activeKey)return;if(!images[k]&&images.neutral)k='neutral';if(!images[k])k='neutral';prevKey=activeKey;activeKey=k;transitionStart=performance.now();$('avatarName').textContent=k;$('emptyAvatar').style.display=images[k]?'none':'flex';if(images[k]&&!cache[k])getImage(k).catch(()=>{})}
-function raw(result){const b={};for(const c of result?.faceBlendshapes?.[0]?.categories||[])b[c.categoryName]=c.score;return b}
-function filtered(b){
-  const out={};
-  for(const[k,x]of Object.entries(b)){
-    smooth[k]=(smooth[k]??x)*.72+x*.28;
-    const base=neutral[k]??0;
-    // ニュートラル補正で表情そのものを消さない。基準値の35%だけ引き、
-    // 元スコアも少し残すことで小さな表情変化を拾う。
-    const corrected=Math.max(0,smooth[k]-base*.35);
-    out[k]=Math.max(corrected,smooth[k]*.22);
-  }
-  return out;
-}
-function V(b,k){return b[k]??0} function A(b,...k){return k.reduce((s,x)=>s+V(b,x),0)/Math.max(1,k.length)} function avg(...x){return x.reduce((a,b)=>a+b,0)/Math.max(1,x.length)} function clamp(x){return Math.max(0,Math.min(1,x))}
-function geom(p){if(!p?.length)return null;const d=(a,b)=>Math.hypot(p[a].x-p[b].x,p[a].y-p[b].y);return{eyeL:d(159,145)/Math.max(.001,d(33,133)),eyeR:d(386,374)/Math.max(.001,d(362,263)),mouth:d(13,14)/Math.max(.001,d(61,291)),yaw:(p[1].x-(p[234].x+p[454].x)/2)/Math.max(.001,Math.abs(p[454].x-p[234].x))}}
-function eventScores(b,g){
-  const smile=A(b,'mouthSmileLeft','mouthSmileRight');
-  const cheek=A(b,'cheekSquintLeft','cheekSquintRight');
-  const blinkL=V(b,'eyeBlinkLeft'),blinkR=V(b,'eyeBlinkRight');
-  const eyeSquint=A(b,'eyeSquintLeft','eyeSquintRight');
-  const wide=A(b,'eyeWideLeft','eyeWideRight');
-  const browUp=V(b,'browInnerUp');
-  const browDown=A(b,'browDownLeft','browDownRight');
-  const frown=A(b,'mouthFrownLeft','mouthFrownRight');
-  const sneer=A(b,'noseSneerLeft','noseSneerRight');
-  const upper=A(b,'mouthUpperUpLeft','mouthUpperUpRight');
-  const press=A(b,'mouthPressLeft','mouthPressRight');
-  const stretch=A(b,'mouthStretchLeft','mouthStretchRight');
-  const jaw=V(b,'jawOpen');
-  const puff=V(b,'cheekPuff');
-
-  // 小さな変化を拾うため、弱い値を少し持ち上げる。
-  const boost=x=>clamp(Math.pow(clamp(x),.68)*1.12);
-
-  const eyeCloseL=g?clamp(blinkL*.48+clamp((.086-g.eyeL)/.032)*.52):blinkL;
-  const eyeCloseR=g?clamp(blinkR*.48+clamp((.086-g.eyeR)/.032)*.52):blinkR;
-  const bothClose=Math.min(eyeCloseL,eyeCloseR);
-  const oneEyeL=clamp(eyeCloseL-eyeCloseR*.42);
-  const oneEyeR=clamp(eyeCloseR-eyeCloseL*.42);
-
-  const open=clamp(jaw*.55+(g?clamp((g.mouth-.035)/.070)*.45:0));
-  const smileStrong=clamp(boost(smile*.86+cheek*.14));
-  const smileMouth=clamp(boost(smile*.80+cheek*.08));
-
-  // 笑顔。普通の笑顔は口角、頬の2系統が中心。
-  const happy=clamp(smileStrong*.92+smileMouth*.08);
-
-  // 大笑いは「笑顔 + かなりの開口」が揃った時だけ。
-  const laugh=clamp(
-    Math.min(smileStrong,clamp((smileStrong-.24)/.52))*.56+
-    boost(clamp((open-.10)/.58))*.44
-  );
-
-  // 驚き。少し目が開いただけでも反応するが、眉か口も必要。
-  const surprise=clamp(
-    boost(wide)*.47+
-    boost(browUp)*.22+
-    boost(open)*.31-
-    smile*.12
-  );
-
-  // 恐怖。目を見開く + 眉内側を特に重視。
-  const fearful=clamp(
-    boost(wide)*.42+
-    boost(browUp)*.33+
-    boost(eyeSquint)*.08+
-    boost(open)*.17-
-    smile*.22
-  );
-
-  // 怒り。browDownだけでなく目の細まり・口の圧力も加点。
-  const angryCore=clamp(
-    boost(browDown)*.46+
-    boost(eyeSquint)*.22+
-    boost(press)*.15+
-    boost(sneer)*.09+
-    boost(upper)*.08
-  );
-  const angry=clamp(
-    angryCore*
-    clamp(.88+browDown*.24)*
-    clamp(1-smile*.92)*
-    clamp(1-browUp*.22)
-  );
-
-  // 悲しみ。口角下げ + 眉内側を強く拾う。弱い表情でも判定可能。
-  const sadCore=clamp(
-    boost(frown)*.53+
-    boost(browUp)*.30+
-    boost(stretch)*.09+
-    boost(press)*.08
-  );
-  const sad=clamp(
-    sadCore*
-    clamp(.90+browUp*.28)*
-    clamp(1-smile*.96)*
-    clamp(1-jaw*.28)
-  );
-
-  // 嫌悪。鼻・上唇・口の圧力。
-  const disgusted=clamp(
-    boost(sneer)*.48+
-    boost(upper)*.30+
-    boost(press)*.22-
-    smile*.10
-  );
-
-
-  const puffScore=clamp(boost(puff)*.96);
-  const mouthOpen=clamp(boost(open));
-
-  const winkL=clamp(oneEyeL*(1-bothClose*.78));
-  const winkR=clamp(oneEyeR*(1-bothClose*.78));
-  const blink=clamp(bothClose);
-  const eyesClosed=clamp(Math.min(eyeCloseL,eyeCloseR));
-
-  // 表情が何もない時だけニュートラル。
-  const peak=Math.max(
-    happy,laugh,surprise,fearful,angry,sad,disgusted,
-    puffScore,mouthOpen,winkL,winkR,blink,eyesClosed
-  );
-  const neutralScore=clamp(.46-peak*.42);
-
-  return{
-    neutral:neutralScore,happy,laugh,surprise,fearful,sad,angry,disgusted,
-    winkL,winkR,blink,eyesClosed,puff:puffScore,mouthOpen
-  };
-}
-function top(s){
-  let best='neutral',bestV=0;
-  for(const[k,v0]of Object.entries(s)){
-    if(k==='neutral')continue;
-    const v=Number(v0)||0;
-    if(v>bestV){bestV=v;best=k;}
-  }
-  // 非ニュートラルが最低0.25を超えたら、その表情を優先。
-  // これで「無表情」が高すぎて全表情を吸収する問題を防止。
-  if(bestV>=.16)return{k:best,score:bestV};
-  return{k:'neutral',score:Math.max(.16,Number(s.neutral)||0)};
-}
-function stabilize(key){
-  if(key!==stableKey){
-    if(candidateKey===key)candidateCount++;
-    else{candidateKey=key;candidateCount=1}
-    let n=Number($('stab').value);
-    if(['blink','winkL','winkR'].includes(key))n=2;
-    else if(key==='eyesClosed')n=2;
-        else if(['surprise','fearful','angry','sad','disgusted','mouthOpen'].includes(key))n=Math.max(1,n-2);
-    else if(key==='laugh')n=Math.max(3,n);
-    else if(key==='neutral')n=Math.max(3,n-1);
-    if(candidateCount>=n){stableKey=key;candidateCount=0}
-  }else candidateCount=0;
-  return stableKey;
-}
-async function loadMP(){const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22-rc.20250304/wasm');return FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:MODEL},runningMode:'VIDEO',numFaces:1,minFaceDetectionConfidence:.65,minFacePresenceConfidence:.65,minTrackingConfidence:.65,outputFaceBlendshapes:true,outputFacialTransformationMatrixes:true})}
-function render(result,events,g){const main=top(events);const key=stabilize(main.k);const L=labels[key]||labels.neutral;$('emotionBadge').textContent=L[1]+' '+L[0];$('name').textContent=L[0];$('emo').textContent=L[1];$('desc').textContent=L[2];$('score').textContent=Math.round(main.score*100)+'%';$('fill').style.width=Math.round(main.score*100)+'%';$('direct').textContent=(labels[top(events).k]||labels.neutral)[0];if(g){const b=filtered(raw(result));$('le').textContent=events.winkL>.45||V(b,'eyeBlinkLeft')>.43?'閉':'開';$('re').textContent=events.winkR>.45||V(b,'eyeBlinkRight')>.43?'閉':'開';$('mo').textContent=g.mouth>.11||events.mouthOpen>.4?'開':'閉';$('yaw').textContent=g.yaw<-.16?'左':g.yaw>.16?'右':'正面'}setActiveKey(key);$('faces').textContent=result?.faceLandmarks?.length||0;const rank={...events};$('rank').innerHTML=Object.entries(rank).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([k,v])=>`<div class="r"><span>${(labels[k]||['無表情'])[0]}</span><div class="bt"><div class="bf" style="width:${Math.round(v*100)}%"></div></div><b>${Math.round(v*100)}%</b></div>`).join('')}
-function loop(now){if(!running)return;const videoReady=video.readyState>=2;const currentTime=video.currentTime;const due=(now-lastDetectMs)>=DETECT_INTERVAL;if(videoReady&&currentTime!==lastT&&due&&!detectBusy){lastT=currentTime;lastDetectMs=now;detectBusy=true;try{const r=mp.detectForVideo(video,now),b=filtered(raw(r)),g=geom(r.faceLandmarks?.[0]),ev=eventScores(b,g);lastResult=r;render(r,ev,g);frames++}catch(e){if(now-lastDetectErrorMs>3000){console.error(e);lastDetectErrorMs=now}}finally{detectBusy=false}}drawAvatar(now);if(performance.now()-fpsAt>1000){$('fps').textContent=frames;frames=0;fpsAt=performance.now()}rafId=requestAnimationFrame(loop)}
-function layoutState(){return {avatarScale,avatarOpacity,avatarX,avatarY,previewMode,fadeSec,stab:Number($('stab').value)}}
-function applyLayout(o){if(!o)return;avatarScale=Number(o.avatarScale??1);avatarOpacity=Number(o.avatarOpacity??1);avatarX=Number(o.avatarX??10);avatarY=Number(o.avatarY??6);previewMode=o.previewMode||'bottomRight';fadeSec=Number(o.fadeSec??.2);$('stab').value=String(o.stab??4);$('scaleVal').textContent=Math.round(avatarScale*100)+'%';$('opacityVal').textContent=Math.round(avatarOpacity*100)+'%';$('posXVal').textContent=avatarX;$('posYVal').textContent=avatarY;$('fade').value=fadeSec;$('fadeVal').textContent=fadeSec.toFixed(2);$('stabVal').textContent=['','即時','超高感度','高感度','標準','安定','高安定','超安定','固定'][Number($('stab').value)]||'標準';$('modeBottomRight').classList.toggle('active',previewMode==='bottomRight');$('modeFull').classList.toggle('active',previewMode==='full');$('layoutState').textContent=previewMode==='bottomRight'?'右下配信レイアウト':'全画面テスト';resize()}
-function saveLayout(auto=false){localStorage.setItem('vtFaceLayout',JSON.stringify(layoutState()));$('saveState').textContent=auto?'自動保存: ON':'保存済み';if(!auto)setTimeout(()=>$('saveState').textContent='自動保存: OFF',1200)}
-function scheduleSave(){clearTimeout(autoSaveTimer);autoSaveTimer=setTimeout(()=>saveLayout(true),350)}
-function enterClean(){const box=document.querySelector('.preview');box.classList.add('clean');$('cleanExit').style.display='block'}
-function exitClean(){const box=document.querySelector('.preview');box.classList.remove('clean');$('cleanExit').style.display='none'}
-async function start(){try{$('start').disabled=true;$('status').textContent='AI読み込み中…';if(!mp)mp=await loadMP();stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:960,max:1280},height:{ideal:540,max:720},frameRate:{ideal:24,max:30}},audio:false});video.srcObject=stream;await video.play();running=true;lastT=-1;lastDetectMs=0;detectBusy=false;$('dot').classList.add('ok');$('status').textContent=isMobileLike?'表情認識中 · モバイル最適化':'表情認識中 · PC最適化';$('start').style.display='none';resize();cancelAnimationFrame(rafId);rafId=requestAnimationFrame(loop)}catch(e){console.error(e);$('status').textContent='起動失敗: '+(e?.message||e);$('start').disabled=false}}
-$('calibrate').onclick=()=>{if(!running)return;$('calibrate').textContent='補正中…普通の顔';let n=0;const t=setInterval(()=>{if(!lastResult)return;const b=raw(lastResult);for(const[k,x]of Object.entries(b))neutral[k]=neutral[k]===undefined?x:neutral[k]*.85+x*.15;if(++n>=25){clearInterval(t);$('calibrate').textContent='✅ 補正済み';setTimeout(()=>$('calibrate').textContent='🙂 ニュートラル補正',1200)}},40)};
-$('reset').onclick=()=>{neutral={};smooth={};stableKey='neutral';candidateKey='neutral';candidateCount=0;setActiveKey('neutral');$('calibrate').textContent='🙂 ニュートラル補正'};
-$('clearImages').onclick=()=>{images={};for(const k of Object.keys(cache))delete cache[k];localStorage.removeItem('vtFaceImages');localStorage.removeItem('vtFaceInitialSetupDone');firstSetupDone=false;try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();$('setupPreview').src='';$('setupFile').value='';$('setupSave').disabled=true;$('imageStatus').textContent='画像をリセットしました。初期立ち絵をもう一度設定できます。'};
-$('neutralFirst').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);images.neutral=url;localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;$('imageStatus').textContent='通常の立ち絵を保存しました';refreshInitialAvatar();$('firstSetup').style.display='none';};
-$('useDemo').onclick=()=>{const keys=uploadKeys;keys.forEach((k,i)=>{const c=document.createElement('canvas');c.width=700;c.height=900;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,700,900);g.addColorStop(0,'#202a50');g.addColorStop(1,'#0b0f1c');x.fillStyle=g;x.fillRect(0,0,700,900);x.fillStyle='#fff';x.font='900 80px system-ui';x.textAlign='center';x.fillText(labels[k][1],350,360);x.font='700 44px system-ui';x.fillText(labels[k][0],350,440);x.font='24px system-ui';x.fillStyle='#9fb0ff';x.fillText('VTuber Face Live DEMO',350,520);images[k]=c.toDataURL('image/webp',.9)});localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();$('imageStatus').textContent='デモ画像を作成して保存しました'};
-$('setupFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);$('setupPreview').src=url;$('setupSave').disabled=false;$('setupStatus').textContent='この画像を初期立ち絵として保存できます。'};
-$('setupSave').onclick=async()=>{const src=$('setupPreview').src;if(!src||src==='')return;images.neutral=src;localStorage.setItem('vtFaceImages',JSON.stringify(images));localStorage.setItem('vtFaceInitialSetupDone','1');firstSetupDone=true;$('setupStatus').textContent='保存しました。次回からこの立ち絵が自動表示されます。';refreshInitialAvatar();setTimeout(()=>$('firstSetup').style.display='none',450)};
-$('setupSkip').onclick=()=>{firstSetupDone=true;localStorage.setItem('vtFaceInitialSetupDone','1');$('firstSetup').style.display='none';};
-$('avatarScale').oninput=e=>{avatarScale=Number(e.target.value)/100;$('scaleVal').textContent=Math.round(avatarScale*100)+'%';scheduleSave();};
-$('avatarOpacity').oninput=e=>{avatarOpacity=Number(e.target.value)/100;$('opacityVal').textContent=Math.round(avatarOpacity*100)+'%';scheduleSave();};
-$('avatarX').oninput=e=>{avatarX=Number(e.target.value);$('posXVal').textContent=avatarX;scheduleSave();};
-$('avatarY').oninput=e=>{avatarY=Number(e.target.value);$('posYVal').textContent=avatarY;scheduleSave();};
-$('saveLayout').onclick=()=>saveLayout(false);
-$('loadLayout').onclick=()=>{try{applyLayout(JSON.parse(localStorage.getItem('vtFaceLayout')||'{}'));$('saveState').textContent='読み込み完了'}catch(e){$('saveState').textContent='読み込み失敗'}};
-$('resetLayout').onclick=()=>{applyLayout({avatarScale:1,avatarOpacity:1,avatarX:10,avatarY:6,previewMode:'bottomRight',fadeSec:.2,stab:4});saveLayout(false)};
-$('fullscreenPreview').onclick=async()=>{const el=$('gameStage').parentElement;try{await el.requestFullscreen?.();}catch(e){console.warn(e)}};
-$('cleanPreview').onclick=()=>enterClean();
-$('cleanExit').onclick=()=>exitClean();
-$('cameraStop').onclick=()=>{running=false;cancelAnimationFrame(rafId);stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;detectBusy=false;$('dot').classList.remove('ok');$('status').textContent='停止中';$('start').style.display='block';$('start').disabled=false};
-video.addEventListener('ended',()=>{});
-video.addEventListener('emptied',()=>{if(running)$('status').textContent='カメラ待機中…'});
-if('mediaDevices' in navigator){const onDeviceChange=()=>{if(running&&!stream?.active&&!cameraRestarting){cameraRestarting=true;running=false;stream=null;$('status').textContent='カメラ再接続中…';setTimeout(async()=>{cameraRestarting=false;$('start').style.display='block';$('start').disabled=false;try{await start()}catch(e){console.error(e)}},600)}};navigator.mediaDevices.addEventListener?.('devicechange',onDeviceChange)}
-addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop());});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(running)$('status').textContent='バックグラウンド中 · 認識一時停止'}else if(running)$('status').textContent='表情認識中 · 軽量モード'});
-$('fade').oninput=e=>{$('fadeVal').textContent=Number(e.target.value).toFixed(2);fadeSec=Number(e.target.value);scheduleSave()};
-$('stab').oninput=e=>{$('stabVal').textContent=['','即時','超高感度','高感度','標準','安定','高安定','超安定','固定'][Number(e.target.value)]||'標準';scheduleSave()};
-$('modeBottomRight').onclick=()=>{previewMode='bottomRight';$('modeBottomRight').classList.add('active');$('modeFull').classList.remove('active');$('layoutState').textContent='右下配信レイアウト';};
-$('modeFull').onclick=()=>{previewMode='full';$('modeFull').classList.add('active');$('modeBottomRight').classList.remove('active');$('layoutState').textContent='全画面テスト';};
-$('gameFile').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;const url=await compressImage(f);$('gameImage').src=url;$('gameImage').style.display='block';$('gameVideo').style.display='none';$('gameGrid').style.display='none';};
-$('gameVideoFile').onchange=e=>{const f=e.target.files?.[0];if(!f)return;if(gameObjectUrl)URL.revokeObjectURL(gameObjectUrl);gameObjectUrl=URL.createObjectURL(f);const v=$('gameVideo');v.src=gameObjectUrl;v.style.display='block';$('gameImage').style.display='none';$('gameGrid').style.display='none';v.play().catch(()=>{})};
-$('clearGameVideo').onclick=()=>{const v=$('gameVideo');v.pause();v.removeAttribute('src');v.load();v.style.display='none';if(gameObjectUrl)URL.revokeObjectURL(gameObjectUrl);gameObjectUrl=null;$('gameVideoFile').value='';if(!$('gameImage').src)$('gameGrid').style.display='block'};
-$('clearGame').onclick=()=>{$('gameImage').removeAttribute('src');$('gameImage').style.display='none';$('gameGrid').style.display='block';$('gameFile').value='';};
-$('start').onclick=start;addEventListener('resize',resize);addEventListener('beforeunload',()=>stream?.getTracks().forEach(t=>t.stop()));try{const saved=localStorage.getItem('vtFaceLayout');if(saved)applyLayout(JSON.parse(saved))}catch(e){}makeUploads();refreshInitialAvatar();
 </script>
-</body></html>
+
+
+<script type="module">
+
+import * as THREE from
+  'three';
+
+import {
+  OrbitControls
+} from
+  'three/addons/controls/OrbitControls.js';
+
+
+/* =========================================================
+   ERA
+========================================================= */
+
+const ERA = [
+
+  {
+    name:'原始時代',
+    label:'集落',
+    desc:
+      '狩猟採集から農耕へ。最初の集落が形になり始める。',
+    mult:1.0,
+    popNeed:28,
+    scienceNeed:0,
+    visual:0
+  },
+
+  {
+    name:'集落時代',
+    label:'村',
+    desc:
+      '定住生活が広がり、農地と住居が増えていく。',
+    mult:1.18,
+    popNeed:55,
+    scienceNeed:120,
+    visual:1
+  },
+
+  {
+    name:'青銅時代',
+    label:'都市',
+    desc:
+      '金属加工と交易が生まれ、都市の輪郭が見える。',
+    mult:1.42,
+    popNeed:120,
+    scienceNeed:900,
+    visual:2
+  },
+
+  {
+    name:'鉄器時代',
+    label:'城塞都市',
+    desc:
+      '道路と城壁が整い、大規模な都市が形成される。',
+    mult:1.8,
+    popNeed:280,
+    scienceNeed:5000,
+    visual:3
+  },
+
+  {
+    name:'中世',
+    label:'王都',
+    desc:
+      '王国の中心都市。市場、学術、巨大建築が発展する。',
+    mult:2.35,
+    popNeed:700,
+    scienceNeed:25000,
+    visual:4
+  },
+
+  {
+    name:'産業時代',
+    label:'工業都市',
+    desc:
+      '工場と鉄道が街を変え、生産力が急上昇する。',
+    mult:3.2,
+    popNeed:1800,
+    scienceNeed:120000,
+    visual:5
+  },
+
+  {
+    name:'電気時代',
+    label:'近代都市',
+    desc:
+      '電力と高層建築。都市は夜も活動を続ける。',
+    mult:4.5,
+    popNeed:5000,
+    scienceNeed:550000,
+    visual:6
+  },
+
+  {
+    name:'情報時代',
+    label:'メガシティ',
+    desc:
+      'ネットワーク化された巨大都市。科学と文化が爆発する。',
+    mult:6.5,
+    popNeed:15000,
+    scienceNeed:2600000,
+    visual:7
+  },
+
+  {
+    name:'宇宙時代',
+    label:'惑星都市',
+    desc:
+      '宇宙港から外へ。文明の拠点が地球の外へ広がる。',
+    mult:9.5,
+    popNeed:50000,
+    scienceNeed:12000000,
+    visual:8
+  },
+
+  {
+    name:'恒星文明',
+    label:'恒星圏',
+    desc:
+      '星のエネルギーを使う文明。都市は惑星規模に成長した。',
+    mult:15,
+    popNeed:180000,
+    scienceNeed:60000000,
+    visual:9
+  }
+
+];
+
+
+/* =========================================================
+   DISTRICTS
+========================================================= */
+
+const DISTRICTS = [
+
+  {
+    id:'capital',
+    name:'首都広場',
+    icon:'🏛',
+    desc:
+      '文明の中心。人口上限と金生産を支えます。',
+    x:0,
+    z:0,
+    type:'capital',
+    unlock:0,
+    base:{
+      gold:0.65
+    },
+    popBase:18,
+    growth:1.08
+  },
+
+  {
+    id:'farms',
+    name:'穀倉農地',
+    icon:'🌾',
+    desc:
+      '食料を安定して生産する農業地区。',
+    x:-10,
+    z:5,
+    type:'farm',
+    unlock:0,
+    base:{
+      food:3.1
+    },
+    popBase:12,
+    growth:1.09
+  },
+
+  {
+    id:'forest',
+    name:'森林産業区',
+    icon:'🌲',
+    desc:
+      '木材を生産し、都市建設を支えます。',
+    x:10,
+    z:5,
+    type:'wood',
+    unlock:0,
+    base:{
+      wood:2.2
+    },
+    popBase:10,
+    growth:1.10
+  },
+
+  {
+    id:'quarry',
+    name:'石材採掘区',
+    icon:'🪨',
+    desc:
+      '石材を採掘する地区。高レベルになるほど巨大化します。',
+    x:-10,
+    z:-7,
+    type:'stone',
+    unlock:0,
+    base:{
+      stone:1.55
+    },
+    popBase:10,
+    growth:1.11
+  },
+
+  {
+    id:'mine',
+    name:'鉄鉱山',
+    icon:'⛓',
+    desc:
+      '鉄を生産する鉱山地区。鉄器時代以降に本格化。',
+    x:10,
+    z:-7,
+    type:'iron',
+    unlock:2,
+    base:{
+      iron:0.75
+    },
+    popBase:9,
+    growth:1.12
+  },
+
+  {
+    id:'market',
+    name:'交易市場',
+    icon:'🪙',
+    desc:
+      '商人が集まり、金と文化を生み出します。',
+    x:-4,
+    z:12,
+    type:'market',
+    unlock:2,
+    base:{
+      gold:1.1,
+      culture:0.35
+    },
+    popBase:12,
+    growth:1.13
+  },
+
+  {
+    id:'university',
+    name:'学術地区',
+    icon:'🔬',
+    desc:
+      '研究者が集まる知識の中心。',
+    x:4,
+    z:12,
+    type:'science',
+    unlock:3,
+    base:{
+      science:0.8,
+      culture:0.18
+    },
+    popBase:10,
+    growth:1.15
+  },
+
+  {
+    id:'industry',
+    name:'工業地区',
+    icon:'🏭',
+    desc:
+      '高度な生産施設を建設できる産業地区。',
+    x:15,
+    z:0,
+    type:'industry',
+    unlock:5,
+    base:{
+      iron:0.35,
+      gold:0.5,
+      science:0.12
+    },
+    popBase:15,
+    growth:1.17
+  },
+
+  {
+    id:'space',
+    name:'宇宙港',
+    icon:'🚀',
+    desc:
+      '宇宙船を打ち上げる未来地区。',
+    x:0,
+    z:-15,
+    type:'space',
+    unlock:8,
+    base:{
+      science:1.8,
+      gold:1.1
+    },
+    popBase:20,
+    growth:1.22
+  }
+
+];
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+const state = {
+
+  version:3,
+
+  last:Date.now(),
+
+  year:1,
+
+  era:0,
+
+  pop:28,
+
+  popMax:40,
+
+  happiness:82,
+
+  storage:5000,
+
+  scienceTotal:0,
+
+  cultureTotal:0,
+
+  productionTotal:0,
+
+  resources:{
+    food:620,
+    wood:500,
+    stone:240,
+    iron:20,
+    gold:100,
+    science:45,
+    culture:25
+  },
+
+  workers:{
+    capital:5,
+    farms:8,
+    forest:5,
+    quarry:4,
+    mine:0,
+    market:0,
+    university:0,
+    industry:0,
+    space:0
+  },
+
+  districts:{},
+
+  selected:'capital',
+
+  logs:[],
+
+  nextEvent:80,
+
+  /* 都市シミュレーション用 */
+  infrastructure:1,
+  housingBonus:0,
+  migration:0,
+  policy:'balanced',
+  festivals:0
+};
+
+
+/* District defaults */
+
+for(const d of DISTRICTS){
+
+  state.districts[d.id]={
+    level:1
+  };
+
+}
+
+
+/* Unlock later districts */
+
+state.districts.space.level=0;
+state.districts.industry.level=0;
+state.districts.university.level=0;
+
+
+/* =========================================================
+   THREE.JS
+========================================================= */
+
+const scene =
+  new THREE.Scene();
+
+/* iPad/JSFiddle では距離フォグが街全体を背景色へ溶かして
+   道路や家が見えなくなることがあるため、今回はフォグを使わない。 */
+scene.fog = null;
+
+
+const mapEl =
+  document.getElementById('map');
+
+if(!mapEl){
+  throw new Error('MAP_ELEMENT_NOT_FOUND');
+}
+
+const canvas =
+  document.createElement('canvas');
+
+canvas.setAttribute(
+  'aria-label',
+  '文明都市3Dマップ'
+);
+
+mapEl.appendChild(canvas);
+
+const camera =
+  new THREE.OrthographicCamera(
+    -28,
+    28,
+    20,
+    -20,
+    0.1,
+    500
+  );
+
+camera.position.set(
+  36,
+  34,
+  36
+);
+
+const renderer =
+  new THREE.WebGLRenderer({
+    canvas,
+    antialias:true,
+    alpha:false,
+    powerPreference:'high-performance'
+  });
+
+renderer.setPixelRatio(
+  Math.min(
+    window.devicePixelRatio || 1,
+    1.75
+  )
+);
+
+/* 現行 Three.js の PCFShadowMap を使用。
+   影を復活させて建物の立体感を出しつつ、
+   iPad向けに比較的軽い設定にする。 */
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFShadowMap;
+renderer.outputColorSpace=
+  THREE.SRGBColorSpace;
+renderer.toneMapping=
+  THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.setClearColor(
+  0xa9c8d7,
+  1
+);
+scene.background=
+  new THREE.Color(0xa9c8d7);
+
+canvas.style.position='absolute';
+canvas.style.inset='0';
+canvas.style.zIndex='0';
+canvas.style.display='block';
+canvas.style.opacity='1';
+
+camera.lookAt(0,0,0);
+
+
+/* Camera */
+
+const controls =
+  new OrbitControls(
+    camera,
+    renderer.domElement
+  );
+
+
+controls.enableRotate=false;
+controls.enablePan=true;
+controls.enableDamping=true;
+controls.dampingFactor=.08;
+
+controls.minZoom=.62;
+controls.maxZoom=1.8;
+
+controls.target.set(
+  0,
+  0,
+  0
+);
+
+camera.lookAt(0,0,0);
+controls.update();
+
+controls.screenSpacePanning=false;
+
+
+/* Lighting */
+
+const hemi =
+  new THREE.HemisphereLight(
+    0xeaf6ff,
+    0x41503f,
+    1.85
+  );
+
+scene.add(hemi);
+
+const ambient =
+  new THREE.AmbientLight(
+    0xffffff,
+    0.45
+  );
+
+scene.add(ambient);
+
+
+const sun =
+  new THREE.DirectionalLight(
+    0xffedc6,
+    2.7
+  );
+
+sun.position.set(
+  -25,
+  45,
+  18
+);
+
+sun.castShadow=true;
+
+sun.shadow.mapSize.set(
+  1024,
+  1024
+);
+sun.shadow.bias=-0.0008;
+sun.shadow.normalBias=0.025;
+
+sun.shadow.camera.left=-45;
+sun.shadow.camera.right=45;
+sun.shadow.camera.top=45;
+sun.shadow.camera.bottom=-45;
+
+scene.add(sun);
+
+
+/* City */
+
+const cityGroup =
+  new THREE.Group();
+
+scene.add(
+  cityGroup
+);
+
+
+const districtObjects =
+  new Map();
+
+
+/* Residential city */
+
+const residentialGroup =
+  new THREE.Group();
+
+cityGroup.add(
+  residentialGroup
+);
+
+const houseObjects =
+  [];
+
+const citizenGroup = new THREE.Group();
+cityGroup.add(citizenGroup);
+const citizenAgents = [];
+
+const HOUSE_CAPACITY =
+  4;
+
+let selectedRing=null;
+
+
+/* Raycaster */
+
+const raycaster =
+  new THREE.Raycaster();
+
+const pointer =
+  new THREE.Vector2();
+
+let pointerDown={
+  x:0,
+  y:0,
+  t:0
+};
+
+
+/* =========================================================
+   UTILS
+========================================================= */
+
+function box(
+  w,
+  h,
+  d,
+  mat,
+  x=0,
+  y=h/2,
+  z=0
+){
+
+  const m=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        w,
+        h,
+        d
+      ),
+      mat
+    );
+
+  m.position.set(
+    x,
+    y,
+    z
+  );
+
+  m.castShadow=true;
+  m.receiveShadow=true;
+
+  return m;
+}
+
+
+function cyl(
+  r,
+  h,
+  mat,
+  x=0,
+  y=h/2,
+  z=0,
+  seg=8
+){
+
+  const m=
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        r,
+        r,
+        h,
+        seg
+      ),
+      mat
+    );
+
+  m.position.set(
+    x,
+    y,
+    z
+  );
+
+  m.castShadow=true;
+  m.receiveShadow=true;
+
+  return m;
+}
+
+
+function mat(
+  hex,
+  rough=.85
+){
+
+  return new THREE.MeshStandardMaterial({
+    color:hex,
+    roughness:rough
+  });
+
+}
+
+
+function fmt(n){
+
+  if(!Number.isFinite(n))
+    return '∞';
+
+  if(Math.abs(n)<1000)
+    return Math.floor(n)
+      .toLocaleString('ja-JP');
+
+  const units=[
+    'K',
+    'M',
+    'B',
+    'T',
+    'Qa',
+    'Qi'
+  ];
+
+  let x=n;
+  let i=-1;
+
+  while(
+    Math.abs(x)>=1000 &&
+    i<units.length-1
+  ){
+
+    x/=1000;
+    i++;
+
+  }
+
+  if(x>=100)
+    return x.toFixed(0)+units[i];
+
+  if(x>=10)
+    return x.toFixed(1)+units[i];
+
+  return x.toFixed(2)+units[i];
+}
+
+
+function resourceIcon(k){
+
+  return ({
+    food:'🍖',
+    wood:'🌲',
+    stone:'🪨',
+    iron:'⛓',
+    gold:'💰',
+    science:'🔬',
+    culture:'🎭'
+  })[k] || k;
+
+}
+
+
+function toast(text){
+
+  const el =
+    document.getElementById(
+      'toast'
+    );
+
+  el.textContent=text;
+
+  el.classList.add(
+    'show'
+  );
+
+  clearTimeout(
+    window.__toast
+  );
+
+  window.__toast=
+    setTimeout(
+      ()=>el.classList.remove('show'),
+      1500
+    );
+
+}
+
+
+function showModal(
+  title,
+  text
+){
+
+  document.getElementById(
+    'modalTitle'
+  ).textContent=title;
+
+  document.getElementById(
+    'modalText'
+  ).innerHTML=text;
+
+  document.getElementById(
+    'overlay'
+  ).classList.add('show');
+
+}
+
+
+function closeModal(){
+
+  document.getElementById(
+    'overlay'
+  ).classList.remove('show');
+
+}
+
+
+/* expose */
+
+window.closeModal=
+  closeModal;
+
+
+/* =========================================================
+   MAP PALETTE
+========================================================= */
+
+function eraPalette(){
+
+  const v=ERA[state.era].visual;
+
+  const palettes=[
+    {base:0x6f8a55, roof:0x99613d, glass:0x759da0, road:0x8a6a4b, trim:0x654733},
+    {base:0x759364, roof:0xa56a41, glass:0x6f9da5, road:0x8a755e, trim:0x5e4937},
+    {base:0x7f916f, roof:0x9b604b, glass:0x6d98a0, road:0x77716a, trim:0x584f49},
+    {base:0x787a74, roof:0x76545b, glass:0x7b9ca5, road:0x66686a, trim:0x484b50},
+    {base:0x73766f, roof:0x80525a, glass:0x7da4b2, road:0x5b5d60, trim:0x3f444a},
+    {base:0x707875, roof:0x4f5a64, glass:0x6f9bb1, road:0x454b51, trim:0x2f353c},
+    {base:0x69737b, roof:0x4d606c, glass:0x65b4d2, road:0x3a424b, trim:0x293038},
+    {base:0x66727d, roof:0x426b84, glass:0x75c8e7, road:0x303943, trim:0x263038},
+    {base:0x697783, roof:0x496f93, glass:0x83d8f0, road:0x2c3540, trim:0x252e38},
+    {base:0x64727f, roof:0x5379a4, glass:0x99e8ff, road:0x29313b, trim:0x222a33}
+  ];
+
+  return palettes[v] || palettes[0];
+
+}
+
+
+/* =========================================================
+   REBUILD MAP
+========================================================= */
+
+function rebuildMap(){
+
+  while(
+    cityGroup.children.length
+  ){
+
+    cityGroup.remove(
+      cityGroup.children[0]
+    );
+
+  }
+
+
+  districtObjects.clear();
+
+  selectedRing=null;
+
+
+  const p=
+    eraPalette();
+
+  const skyColors=[0xb6d7e2,0xb7d6ca,0xc6d8cd,0xc7c9c5,0xb9c1c5,0xaeb8c0,0x9bb2c0,0x89a5ba,0x718ca7,0x516f91];
+  const sky=skyColors[state.era]||skyColors[0];
+  renderer.setClearColor(sky,1);
+  scene.background=new THREE.Color(sky);
+
+  cityGroup.visible = true;
+  cityGroup.position.set(0,0,0);
+  cityGroup.rotation.set(0,0,0);
+
+
+  /* Ground */
+
+  const ground=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        65,
+        1.2,
+        65
+      ),
+      new THREE.MeshStandardMaterial({
+        color:p.base,
+        roughness:1,
+        metalness:0
+      })
+    );
+
+  ground.position.y=-.6;
+  ground.receiveShadow=true;
+
+  cityGroup.add(
+    ground
+  );
+
+
+  /* Water */
+
+  const water1=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        7,
+        .8,
+        65
+      ),
+      new THREE.MeshStandardMaterial({color:0x2a7387,roughness:.24,metalness:.08,transparent:true,opacity:.86})
+    );
+
+  water1.position.set(
+    -29,
+    .2,
+    0
+  );
+
+  cityGroup.add(
+    water1
+  );
+
+
+  const water2=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        65,
+        .8,
+        5
+      ),
+      new THREE.MeshStandardMaterial({color:0x2a7387,roughness:.24,metalness:.08,transparent:true,opacity:.86})
+    );
+
+  water2.position.set(
+    0,
+    .2,
+    29.5
+  );
+
+  cityGroup.add(
+    water2
+  );
+
+
+  /* Roads */
+  const roadMaterial=new THREE.MeshStandardMaterial({color:p.road,roughness:state.era<3?1:.76,metalness:state.era>=6?.18:0});
+
+  for(
+    let i=-5;
+    i<=5;
+    i++
+  ){
+
+    const roadX=
+      box(
+        1.2,
+        .18,
+        65,
+        roadMaterial,
+        i*6,
+        .1,
+        0
+      );
+
+    cityGroup.add(
+      roadX
+    );
+
+
+    const roadZ=
+      box(
+        65,
+        .18,
+        1.2,
+        roadMaterial,
+        0,
+        .11,
+        i*6
+      );
+
+    cityGroup.add(
+      roadZ
+    );
+
+  }
+
+
+  /* Road edges */
+
+  for(
+    let i=-5;
+    i<=5;
+    i++
+  ){
+
+    const a=
+      box(
+        .12,
+        .2,
+        65,
+        mat(0x495257),
+        i*6-.67,
+        .2,
+        0
+      );
+
+    const b=
+      box(
+        .12,
+        .2,
+        65,
+        mat(0x495257),
+        i*6+.67,
+        .2,
+        0
+      );
+
+    cityGroup.add(
+      a,
+      b
+    );
+
+
+    const c=
+      box(
+        65,
+        .2,
+        .12,
+        mat(0x495257),
+        0,
+        .2,
+        i*6-.67
+      );
+
+    const d=
+      box(
+        65,
+        .2,
+        .12,
+        mat(0x495257),
+        0,
+        .2,
+        i*6+.67
+      );
+
+    cityGroup.add(
+      c,
+      d
+    );
+
+  }
+
+
+  /* 時代に応じた道路表現 */
+  addRoadMarkings(cityGroup);
+  addRoadSideProps(cityGroup);
+  addModernStreetFurniture(cityGroup);
+  for(let i=-5;i<=5;i+=2){
+    if(state.era>=6){
+      addStreetLamp(cityGroup,i*6-1.05,-29);
+      addStreetLamp(cityGroup,i*6+1.05,29);
+      addStreetLamp(cityGroup,-29,i*6-1.05);
+      addStreetLamp(cityGroup,29,i*6+1.05);
+    }
+  }
+
+
+  addTerrainDetails(
+    p
+  );
+
+
+  /*
+    人口に応じて住宅を建てる。
+    中心から外へ順番に埋まるので、
+    「人口が増える＝街が実際に広がる」
+    という見た目になる。
+  */
+  buildResidentialCity(
+    p
+  );
+
+
+  /* Districts */
+
+  for(
+    const d of DISTRICTS
+  ){
+
+    const ds=
+      state.districts[d.id];
+
+    if(
+      state.era<d.unlock &&
+      ds.level===0
+    ){
+
+      continue;
+
+    }
+
+
+    const obj=
+      buildDistrictVisual(
+        d,
+        p
+      );
+
+    districtObjects.set(
+      d.id,
+      obj
+    );
+
+    cityGroup.add(
+      obj
+    );
+
+  }
+
+
+  addCityCenter(
+    p
+  );
+
+  buildCitizenAgents();
+
+  highlight(
+    state.selected
+  );
+
+}
+
+
+/* =========================================================
+   TERRAIN
+========================================================= */
+
+function addTerrainDetails(p){
+
+  const treeMat=
+    mat(0x31533a);
+
+  const trunk=
+    mat(0x6c4c33);
+
+
+  for(
+    let i=0;
+    i<32;
+    i++
+  ){
+
+    const x=
+      Math.random()*54-27;
+
+    const z=
+      Math.random()*54-27;
+
+
+    if(
+      Math.abs(x)<17 &&
+      Math.abs(z)<17
+    ){
+
+      continue;
+
+    }
+
+
+    const g=
+      new THREE.Group();
+
+
+    const t=
+      cyl(
+        .25,
+        1,
+        trunk,
+        0,
+        .0,
+        0,
+        6
+      );
+
+    t.position.y=.5;
+
+
+    const crown=
+      cyl(
+        .7,
+        1.5,
+        treeMat,
+        0,
+        1.2,
+        0,
+        7
+      );
+
+
+    g.add(
+      t,
+      crown
+    );
+
+    g.position.set(
+      x,
+      0,
+      z
+    );
+
+
+    cityGroup.add(
+      g
+    );
+
+  }
+
+}
+
+
+
+/* =========================================================
+   RESIDENTIAL CITY
+========================================================= */
+
+/*
+  道路の間に固定ロットを作る。
+  ランダム配置ではないので、再描画しても
+  家が別の場所へ飛ばない。
+*/
+function makeHouseLots(){
+
+  const lots=[];
+
+  const roadGap=6;
+  const offsets=[-1.7,0,1.7];
+
+  let id=0;
+
+  for(
+    let bx=-5;
+    bx<=5;
+    bx++
+  ){
+
+    for(
+      let bz=-5;
+      bz<=5;
+      bz++
+    ){
+
+      const cx=bx*roadGap;
+      const cz=bz*roadGap;
+
+      for(
+        const ox of offsets
+      ){
+
+        for(
+          const oz of offsets
+        ){
+
+          const x=cx+ox;
+          const z=cz+oz;
+
+          /*
+            水辺・大きな地区・中央広場と
+            住宅が重ならないようにする。
+          */
+          if(
+            x < -24.2 ||
+            z > 26.4
+          )
+            continue;
+
+          if(
+            Math.hypot(x,z)<5.2
+          )
+            continue;
+
+          let nearDistrict=false;
+
+          for(
+            const d of DISTRICTS
+          ){
+
+            const radius =
+              d.id==='capital'
+                ? 4.8
+                : 3.8;
+
+            if(
+              Math.hypot(
+                x-d.x,
+                z-d.z
+              ) < radius
+            ){
+
+              nearDistrict=true;
+              break;
+
+            }
+
+          }
+
+          if(nearDistrict)
+            continue;
+
+          lots.push({
+            id:id++,
+            x,
+            z,
+            dist:
+              Math.hypot(x,z)
+          });
+
+        }
+
+      }
+
+    }
+
+  }
+
+  lots.sort(
+    (a,b)=>
+      a.dist-b.dist ||
+      a.z-b.z ||
+      a.x-b.x
+  );
+
+  return lots;
+
+}
+
+
+const HOUSE_LOTS =
+  makeHouseLots();
+
+
+function housingCapacityPerHouse(){
+  return [4,4,6,6,8,15,24,40,80,180][state.era] || 4;
+}
+
+function getHousingState(){
+
+  const population=Math.max(0,state.pop);
+  const perHouse=housingCapacityPerHouse();
+  const houses=Math.min(
+    HOUSE_LOTS.length,
+    Math.max(1,Math.ceil(population/perHouse))
+  );
+
+  return {
+    population,
+    houses,
+    perHouse,
+    capacity:houses*perHouse + state.housingBonus,
+    shortage:Math.max(
+      0,
+      population-(HOUSE_LOTS.length*perHouse+state.housingBonus)
+    )
+  };
+
+}
+
+
+function clearResidentialCity(){
+
+  while(
+    residentialGroup.children.length
+  ){
+
+    residentialGroup.remove(
+      residentialGroup.children[0]
+    );
+
+  }
+
+  houseObjects.length=0;
+
+}
+
+
+function makeResident(
+  x,
+  z,
+  index,
+  era
+){
+
+  const g=
+    new THREE.Group();
+
+  const bodyColor=[
+    0x385f86,
+    0x5b6f8f,
+    0x765e72,
+    0x7b6550,
+    0x5a6b70,
+    0x485d74,
+    0x4b6f84,
+    0x6c5f86,
+    0x5e7093,
+    0x677a9b
+  ][era] || 0x526a80;
+
+  const body=
+    new THREE.Mesh(
+      new THREE.CapsuleGeometry(
+        .055,
+        .13,
+        3,
+        5
+      ),
+      new THREE.MeshStandardMaterial({
+        color:bodyColor,
+        roughness:.95
+      })
+    );
+
+  body.position.y=.23;
+
+  const head=
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .075,
+        7,
+        6
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xe0aa7d,
+        roughness:.9
+      })
+    );
+
+  head.position.y=.39;
+
+  g.add(
+    body,
+    head
+  );
+
+  const px =
+    x +
+    (
+      [0,.15,-.15,.22][index] ||
+      0
+    );
+
+  const pz =
+    z +
+    (
+      [.48,.42,.53,.47][index] ||
+      .5
+    );
+
+  g.position.set(
+    px,
+    .46,
+    pz
+  );
+
+  g.userData.resident=true;
+
+  return g;
+
+}
+
+
+function addWindow(
+  parent,
+  x, y, z,
+  w, h,
+  color,
+  rotY=0
+){
+
+  const win = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,.035),
+    new THREE.MeshStandardMaterial({
+      color,
+      roughness:.24,
+      metalness:.08,
+      emissive:color,
+      emissiveIntensity:.04
+    })
+  );
+
+  win.position.set(x,y,z);
+  win.rotation.y=rotY;
+  win.castShadow=false;
+  parent.add(win);
+  return win;
+
+}
+
+function addFence(parent,x,z,w,rotY=0){
+
+  const fenceMat=
+    new THREE.MeshStandardMaterial({
+      color:0x806247,
+      roughness:.9
+    });
+
+  const rail=new THREE.Mesh(
+    new THREE.BoxGeometry(w,.08,.045),
+    fenceMat
+  );
+  rail.position.set(x,.52,z);
+  rail.rotation.y=rotY;
+  parent.add(rail);
+
+  const posts=Math.max(2,Math.round(w/0.38));
+  for(let i=0;i<posts;i++){
+    const t=new THREE.Mesh(
+      new THREE.BoxGeometry(.05,.28,.05),
+      fenceMat
+    );
+    const localX=
+      -w/2 + (posts===1 ? 0 : i*(w/(posts-1)));
+    t.position.set(x + localX*Math.cos(rotY), .64, z + localX*Math.sin(rotY));
+    parent.add(t);
+  }
+}
+
+function addStreetLamp(parent,x,z){
+
+  const poleMat=
+    new THREE.MeshStandardMaterial({
+      color:0x3b4147,
+      roughness:.8,
+      metalness:.45
+    });
+
+  const pole=cyl(.055,1.35,poleMat,x,.18,z,8);
+  const arm=box(.34,.055,.055,poleMat,x+.14,1.42,z);
+  const glowMat=
+    new THREE.MeshStandardMaterial({
+      color:0xffe8aa,
+      emissive:0xffc65e,
+      emissiveIntensity:.8,
+      roughness:.25
+    });
+  const lamp=cyl(.095,.08,glowMat,x+.27,1.39,z,8);
+  parent.add(pole,arm,lamp);
+}
+
+function addRoadMarkings(parent){
+
+  const era=state.era;
+  if(era<3) return;
+
+  const markMat=new THREE.MeshStandardMaterial({
+    color:era>=6?0xd6d9d6:0xc1bca9,
+    roughness:.86
+  });
+  const lineStep=era>=6?3.0:3.6;
+
+  for(let i=-5;i<=5;i++){
+    const x=i*6;
+    for(let z=-28;z<=28;z+=lineStep){
+      if(Math.abs(z)<2) continue;
+      parent.add(box(.045,.014,.62,markMat,x,.205,z));
+    }
+  }
+
+  for(let i=-5;i<=5;i++){
+    const z=i*6;
+    for(let x=-28;x<=28;x+=lineStep){
+      if(Math.abs(x)<2) continue;
+      parent.add(box(.62,.014,.045,markMat,x,.215,z));
+    }
+  }
+}
+
+
+function addRoadSideProps(parent){
+  const era=state.era;
+  if(era>=6) return;
+  const shrubMat=mat(era<2?0x668353:0x59745a);
+  for(let i=-4;i<=4;i++){
+    const x=i*6+1.15;
+    parent.add(cyl(.11,.22,shrubMat,x,.28,-2.45,7));
+    parent.add(cyl(.10,.19,shrubMat,x+2.3,.27,2.45,7));
+  }
+}
+
+
+function addModernStreetFurniture(parent){
+  const era=state.era;
+  if(era<6) return;
+  const metal=mat(era>=8?0x4a6878:0x454b51,.45);
+  for(let i=-4;i<=4;i+=2){
+    const x=i*6+1.2;
+    parent.add(cyl(.045,1.18,metal,x,.18,-2.45,7));
+    const lightMat=new THREE.MeshStandardMaterial({color:0xc9f3ff,emissive:0x48c7ff,emissiveIntensity:era>=8?.8:.35,roughness:.25});
+    parent.add(cyl(.09,.06,lightMat,x+0.04,1.42,-2.45,8));
+  }
+}
+
+
+function buildHouse(
+  lot,
+  occupied,
+  p
+){
+
+  const g=new THREE.Group();
+  g.position.set(lot.x,0,lot.z);
+  g.userData.houseId=lot.id;
+  g.userData.occupied=occupied;
+  g.userData.era=state.era;
+
+  const era=state.era;
+  const density=lot.dist<12 ? 1.08 : 1;
+
+  const wallColors=[
+    0xb99063,0xc39a6c,0xb9a07c,0x9c9186,0x968b82,
+    0x777b80,0x6d7881,0x718b9c,0x7897aa,0x7f9eaf
+  ];
+  const roofColors=[
+    p.roof,0x9b6845,0x8b5a49,0x684e58,0x6f4d57,
+    0x48535d,0x425f70,0x426e88,0x4f7b9b,0x5c82a9
+  ];
+
+  const wall=new THREE.MeshStandardMaterial({
+    color:wallColors[era], roughness:era>=7?.52:.82, metalness:era>=7?.08:0
+  });
+  const roof=new THREE.MeshStandardMaterial({
+    color:roofColors[era], roughness:era>=6?.5:.76, metalness:era>=8?.12:0
+  });
+  const dark=new THREE.MeshStandardMaterial({color: p.trim, roughness:.72, metalness:era>=5?.25:0});
+  const warm=new THREE.MeshStandardMaterial({
+    color:0xffdf9a, emissive:0xffa52f,
+    emissiveIntensity:occupied?(.18+era*.03):0, roughness:.25
+  });
+
+  /* 道路側の小さな区画 */
+  const base=new THREE.Mesh(
+    new THREE.BoxGeometry(1.58,0.10,1.28),
+    new THREE.MeshStandardMaterial({
+      color:era<3?0x806b53:era<6?0x737574:0x59636a,
+      roughness:1
+    })
+  );
+  base.position.y=.47;
+  g.add(base);
+
+  if(era===0){
+    /* 原始：円形小屋＋焚き火 */
+    const hut=new THREE.Mesh(
+      new THREE.CylinderGeometry(.48,.55,.62,8),
+      wall
+    );
+    hut.position.y=.78;
+    g.add(hut);
+
+    const roofTop=new THREE.Mesh(
+      new THREE.ConeGeometry(.62,.52,8),
+      roof
+    );
+    roofTop.position.y=1.34;
+    g.add(roofTop);
+
+    const fire=new THREE.Mesh(
+      new THREE.ConeGeometry(.10,.28,5),
+      warm
+    );
+    fire.position.set(.62,.58,.10);
+    g.add(fire);
+  }
+  else if(era===1){
+    /* 村：木組み住宅 */
+    const body=box(1.18,.76,1.00,wall,0,.90,0);
+    g.add(body);
+    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.82,.56,4),roof);
+    roofTop.rotation.y=Math.PI/4;
+    roofTop.position.y=1.56;
+    g.add(roofTop);
+    for(const x of [-.42,.42]) g.add(box(.075,.78,.075,dark,x,.90,-.51));
+    g.add(box(1.1,.075,.075,dark,0,1.20,-.51));
+  }
+  else if(era===2){
+    /* 青銅：石壁＋瓦屋根 */
+    const body=box(1.22,.88,1.02,wall,0,.98,0);
+    g.add(body);
+    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.84,.48,4),roof);
+    roofTop.rotation.y=Math.PI/4;
+    roofTop.position.y=1.66;
+    g.add(roofTop);
+    g.add(box(.22,.40,.04,dark,0,.73,-.53));
+    for(const x of [-.34,.34]) addWindow(g,x,1.13,-.535,.19,.18,0x83a6ad);
+  }
+  else if(era===3){
+    /* 鉄器：石造家＋煙突 */
+    const body=box(1.26,1.00,1.04,wall,0,1.03,0);
+    g.add(body);
+    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.88,.56,6),roof);
+    roofTop.position.y=1.81;
+    g.add(roofTop);
+    g.add(box(.18,.46,.18,dark,.34,1.68,.20));
+    for(const x of [-.34,.34]) addWindow(g,x,1.18,-.545,.20,.21,0x87a5ad);
+  }
+  else if(era===4){
+    /* 中世：屋根が急な長屋風住宅 */
+    const body=box(1.30,1.18,1.06,wall,0,1.12,0);
+    g.add(body);
+    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.90,.78,4),roof);
+    roofTop.rotation.y=Math.PI/4;
+    roofTop.position.y=2.06;
+    g.add(roofTop);
+    g.add(box(.21,.48,.04,dark,0,.86,-.55));
+    for(const x of [-.36,.36]) addWindow(g,x,1.36,-.55,.22,.22,0x8fb1b6);
+    g.add(box(.14,.34,.14,dark,.36,2.05,.16));
+  }
+  else if(era===5){
+    /* 産業：レンガのテラスハウス＋工場型煙突 */
+    const body=box(1.32,1.45,1.08,wall,0,1.26,0);
+    g.add(body);
+    g.add(box(1.40,.10,1.15,roof,0,2.02,0));
+    g.add(box(.16,.62,.16,dark,.35,2.30,.20));
+    addWindow(g,-.32,1.28,-.56,.23,.20,0x7faab6);
+    addWindow(g,.32,1.28,-.56,.23,.20,0x7faab6);
+    addWindow(g,-.32,1.73,-.56,.23,.20,0x7faab6);
+    addWindow(g,.32,1.73,-.56,.23,.20,0x7faab6);
+  }
+  else if(era===6){
+    /* 電気：2階建て近代住宅＋電柱 */
+    const body=box(1.34,1.70,1.10,wall,0,1.38,0);
+    g.add(body);
+    g.add(box(1.42,.10,1.18,roof,0,2.26,0));
+    g.add(box(.22,.52,.04,dark,0,.88,-.57));
+    for(const y of [1.35,1.85]){
+      addWindow(g,-.35,y,-.57,.25,.22,p.glass);
+      addWindow(g,.35,y,-.57,.25,.22,p.glass);
+    }
+    const pole=cyl(.035,1.55,dark,.76,.52,.30,6);
+    const wire=box(.65,.02,.02,dark,.43,2.00,.30);
+    g.add(pole,wire);
+  }
+  else if(era===7){
+    /* 情報：集合住宅 */
+    const body=box(1.44,2.18,1.12,wall,0,1.62,0);
+    g.add(body);
+    g.add(box(1.52,.10,1.20,roof,0,2.76,0));
+    for(let row=0;row<3;row++){
+      for(const x of [-.37,0,.37]){
+        addWindow(g,x,1.18+row*.52,-.58,.20,.20,p.glass);
+      }
+    }
+    g.add(box(1.25,.055,.10,dark,0,1.02,-.63));
+  }
+  else if(era===8){
+    /* 宇宙：モジュール住宅＋発光ガラス */
+    const body=box(1.50,2.55,1.16,wall,0,1.82,0);
+    g.add(body);
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.78,.78,.12,8),roof);
+    cap.position.y=3.15;
+    g.add(cap);
+    for(let row=0;row<4;row++){
+      for(const x of [-.38,0,.38]) addWindow(g,x,1.08+row*.53,-.60,.21,.21,p.glass);
+    }
+    const band=new THREE.MeshStandardMaterial({color:0x92cfe2,emissive:0x3db4ea,emissiveIntensity:.18,metalness:.5,roughness:.35});
+    g.add(box(1.38,.06,1.18,band,0,2.42,0));
+  }
+  else{
+    /* 恒星文明：縦型スマートタワー */
+    const body=box(1.48,2.95,1.16,wall,0,2.03,0);
+    g.add(body);
+    const crown=new THREE.Mesh(new THREE.CylinderGeometry(.58,.75,.28,6),roof);
+    crown.position.y=3.64;
+    g.add(crown);
+    for(let row=0;row<5;row++){
+      for(const x of [-.39,0,.39]) addWindow(g,x,1.05+row*.52,-.60,.21,.23,p.glass);
+    }
+    const edge=new THREE.MeshStandardMaterial({color:0x9be7ff,emissive:0x37b8ff,emissiveIntensity:.22,metalness:.65,roughness:.25});
+    g.add(box(1.52,.045,.045,edge,0,.72,-.61));
+    g.add(box(1.52,.045,.045,edge,0,3.48,-.61));
+  }
+
+  /* 共通の庭・玄関・街路樹 */
+  if(era<6){
+    const yard=new THREE.Mesh(
+      new THREE.BoxGeometry(1.54,.025,1.22),
+      new THREE.MeshStandardMaterial({color:era<3?0x78945e:0x71846d,roughness:1})
+    );
+    yard.position.y=.525;
+    g.add(yard);
+  }
+
+  const path=new THREE.Mesh(
+    new THREE.BoxGeometry(.18,.028,.38),
+    new THREE.MeshStandardMaterial({color:era<5?0xb4a184:0x8b9296,roughness:1})
+  );
+  path.position.set(0,.55,-.72);
+  g.add(path);
+
+  /* 住民がいる家には生活感 */
+  if(occupied>0){
+    const lamp=new THREE.Mesh(new THREE.SphereGeometry(.055,8,6),warm);
+    lamp.position.set(.46,.92,-.59);
+    g.add(lamp);
+  }
+
+  const visibleResidents=era>=7?1:Math.min(2,occupied);
+  for(let i=0;i<visibleResidents;i++){
+    const r=makeResident(0,0,i,era);
+    r.scale.setScalar(era>=6?1.15:1.0);
+    r.position.z=-.64 + (i*.16);
+    r.position.x=-.28+(i*.22);
+    r.position.y=.51;
+    g.add(r);
+  }
+
+  if(era>=5 && occupied>=1){
+    const parked=new THREE.Mesh(
+      new THREE.BoxGeometry(.28,.10,.48),
+      new THREE.MeshStandardMaterial({color:era>=7?0x466b80:0x5a5f63,metalness:.45,roughness:.45})
+    );
+    parked.position.set(.49,.59,.44);
+    g.add(parked);
+  }
+
+  residentialGroup.add(g);
+  houseObjects.push(g);
+
+}
+
+
+function buildResidentialCity(p){
+
+  clearResidentialCity();
+
+  if(residentialGroup.parent!==cityGroup){
+    cityGroup.add(residentialGroup);
+  }
+
+  const housing=getHousingState();
+
+  for(let i=0;i<housing.houses;i++){
+    const lot=HOUSE_LOTS[i];
+    if(!lot) break;
+
+    const remaining=housing.population-i*housing.perHouse;
+    const occupied=Math.max(0,Math.min(housing.perHouse,remaining));
+    buildHouse(lot,occupied,p);
+  }
+
+}
+
+
+function clearCitizenAgents(){
+  while(citizenGroup.children.length){
+    citizenGroup.remove(citizenGroup.children[0]);
+  }
+  citizenAgents.length=0;
+}
+
+function makeCitizenAgent(index,p){
+
+  const g=new THREE.Group();
+  const era=state.era;
+  const palette=[0x3d6484,0x875b50,0x6d5f8e,0x6c7855,0x8b704e,0x4c6675,0x6b7a8f,0x4f7590,0x688ba0,0x6280a0];
+  const shirt=new THREE.MeshStandardMaterial({color:palette[(index*7+era*3)%palette.length],roughness:.9});
+  const skin=new THREE.MeshStandardMaterial({color:[0xe2ac84,0xc98e69,0xf0bd8f,0xb97659][index%4],roughness:.9});
+
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.075,.16,3,5),shirt);
+  torso.position.y=.24;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.085,8,6),skin);
+  head.position.y=.43;
+  const leg1=box(.055,.18,.055,shirt,-.035,.095,0);
+  const leg2=box(.055,.18,.055,shirt,.035,.095,0);
+  g.add(torso,head,leg1,leg2);
+
+  if(era>=5){
+    const bag=box(.09,.11,.035,new THREE.MeshStandardMaterial({color:0x444a52,roughness:.8}),-.10,.30,.015);
+    g.add(bag);
+  }
+
+  g.scale.setScalar(era>=7?1.15:1.0);
+  g.userData.speed=.55+((index*13)%25)/100;
+  g.userData.phase=(index*.73)%6.28;
+  return g;
+}
+
+function buildCitizenAgents(){
+
+  clearCitizenAgents();
+  if(citizenGroup.parent!==cityGroup) cityGroup.add(citizenGroup);
+
+  const housing=getHousingState();
+  if(housing.houses<=0 || state.pop<=0) return;
+
+  const count=Math.min(90,Math.max(0,Math.floor(state.pop)));
+  const activeDistricts=DISTRICTS.filter(d=>state.era>=d.unlock && state.districts[d.id].level>0);
+
+  for(let i=0;i<count;i++){
+    const home=HOUSE_LOTS[i%housing.houses];
+    const job=activeDistricts[i%Math.max(1,activeDistricts.length)] || DISTRICTS[0];
+    const hx=home.x, hz=home.z;
+    const roadX=Math.round(hx/6)*6;
+    const roadZ=Math.round(hz/6)*6;
+    const tx=job.x, tz=job.z;
+    const points=[
+      new THREE.Vector3(hx,.52,hz),
+      new THREE.Vector3(roadX,.52,hz),
+      new THREE.Vector3(roadX,.52,tz),
+      new THREE.Vector3(tx,.52,tz),
+      new THREE.Vector3(roadX,.52,tz),
+      new THREE.Vector3(roadX,.52,hz),
+      new THREE.Vector3(hx,.52,hz)
+    ];
+
+    const g=makeCitizenAgent(i);
+    const startOffset=(i%7)/7;
+    g.position.copy(points[0]);
+    g.userData.points=points;
+    g.userData.segment=Math.floor(startOffset*(points.length-1))%(points.length-1);
+    g.userData.t=startOffset;
+    g.userData.direction=1;
+    g.userData.home=home.id;
+    g.userData.job=job.id;
+    citizenGroup.add(g);
+    citizenAgents.push(g);
+  }
+}
+
+function animateCitizenAgents(dt,t){
+  for(const g of citizenAgents){
+    const pts=g.userData.points;
+    if(!pts || pts.length<2) continue;
+    let a=g.userData.segment;
+    let b=a+g.userData.direction;
+    if(b<0) b=pts.length-1;
+    if(b>=pts.length) b=0;
+
+    const target=pts[b];
+    const dir=new THREE.Vector3().subVectors(target,g.position);
+    const dist=dir.length();
+    const speed=g.userData.speed || .65;
+
+    if(dist<.05){
+      g.userData.segment=b;
+    }else{
+      dir.normalize();
+      g.position.addScaledVector(dir,speed*dt);
+      g.rotation.y=Math.atan2(dir.x,dir.z);
+    }
+    g.position.y=.52 + Math.sin(t*.004+g.userData.phase)*.012;
+  }
+}
+
+
+/* =========================================================
+   DISTRICT MATERIAL/* =========================================================
+   DISTRICT MATERIAL
+========================================================= */
+
+function districtMat(d){
+
+  const lookup={
+
+    capital:0xb69b66,
+    farm:0x7ba15c,
+    wood:0x517b58,
+    stone:0x8a8e8a,
+    iron:0x6d6f74,
+    market:0x9b774c,
+    science:0x708da7,
+    industry:0x616974,
+    space:0x6f78a7
+
+  };
+
+
+  return mat(
+    lookup[d.type] ||
+    0x777777
+  );
+
+}
+
+
+/* =========================================================
+   BUILDING HEIGHT
+========================================================= */
+
+function buildingHeight(
+  d,
+  level
+){
+
+  const eraBoost=
+    1+state.era*.12;
+
+
+  if(d.type==='capital')
+    return (
+      1.8+
+      level*.45
+    )*eraBoost;
+
+
+  if(d.type==='farm')
+    return .7+
+      level*.08;
+
+
+  if(d.type==='wood')
+    return .9+
+      level*.1;
+
+
+  if(d.type==='stone')
+    return 1+
+      level*.08;
+
+
+  if(d.type==='iron')
+    return 1.2+
+      level*.13;
+
+
+  if(d.type==='market')
+    return 1.1+
+      level*.18*
+      eraBoost;
+
+
+  if(d.type==='science')
+    return 1.2+
+      level*.22*
+      eraBoost;
+
+
+  if(d.type==='industry')
+    return 1.5+
+      level*.28*
+      eraBoost;
+
+
+  if(d.type==='space')
+    return 1.8+
+      level*.35*
+      eraBoost;
+
+
+  return 1;
+
+}
+
+
+/* =========================================================
+   PEOPLE
+========================================================= */
+
+function addPeople(
+  group,
+  d
+){
+
+  const workers=
+    state.workers[d.id] || 0;
+
+
+  const n=
+    Math.max(
+      0,
+      Math.min(
+        8,
+        Math.floor(
+          workers/
+          Math.max(
+            1,
+            Math.ceil(
+              state.pop/120
+            )
+          )
+        )+
+        Math.min(
+          3,
+          state.districts[d.id].level
+        )
+      )
+    );
+
+
+  const body=
+    mat(0xe9ded0);
+
+  const head=
+    mat(0xe7b98b);
+
+
+  for(
+    let i=0;
+    i<n;
+    i++
+  ){
+
+    const p=
+      new THREE.Group();
+
+
+    p.add(
+      cyl(
+        .11,
+        .38,
+        body,
+        0,
+        .19,
+        0,
+        6
+      )
+    );
+
+
+    p.add(
+      cyl(
+        .13,
+        .16,
+        head,
+        0,
+        .48,
+        0,
+        6
+      )
+    );
+
+
+    p.position.set(
+      -1+
+      i*.32,
+      .02,
+      .95+
+      (i%2)*.25
+    );
+
+
+    group.add(
+      p
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   BUILD DISTRICT
+========================================================= */
+
+function buildDistrictVisual(
+  d,
+  p
+){
+
+  const data=
+    state.districts[d.id];
+
+
+  const lvl=
+    Math.max(
+      1,
+      data.level
+    );
+
+
+  const group=
+    new THREE.Group();
+
+
+  group.position.set(
+    d.x,
+    0,
+    d.z
+  );
+
+
+  group.userData.districtId=
+    d.id;
+
+
+  const padW=
+    d.id==='capital'
+      ? 7.2
+      : 6.2;
+
+
+  const padD=
+    d.id==='capital'
+      ? 6.1
+      : 5.3;
+
+
+  const pad=
+    box(
+      padW,
+      .42,
+      padD,
+      districtMat(d),
+      0,
+      .21,
+      0
+    );
+
+
+  pad.userData.districtId=
+    d.id;
+
+
+  group.add(
+    pad
+  );
+
+
+  const rim=
+    box(
+      padW+.18,
+      .12,
+      padD+.18,
+      mat(0x252c31),
+      0,
+      .05,
+      0
+    );
+
+
+  rim.userData.districtId=
+    d.id;
+
+
+  group.add(
+    rim
+  );
+
+
+  if(d.type==='farm'){
+
+    drawFarm(
+      group,
+      lvl
+    );
+
+  }
+  else if(d.type==='wood'){
+
+    drawForest(
+      group,
+      lvl
+    );
+
+  }
+  else if(d.type==='stone'){
+
+    drawQuarry(
+      group,
+      lvl
+    );
+
+  }
+  else if(d.type==='iron'){
+
+    drawMine(
+      group,
+      lvl
+    );
+
+  }
+  else{
+
+    drawBuildings(
+      group,
+      d,
+      lvl,
+      p
+    );
+
+  }
+
+
+  addPeople(
+    group,
+    d
+  );
+
+
+  return group;
+
+}
+
+
+/* =========================================================
+   FARM
+========================================================= */
+
+function drawFarm(
+  g,
+  lvl
+){
+
+  const soil=
+    mat(0x6d4c35);
+
+  const crop=
+    mat(0x86b85a);
+
+  const hut=
+    mat(0x90623f);
+
+
+  const rows=
+    Math.min(
+      5,
+      2+
+      Math.floor(lvl/4)
+    );
+
+
+  for(
+    let r=0;
+    r<rows;
+    r++
+  ){
+
+    const z=
+      -1.8+
+      r*.85;
+
+
+    const bed=
+      box(
+        4.6,
+        .08,
+        .58,
+        soil,
+        0,
+        .47,
+        z
+      );
+
+
+    g.add(
+      bed
+    );
+
+
+    for(
+      let i=0;
+      i<9;
+      i++
+    ){
+
+      const c=
+        cyl(
+          .05,
+          .32,
+          crop,
+          -2.05+
+          i*.51,
+          .56,
+          z,
+          5
+        );
+
+      g.add(
+        c
+      );
+
+    }
+
+  }
+
+
+  for(
+    let i=0;
+    i<
+      Math.min(
+        1+
+        Math.floor(lvl/3),
+        4
+      );
+    i++
+  ){
+
+    const h=
+      box(
+        .9,
+        .65,
+        .8,
+        hut,
+        -1.9+
+        i*1.25,
+        .8,
+        2
+      );
+
+
+    g.add(
+      h
+    );
+
+
+    g.add(
+      cyl(
+        .12,
+        .35,
+        mat(0x5b4b43),
+        -1.9+
+        i*1.25,
+        1.1,
+        2,
+        6
+      )
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   FOREST
+========================================================= */
+
+function drawForest(
+  g,
+  lvl
+){
+
+  const tm=
+    mat(0x355f43);
+
+  const tr=
+    mat(0x755238);
+
+
+  const n=
+    Math.min(
+      18,
+      6+
+      lvl*2
+    );
+
+
+  for(
+    let i=0;
+    i<n;
+    i++
+  ){
+
+    const x=
+      -2.2+
+      (i%6)*.88;
+
+    const z=
+      -1.6+
+      Math.floor(i/6)*1.4;
+
+
+    g.add(
+      cyl(
+        .15,
+        .8,
+        tr,
+        x,
+        .48,
+        z,
+        6
+      )
+    );
+
+
+    g.add(
+      cyl(
+        .42,
+        .9,
+        tm,
+        x,
+        1.12,
+        z,
+        7
+      )
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   QUARRY
+========================================================= */
+
+function drawQuarry(
+  g,
+  lvl
+){
+
+  const rock=
+    mat(0x8d8f8c);
+
+
+  const n=
+    Math.min(
+      9,
+      2+
+      Math.floor(lvl/2)
+    );
+
+
+  for(
+    let i=0;
+    i<n;
+    i++
+  ){
+
+    const x=
+      -2.2+
+      (i%3)*1.5;
+
+    const z=
+      -1.5+
+      Math.floor(i/3)*1.3;
+
+
+    const r=
+      .5+
+      .1*
+      (i%2);
+
+
+    const m=
+      new THREE.Mesh(
+        new THREE.DodecahedronGeometry(
+          r,
+          0
+        ),
+        rock
+      );
+
+
+    m.position.set(
+      x,
+      .7,
+      z
+    );
+
+
+    m.castShadow=true;
+
+
+    g.add(
+      m
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   MINE
+========================================================= */
+
+function drawMine(
+  g,
+  lvl
+){
+
+  const dark=
+    mat(0x33363a);
+
+  const iron=
+    mat(0x7c5d4c);
+
+
+  const entrance=
+    box(
+      2.0,
+      1.35,
+      1.0,
+      dark,
+      0,
+      1.15,
+      1.2
+    );
+
+
+  g.add(
+    entrance
+  );
+
+
+  g.add(
+    box(
+      2.1,
+      .12,
+      .12,
+      iron,
+      0,
+      1.75,
+      1.18
+    )
+  );
+
+
+  for(
+    let i=0;
+    i<
+      Math.min(
+        5,
+        1+
+        Math.floor(lvl/2)
+      );
+    i++
+  ){
+
+    g.add(
+      box(
+        .45,
+        .18,
+        .65,
+        iron,
+        -1.45+
+        i*.75,
+        .42,
+        .4
+      )
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   NORMAL BUILDINGS
+========================================================= */
+
+function drawBuildings(
+  g,
+  d,
+  lvl,
+  p
+){
+
+  const roof=
+    mat(p.roof);
+
+
+  const wall=
+    d.type==='science'
+      ? mat(0xa6b4bd)
+      : d.type==='industry'
+      ? mat(0x5b626b)
+      : mat(0xb7a58e);
+
+
+  const count=
+    Math.min(
+      12,
+      2+
+      Math.floor(
+        lvl*1.25
+      )
+    );
+
+
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
+
+    const x=
+      ((i%4)-1.5)*1.15;
+
+    const z=
+      (Math.floor(i/4)-.9)*
+      1.25;
+
+
+    const h=
+      buildingHeight(
+        d,
+        lvl
+      )*
+      (
+        .55+
+        ((i%3)/5)
+      );
+
+
+    const w=
+      .78+
+      ((i%2)*.12);
+
+
+    const dep=
+      .72+
+      (((i+1)%2)*.12);
+
+
+    const b=
+      box(
+        w,
+        h,
+        dep,
+        wall,
+        x,
+        .42+h/2,
+        z
+      );
+
+
+    g.add(
+      b
+    );
+
+
+    const r=
+      box(
+        w+.06,
+        .18,
+        dep+.06,
+        roof,
+        x,
+        .42+h+.09,
+        z
+      );
+
+
+    g.add(
+      r
+    );
+
+    /* 屋根の端と正面窓で建物の情報量を増やす */
+    if(d.type!=='industry' || state.era<7){
+      const trim=new THREE.Mesh(
+        new THREE.BoxGeometry(w+.04,.055,.055),
+        new THREE.MeshStandardMaterial({
+          color:0x4d4540,
+          roughness:.7
+        })
+      );
+      trim.position.set(x,.42+h+.18,z-dep/2-.025);
+      g.add(trim);
+    }
+
+    const frontWindowColor=
+      state.era>=6 ? p.glass : 0x7697a2;
+    addWindow(
+      g, x, .42+h*.58, z-dep/2-.03,
+      Math.max(.18,w*.38), .16, frontWindowColor
+    );
+
+    if(state.era>=5){
+      addWindow(
+        g, x+w/2+.03, .42+h*.58, z,
+        Math.max(.14,dep*.32), .15, frontWindowColor, Math.PI/2
+      );
+    }
+
+
+  }
+
+
+  /* Capital tower */
+
+  if(d.type==='capital'){
+
+    const tower=
+      cyl(
+        1.0,
+        3.6,
+        wall,
+        0,
+        .42+1.8,
+        -.2,
+        8
+      );
+
+
+    g.add(
+      tower
+    );
+
+
+    const roofCone=
+      new THREE.Mesh(
+        new THREE.ConeGeometry(
+          1.12,
+          .8,
+          8
+        ),
+        roof
+      );
+
+
+    roofCone.position.set(
+      0,
+      4.22,
+      -.2
+    );
+
+
+    g.add(
+      roofCone
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   CITY CENTER
+========================================================= */
+
+function addCityCenter(){
+
+  const era=state.era;
+  const lvl=Math.max(1,state.districts.capital.level);
+  const stoneMat=mat(era<3?0xbca47c:era<6?0x958f88:0x6f7b84,.75);
+  const accentMat=mat(era<5?0x9c7045:era<7?0x58758a:0x65c8e4,.42);
+
+  const plaza=new THREE.Mesh(
+    new THREE.CylinderGeometry(3.2,3.35,.26,32),
+    new THREE.MeshStandardMaterial({color:era<4?0x9a815d:era<7?0x68737c:0x53636e,roughness:.78})
+  );
+  plaza.position.y=.45;
+  cityGroup.add(plaza);
+
+  if(era<=1){
+    const fire=new THREE.Mesh(new THREE.ConeGeometry(.45,.65,8),new THREE.MeshStandardMaterial({color:0xffa94d,emissive:0xff5a21,emissiveIntensity:1.25}));
+    fire.position.y=.83;
+    cityGroup.add(fire);
+    for(let i=0;i<8;i++){
+      const post=cyl(.06,.65,mat(0x654734),2.0,.55*Math.sin(i*.78),2.0*Math.cos(i*.78),6);
+      post.position.set(Math.cos(i*.785)*2.0,.7,Math.sin(i*.785)*2.0);
+      cityGroup.add(post);
+    }
+  }else if(era<=3){
+    const podium=box(2.9,.42,2.9,stoneMat,0,.69,0);
+    cityGroup.add(podium);
+    const hall=box(1.75,1.55,1.75,stoneMat,0,1.67,0);
+    cityGroup.add(hall);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(1.45,.65,4),mat(0x7a4f44));
+    roof.rotation.y=Math.PI/4; roof.position.y=2.78; cityGroup.add(roof);
+    for(const x of [-.55,0,.55]) cityGroup.add(cyl(.09,1.25,mat(0xc6b58d),x,1.02,-.98,8));
+  }else if(era===4){
+    const palace=box(2.35,2.0,2.15,stoneMat,0,1.45,0);
+    cityGroup.add(palace);
+    for(const x of [-1.0,1.0]){
+      cityGroup.add(cyl(.42,3.15,stoneMat,x,2.02,0,10));
+      cityGroup.add(new THREE.Mesh(new THREE.ConeGeometry(.5,.55,8),mat(0x7b4d55)));
+      cityGroup.children[cityGroup.children.length-1].position.set(x,3.85,0);
+    }
+    const gate=box(.55,.85,2.2,mat(0x4e4a4a),0,1.00,-1.15);
+    cityGroup.add(gate);
+  }else if(era===5){
+    const station=box(2.8,1.65,2.3,stoneMat,0,1.28,0);
+    cityGroup.add(station);
+    for(let x of [-.9,0,.9]) cityGroup.add(box(.16,2.6,.16,accentMat,x,1.70,-.72));
+    cityGroup.add(cyl(.34,1.1,mat(0x4a4b4f),0,2.80,.15,10));
+    cityGroup.add(cyl(.46,1.6,mat(0x4a4b4f),-1.0,3.05,.20,10));
+  }else if(era===6){
+    const tower=box(2.6,3.8,2.5,stoneMat,0,2.35,0);
+    cityGroup.add(tower);
+    for(let y=1.3;y<4.1;y+=.65) for(let x of [-.75,0,.75]) addWindow(cityGroup,x,y,-1.27,.26,.25,0x65bddd);
+    cityGroup.add(box(2.95,.16,2.85,accentMat,0,4.3,0));
+  }else if(era===7){
+    const tower=box(2.5,5.0,2.4,stoneMat,0,2.95,0);
+    cityGroup.add(tower);
+    for(let y=1.25;y<5.1;y+=.62) for(let x of [-.78,0,.78]) addWindow(cityGroup,x,y,-1.23,.27,.25,0x78d5ec);
+    const antenna=cyl(.05,2.2,accentMat,0,6.55,0,8); cityGroup.add(antenna);
+  }else if(era===8){
+    const core=cyl(1.75,6.0,stoneMat,0,3.45,0,16); cityGroup.add(core);
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      const wing=box(.70,3.6,1.0,accentMat,Math.cos(a)*1.95,2.3,Math.sin(a)*1.95);
+      wing.rotation.y=a;
+      cityGroup.add(wing);
+    }
+    const halo=new THREE.Mesh(new THREE.TorusGeometry(2.55,.10,8,32),new THREE.MeshStandardMaterial({color:0x8feaff,emissive:0x38bfff,emissiveIntensity:.8,metalness:.5,roughness:.25}));
+    halo.rotation.x=Math.PI/2; halo.position.y=4.2; cityGroup.add(halo);
+  }else{
+    const core=cyl(1.65,7.2,stoneMat,0,4.05,0,16); cityGroup.add(core);
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      const wing=box(.78,5.0,1.18,accentMat,Math.cos(a)*1.95,2.75,Math.sin(a)*1.95);
+      wing.rotation.y=a; cityGroup.add(wing);
+    }
+    const crown=new THREE.Mesh(new THREE.SphereGeometry(.55,16,12),new THREE.MeshStandardMaterial({color:0x9df4ff,emissive:0x36cfff,emissiveIntensity:1.2,roughness:.18,metalness:.25}));
+    crown.position.y=7.85; cityGroup.add(crown);
+  }
+
+  /* 広場を囲む街灯／植栽 */
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    const r=2.45;
+    const x=Math.cos(a)*r,z=Math.sin(a)*r;
+    if(era>=6) addStreetLamp(cityGroup,x,z);
+    else{
+      const tree=cyl(.10,.35,mat(0x6c503a),x,.58,z,6);
+      const crown=new THREE.Mesh(new THREE.SphereGeometry(.28,7,6),mat(era<3?0x64824f:0x5d7452));
+      crown.position.set(x,.90,z);
+      cityGroup.add(tree,crown);
+    }
+  }
+
+}
+
+
+/* =========================================================
+   SELECTION
+========================================================= */
+
+function selectDistrict(
+  id,
+  silent=false
+){
+
+  if(!state.districts[id])
+    return;
+
+
+  const d=
+    DISTRICTS.find(
+      x=>x.id===id
+    );
+
+
+  if(!d)
+    return;
+
+
+  if(
+    state.era<d.unlock &&
+    state.districts[id].level===0
+  ){
+
+    toast(
+      'この地区はまだ解禁されていません'
+    );
+
+    return;
+
+  }
+
+
+  state.selected=id;
+
+
+  renderSide();
+
+  highlight(
+    id
+  );
+
+
+  if(
+    window.innerWidth<=980
+  ){
+
+    document
+      .getElementById('side')
+      .classList.add(
+        'open'
+      );
+
+  }
+
+
+  if(!silent){
+
+    toast(
+      `${d.name}を選択`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   HIGHLIGHT
+========================================================= */
+
+function highlight(id){
+
+  if(selectedRing){
+
+    cityGroup.remove(
+      selectedRing
+    );
+
+    selectedRing=null;
+
+  }
+
+
+  const o=
+    districtObjects.get(id);
+
+
+  if(!o)
+    return;
+
+
+  const d=
+    DISTRICTS.find(
+      x=>x.id===id
+    );
+
+
+  const w=
+    d.id==='capital'
+      ? 7.8
+      : 6.8;
+
+  const dd=
+    d.id==='capital'
+      ? 6.7
+      : 5.9;
+
+
+  const geo=
+    new THREE.RingGeometry(
+      Math.min(w,dd)*.42,
+      Math.min(w,dd)*.46,
+      4
+    );
+
+
+  const ring=
+    new THREE.Mesh(
+      geo,
+      new THREE.MeshBasicMaterial({
+        color:0xf0c66d,
+        transparent:true,
+        opacity:.9,
+        side:THREE.DoubleSide
+      })
+    );
+
+
+  ring.rotation.x=
+    -Math.PI/2;
+
+
+  ring.position.set(
+    d.x,
+    .5,
+    d.z
+  );
+
+
+  selectedRing=
+    ring;
+
+
+  cityGroup.add(
+    ring
+  );
+
+}
+
+
+/* =========================================================
+   COST
+========================================================= */
+
+function levelCost(d){
+
+  const l=
+    Math.max(
+      1,
+      state.districts[d.id].level
+    );
+
+
+  const base={
+
+    food:120,
+    wood:100,
+    stone:70,
+    iron:15,
+    gold:30,
+    science:10
+
+  };
+
+
+  const mul=
+    Math.pow(
+      d.growth,
+      l-1
+    );
+
+
+  const cost={};
+
+
+  for(
+    const k in base
+  ){
+
+    cost[k]=
+      base[k]*mul;
+
+  }
+
+
+  if(d.unlock>=3){
+
+    cost.science*=
+      1+
+      d.unlock*.5;
+
+  }
+
+
+  return cost;
+
+}
+
+
+function canAfford(cost){
+
+  return Object
+    .entries(cost)
+    .every(
+      ([k,v])=>
+        (state.resources[k]||0)>=v
+    );
+
+}
+
+
+function pay(cost){
+
+  for(
+    const [k,v]
+      of Object.entries(cost)
+  ){
+
+    state.resources[k]-=v;
+
+  }
+
+}
+
+
+function formatCost(cost){
+
+  return Object
+    .entries(cost)
+    .filter(([,v])=>v>0)
+    .map(
+      ([k,v])=>
+        `${resourceIcon(k)} ${fmt(v)}`
+    )
+    .join('　');
+
+}
+
+
+/* =========================================================
+   UPGRADE
+========================================================= */
+
+function upgradeSelected(){
+
+  const d=
+    DISTRICTS.find(
+      x=>x.id===state.selected
+    );
+
+
+  if(!d)
+    return;
+
+
+  const data=
+    state.districts[d.id];
+
+
+  if(
+    state.era<d.unlock
+  ){
+
+    toast(
+      `${ERA[d.unlock].name}で解禁`
+    );
+
+    return;
+
+  }
+
+
+  if(
+    d.id==='space' &&
+    data.level===0
+  ){
+
+    data.level=1;
+
+  }
+
+
+  const cost=
+    levelCost(d);
+
+
+  if(!canAfford(cost)){
+
+    toast(
+      '資源が足りません'
+    );
+
+    return;
+
+  }
+
+
+  pay(cost);
+
+
+  data.level++;
+
+
+  state.popMax +=
+    d.type==='capital'
+      ? 5
+      : 2;
+
+
+  if(d.type==='capital'){
+
+    state.happiness=
+      Math.min(
+        100,
+        state.happiness+1
+      );
+
+  }
+
+
+  state.productionTotal+=1;
+
+
+  addLog(
+    `${d.name}がレベル${data.level}になりました。`
+  );
+
+
+  rebuildMap();
+  renderAll();
+
+
+  toast(
+    `${d.name}をLv.${data.level}へ強化`
+  );
+
+}
+
+/* ES module 内の関数は inline onclick から見えないため、
+   HTML の onclick から呼べるよう window に公開する。 */
+window.upgradeSelected = upgradeSelected;
+
+
+/* =========================================================
+   POPULATION ASSIGNMENT
+========================================================= */
+
+function usedWorkers(){
+
+  return Object
+    .values(state.workers)
+    .reduce(
+      (a,b)=>a+b,
+      0
+    );
+
+}
+
+
+function idlePop(){
+
+  return Math.max(
+    0,
+    state.pop-usedWorkers()
+  );
+
+}
+
+
+function hireToDistrict(){
+
+  const d=
+    state.selected;
+
+
+  if(
+    idlePop()<=0
+  ){
+
+    toast(
+      '空き人口がありません'
+    );
+
+    return;
+
+  }
+
+
+  state.workers[d]++;
+
+
+  addLog(
+    `${DISTRICTS.find(x=>x.id===d).name}へ住民を配置しました。`
+  );
+
+
+  renderAll();
+  rebuildMap();
+
+}
+
+window.hireToDistrict = hireToDistrict;
+
+
+function fireFromDistrict(){
+
+  const id=
+    state.selected;
+
+
+  if(
+    (state.workers[id]||0)<=0
+  )
+    return;
+
+
+  state.workers[id]--;
+
+
+  renderAll();
+  rebuildMap();
+
+}
+
+window.fireFromDistrict = fireFromDistrict;
+
+
+/* =========================================================
+   PRODUCTION
+========================================================= */
+
+function rates(){
+
+  const out={
+    food:0,
+    wood:0,
+    stone:0,
+    iron:0,
+    gold:0,
+    science:0,
+    culture:0
+  };
+
+
+  const eraMult=
+    ERA[state.era].mult;
+
+  const policyMult={
+    balanced:{food:1,wood:1,stone:1,iron:1,gold:1,science:1,culture:1},
+    food:{food:1.28,wood:.90,stone:.92,iron:.90,gold:.92,science:.92,culture:1.02},
+    industry:{food:.92,wood:1.10,stone:1.12,iron:1.24,gold:1.20,science:1.03,culture:.94},
+    science:{food:.92,wood:.94,stone:.94,iron:.94,gold:.96,science:1.30,culture:1.15}
+  }[state.policy] || null;
+
+
+  for(
+    const d of DISTRICTS
+  ){
+
+    const data=
+      state.districts[d.id];
+
+
+    if(
+      data.level<=0 ||
+      state.era<d.unlock
+    )
+      continue;
+
+
+    const lvl=
+      data.level;
+
+
+    const workers=
+      state.workers[d.id]||0;
+
+
+    const workerMul=
+      1+
+      workers*.08;
+
+
+    for(
+      const [k,v]
+        of Object.entries(
+          d.base
+        )
+    ){
+
+      out[k]+=
+        v*
+        lvl*
+        workerMul*
+        eraMult*
+        (policyMult?.[k]||1);
+
+    }
+
+  }
+
+
+  /* Food upkeep */
+
+  out.food -=
+    state.pop*.19;
+
+
+  /* Advanced bonuses */
+
+  out.science *=
+    1+
+    state.era*.045;
+
+
+  out.culture *=
+    1+
+    state.era*.035;
+
+
+  out.food *=
+    Math.max(
+      .35,
+      state.happiness/100
+    );
+
+
+  return out;
+
+}
+
+
+/* =========================================================
+   SIMULATION
+========================================================= */
+
+function simulate(sec){
+
+  const r=
+    rates();
+
+
+  for(
+    const k of Object.keys(r)
+  ){
+
+    state.resources[k]=
+      (state.resources[k]||0)+
+      r[k]*sec;
+
+
+    if(k==='science'){
+
+      state.scienceTotal +=
+        Math.max(
+          0,
+          r[k]*sec
+        );
+
+    }
+
+
+    if(k==='culture'){
+
+      state.cultureTotal +=
+        Math.max(
+          0,
+          r[k]*sec
+        );
+
+    }
+
+
+    if(
+      k!=='science' &&
+      k!=='culture'
+    ){
+
+      state.productionTotal +=
+        Math.max(
+          0,
+          r[k]*sec
+        );
+
+    }
+
+  }
+
+
+  /* Population */
+
+  if(
+    r.food>=0 &&
+    state.pop<state.popMax
+  ){
+
+    const housing=getHousingState();
+    const housingRoom=housing.capacity>state.pop ? 1 : .35;
+    const growthBase=.010 + state.happiness*.00008 + state.infrastructure*.00055 + state.migration*.00045;
+    state.pop += sec*growthBase*housingRoom;
+
+
+    state.pop=
+      Math.min(
+        state.popMax,
+        state.pop
+      );
+
+  }
+
+
+  /* Starvation */
+
+  if(
+    r.food<0
+  ){
+
+    state.happiness -=
+      sec*.02;
+
+
+    state.pop -=
+      Math.min(
+        sec*.02,
+        Math.abs(r.food)*
+        sec*.00015
+      );
+
+
+    state.pop=
+      Math.max(
+        1,
+        state.pop
+      );
+
+  }
+  else{
+
+    state.happiness +=
+      sec*.008;
+
+  }
+
+
+  state.happiness=
+    THREE.MathUtils.clamp(
+      state.happiness,
+      0,
+      100
+    );
+
+
+  state.year +=
+    sec/7;
+
+
+  state.nextEvent -=
+    sec;
+
+  state.migration=Math.max(0,state.migration-sec*.00018);
+
+
+  /* Capacity */
+
+  for(
+    const k of Object.keys(
+      state.resources
+    )
+  ){
+
+    state.resources[k]=
+      Math.max(
+        0,
+        Math.min(
+          state.storage,
+          state.resources[k]
+        )
+      );
+
+  }
+
+
+  if(
+    state.nextEvent<=0
+  ){
+
+    state.nextEvent=
+      75+
+      Math.random()*
+      95;
+
+
+    randomEvent();
+
+  }
+
+}
+
+
+function publicWorks(){
+  const cost={wood:180,stone:140,gold:60};
+  if(!canAfford(cost)){
+    toast('公共事業に必要な資源が足りません');
+    return;
+  }
+  pay(cost);
+  state.infrastructure++;
+  state.housingBonus+=6;
+  state.popMax+=4;
+  state.happiness=Math.min(100,state.happiness+2);
+  addLog(`公共事業で道路・上下水道・街路が改善されました（インフラLv.${state.infrastructure}）。`);
+  rebuildMap(); renderAll();
+}
+window.publicWorks=publicWorks;
+
+function holdFestival(){
+  const cost={food:260,gold:80};
+  if(!canAfford(cost)){
+    toast('祭りに必要な食料と金が足りません');
+    return;
+  }
+  pay(cost);
+  state.happiness=Math.min(100,state.happiness+9);
+  state.migration+=1;
+  state.festivals++;
+  addLog('街で祭りが開催され、住民の流入と幸福度が上がりました。');
+  renderAll();
+}
+window.holdFestival=holdFestival;
+
+function cyclePolicy(){
+  const policies=['balanced','food','industry','science'];
+  const labels={balanced:'均衡',food:'食料優先',industry:'生産優先',science:'研究優先'};
+  const i=policies.indexOf(state.policy);
+  state.policy=policies[(i+1)%policies.length];
+  toast(`政策：${labels[state.policy]}`);
+  addLog(`都市政策を「${labels[state.policy]}」に変更しました。`);
+  renderAll();
+}
+window.cyclePolicy=cyclePolicy;
+
+
+/* =========================================================
+   EVOLUTION/* =========================================================
+   EVOLUTION
+========================================================= */
+
+function districtThreshold(){
+
+  const active=
+    Object
+      .values(state.districts)
+      .filter(
+        x=>x.level>0
+      )
+      .length;
+
+
+  return active >=
+    Math.min(
+      3+
+      Math.floor(
+        state.era/2
+      ),
+      DISTRICTS.length
+    );
+
+}
+
+
+function canEvolve(){
+
+  if(
+    state.era>=
+    ERA.length-1
+  )
+    return false;
+
+
+  const next=
+    ERA[state.era+1];
+
+
+  /*
+    時代進行条件は、下部に表示している「科学」資源を
+    そのまま判定に使う。
+    以前は scienceTotal（累積研究量）を参照していたため、
+    科学が500あっても scienceTotal が0の保存データでは
+    ずっと条件未達になっていた。
+  */
+  const currentScience =
+    Math.max(
+      0,
+      Number(state.resources.science) || 0
+    );
+
+  return (
+    state.pop>=next.popNeed &&
+    currentScience>=next.scienceNeed &&
+    districtThreshold()
+  );
+
+}
+
+
+function evolve(){
+
+  if(!canEvolve()){
+
+    toast(
+      '次の時代の条件がまだ足りません'
+    );
+
+    return;
+
+  }
+
+
+  state.era++;
+
+
+  state.happiness=
+    Math.min(
+      100,
+      state.happiness+7
+    );
+
+
+  state.popMax +=
+    10+
+    state.era*5;
+
+
+  state.storage +=
+    3000;
+
+
+  addLog(
+    `文明が「${ERA[state.era].name}」へ進化しました。`
+  );
+
+
+  rebuildMap();
+  renderAll();
+
+
+  showModal(
+
+    `${ERA[state.era].name}へ進化`,
+
+    `${ERA[state.era].desc}
+    <br><br>
+    都市の見た目と生産効率が変化しました。
+    新しい地区も順次解禁されます。`
+
+  );
+
+}
+
+window.evolve = evolve;
+
+
+/* =========================================================
+   RANDOM EVENTS
+========================================================= */
+
+function randomEvent(){
+
+  const events=[
+
+    [
+      '🌾 大豊作',
+
+      '今年の収穫量が記録的な水準になりました。',
+
+      [
+        [
+          '食料を貯蔵',
+          ()=>{
+            state.resources.food+=900;
+            state.storage+=700;
+          }
+        ],
+
+        [
+          '住民に配る',
+          ()=>{
+            state.resources.food+=500;
+
+            state.happiness=
+              Math.min(
+                100,
+                state.happiness+7
+              );
+          }
+        ]
+      ]
+    ],
+
+
+    [
+      '⛏ 巨大鉱脈',
+
+      '採掘地区の地下から大量の鉱石が見つかりました。',
+
+      [
+        [
+          '掘り進める',
+          ()=>{
+            state.resources.iron+=900;
+            state.resources.stone+=1200;
+          }
+        ],
+
+        [
+          '交易する',
+          ()=>{
+            state.resources.gold+=850;
+          }
+        ]
+      ]
+    ],
+
+
+    [
+      '📜 古代文書',
+
+      '謎の文書が発見され、研究者が解析を始めました。',
+
+      [
+        [
+          '研究する',
+          ()=>{
+            state.resources.science+=1800;
+            state.resources.culture+=350;
+          }
+        ],
+
+        [
+          '展示する',
+          ()=>{
+            state.resources.culture+=850;
+
+            state.happiness=
+              Math.min(
+                100,
+                state.happiness+4
+              );
+          }
+        ]
+      ]
+    ],
+
+
+    [
+      '💡 天才的発明',
+
+      'ひとりの研究者が生産工程を大幅に効率化しました。',
+
+      [
+        [
+          '普及させる',
+          ()=>{
+            state.resources.science+=600;
+            state.productionTotal+=100;
+
+            state.happiness=
+              Math.min(
+                100,
+                state.happiness+2
+              );
+          }
+        ],
+
+        [
+          '秘密にする',
+          ()=>{
+            state.resources.gold+=650;
+          }
+        ]
+      ]
+    ]
+
+  ];
+
+
+  const e=
+    events[
+      Math.floor(
+        Math.random()*
+        events.length
+      )
+    ];
+
+
+  state._event=e;
+
+
+  const buttons=
+    e[2]
+      .map(
+        (x,i)=>
+          `<button
+             class="secondary"
+             onclick="eventChoice(${i})">
+             ${x[0]}
+           </button>`
+      )
+      .join('');
+
+
+  showModal(
+    e[0],
+    e[1]+
+    `<br><br>
+     <div style="
+       display:grid;
+       grid-template-columns:1fr 1fr;
+       gap:8px
+     ">
+       ${buttons}
+     </div>`
+  );
+
+}
+
+
+window.eventChoice=
+  function(index){
+
+    if(!state._event)
+      return;
+
+
+    state._event[2][index][1]();
+
+
+    addLog(
+      `${state._event[0]}が発生しました。`
+    );
+
+
+    state._event=null;
+
+
+    closeModal();
+
+
+    renderAll();
+
+    rebuildMap();
+
+  };
+
+
+/* =========================================================
+   SIDE PANEL
+========================================================= */
+
+function renderSide(){
+
+  const d=
+    DISTRICTS.find(
+      x=>x.id===state.selected
+    );
+
+
+  if(!d)
+    return;
+
+
+  const data=
+    state.districts[d.id];
+
+
+  const locked=
+    state.era<d.unlock;
+
+
+  const cost=
+    levelCost(d);
+
+
+  const nextEra=
+    state.era<
+    ERA.length-1
+      ? ERA[state.era+1]
+      : null;
+
+
+  const ready=
+    canEvolve();
+
+
+  const outputs=
+    Object
+      .entries(d.base)
+      .map(
+        ([k,v])=>
+          `${resourceIcon(k)}
+           <b>+${fmt(
+             v*
+             data.level*
+             (
+               1+
+               (state.workers[d.id]||0)*
+               .08
+             )*
+             ERA[state.era].mult
+           )}</b>/秒`
+      )
+      .join(
+        '</div><div>'
+      );
+
+
+  document.getElementById(
+    'districtTitle'
+  ).textContent=
+    `${d.icon} ${d.name}`;
+
+
+  document.getElementById(
+    'districtDesc'
+  ).textContent=
+    d.desc;
+
+
+  document.getElementById(
+    'sideBody'
+  ).innerHTML=
+
+  `
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">都市の暮らし</div>
+        <div class="muted" style="font-size:9px">インフラLv.${state.infrastructure}</div>
+      </div>
+      <div class="stat-grid">
+        <div class="mini-stat"><div class="mini-label">歩いている住民</div><div class="mini-value">${Math.min(90,Math.floor(state.pop))}人</div></div>
+        <div class="mini-stat"><div class="mini-label">1軒の収容</div><div class="mini-value">${housingCapacityPerHouse()}人</div></div>
+        <div class="mini-stat"><div class="mini-label">祭り開催数</div><div class="mini-value">${fmt(state.festivals||0)}</div></div>
+        <div class="mini-stat"><div class="mini-label">政策</div><div class="mini-value">${({balanced:'均衡',food:'食料',industry:'生産',science:'研究'})[state.policy]||'均衡'}</div></div>
+      </div>
+      <div class="action-row" style="margin-top:9px">
+        <button class="secondary" onclick="publicWorks()">🛠 公共事業</button>
+        <button class="secondary" onclick="holdFestival()">🎉 祭り</button>
+      </div>
+      <button class="secondary" style="margin-top:7px" onclick="cyclePolicy()">⚙️ 都市政策を切替</button>
+    </div>
+
+
+    <div class="section">
+
+      <div class="level-row">
+
+        <div>
+
+          <div class="muted"
+               style="font-size:9px">
+
+            地区レベル
+
+          </div>
+
+          <div class="big-level">
+
+            Lv.${data.level}
+
+          </div>
+
+        </div>
+
+
+        <div style="text-align:right">
+
+          <div class="muted"
+               style="font-size:9px">
+
+            担当人口
+
+          </div>
+
+          <div class="big-level">
+
+            ${state.workers[d.id]||0}
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="bar">
+
+        <i style="
+          width:${
+            Math.min(
+              100,
+              (
+                (data.level%10)/
+                10
+              )*100
+            )
+          }%
+        "></i>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          住宅と人口
+        </div>
+
+        <div class="muted"
+             style="font-size:9px">
+          1軒 ${housingCapacityPerHouse()}人
+        </div>
+
+      </div>
+
+      <div class="stat-grid">
+
+        <div class="mini-stat">
+          <div class="mini-label">
+            入居中の家
+          </div>
+          <div class="mini-value">
+            ${fmt(getHousingState().houses)}
+          </div>
+        </div>
+
+        <div class="mini-stat">
+          <div class="mini-label">
+            住宅容量
+          </div>
+          <div class="mini-value">
+            ${fmt(getHousingState().capacity)}
+          </div>
+        </div>
+
+      </div>
+
+      ${
+        getHousingState().shortage>0
+          ? `
+            <div class="muted"
+                 style="
+                   margin-top:8px;
+                   font-size:9px;
+                   color:#e7a36f
+                 ">
+              ⚠ 住宅ロットが埋まりました。
+              高密度都市へ移行中。
+            </div>
+          `
+          : ''
+      }
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          現在の生産
+        </div>
+
+        <div class="muted"
+             style="font-size:9px">
+
+          時代倍率
+          ×${ERA[state.era].mult.toFixed(2)}
+
+        </div>
+
+      </div>
+
+
+      <div class="prod">
+
+        <div>
+          ${outputs}
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          地区ステータス
+        </div>
+
+      </div>
+
+
+      <div class="stat-grid">
+
+        <div class="mini-stat">
+
+          <div class="mini-label">
+            人口枠
+          </div>
+
+          <div class="mini-value">
+            +${d.popBase+data.level*2}
+          </div>
+
+        </div>
+
+
+        <div class="mini-stat">
+
+          <div class="mini-label">
+            労働者
+          </div>
+
+          <div class="mini-value">
+            ${state.workers[d.id]||0}
+          </div>
+
+        </div>
+
+
+        <div class="mini-stat">
+
+          <div class="mini-label">
+            解禁
+          </div>
+
+          <div class="mini-value">
+            ${ERA[d.unlock].name}
+          </div>
+
+        </div>
+
+
+        <div class="mini-stat">
+
+          <div class="mini-label">
+            労働倍率
+          </div>
+
+          <div class="mini-value">
+            ×${(
+              1+
+              (state.workers[d.id]||0)*.08
+            ).toFixed(2)}
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          地区を育てる
+        </div>
+
+        <div class="muted"
+             style="font-size:9px">
+
+          次Lvコスト
+
+        </div>
+
+      </div>
+
+
+      ${
+        locked
+
+        ?
+
+        `
+        <div class="muted"
+             style="
+               font-size:11px;
+               margin-bottom:9px
+             ">
+
+          🔒
+          ${ERA[d.unlock].name}
+          になると使用できます。
+
+        </div>
+        `
+
+        :
+
+        `
+        <div class="muted"
+             style="
+               font-size:10px;
+               margin-bottom:9px
+             ">
+
+          ${formatCost(cost)}
+
+        </div>
+        `
+      }
+
+
+      <button
+        class="primary"
+        onclick="upgradeSelected()"
+        ${
+          locked ||
+          !canAfford(cost)
+            ? 'disabled'
+            : ''
+        }>
+
+        🏗
+        この地区を強化する
+
+      </button>
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          人口を配置
+        </div>
+
+        <div class="muted"
+             style="font-size:9px">
+
+          未配属
+          ${fmt(idlePop())}人
+
+        </div>
+
+      </div>
+
+
+      <div class="action-row">
+
+        <button
+          class="secondary"
+          onclick="hireToDistrict()"
+          ${
+            locked ||
+            idlePop()<=0
+              ? 'disabled'
+              : ''
+          }>
+
+          ＋ 担当させる
+
+        </button>
+
+
+        <button
+          class="secondary"
+          onclick="fireFromDistrict()"
+          ${
+            (state.workers[d.id]||0)<=0
+              ? 'disabled'
+              : ''
+          }>
+
+          − 外す
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="section">
+
+      <div class="section-head">
+
+        <div class="section-title">
+          文明の次段階
+        </div>
+
+        <div class="muted"
+             style="font-size:9px">
+
+          ${
+            nextEra
+              ? nextEra.name
+              : 'MAX'
+          }
+
+        </div>
+
+      </div>
+
+
+      ${
+        nextEra
+
+          ?
+
+          `
+
+          <div class="muted"
+               style="
+                 font-size:10px;
+                 line-height:1.6
+               ">
+
+            人口
+            ${fmt(state.pop)}
+            /
+            ${fmt(nextEra.popNeed)}
+
+            <br>
+
+            科学
+            ${fmt(state.resources.science)}
+            /
+            ${fmt(nextEra.scienceNeed)}
+
+            <br>
+
+            地区開発
+            ${
+              districtThreshold()
+                ? '達成'
+                : '不足'
+            }
+
+          </div>
+
+
+          <button
+            class="primary"
+            style="margin-top:9px"
+            onclick="evolve()"
+            ${
+              ready
+                ? ''
+                : 'disabled'
+            }>
+
+            ${
+              ready
+                ? '🌄 次の時代へ進む'
+                : 'まだ進化できない'
+            }
+
+          </button>
+
+          `
+
+          :
+
+          `
+
+          <div style="
+            font-size:12px;
+            font-weight:1000;
+            color:#e9c878
+          ">
+
+            文明の最高段階に到達しました。
+
+          </div>
+
+          `
+      }
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function renderAll(){
+
+  renderSide();
+
+
+  const r=
+    rates();
+
+
+  const resKeys=[
+    'food',
+    'wood',
+    'stone',
+    'iron',
+    'gold',
+    'science'
+  ];
+
+
+  for(
+    const k of resKeys
+  ){
+
+    document.getElementById(
+      k
+    ).textContent=
+      fmt(
+        state.resources[k]
+      );
+
+
+    document.getElementById(
+      k+'Rate'
+    ).textContent=
+      (
+        r[k]>=0
+          ? '+'
+          : ''
+      )+
+      fmt(r[k])+
+      '/s';
+
+  }
+
+
+  document.getElementById(
+    'year'
+  ).textContent=
+    Math.floor(
+      state.year
+    )
+    .toLocaleString();
+
+
+  document.getElementById(
+    'eraPill'
+  ).textContent=
+    ERA[state.era].name;
+
+
+  document.getElementById(
+    'brandSub'
+  ).textContent=
+    ERA[state.era].desc;
+
+
+  document.getElementById(
+    'hudPop'
+  ).textContent=
+    `${fmt(state.pop)} / ${fmt(state.popMax)}`;
+
+
+  document.getElementById(
+    'hudHappy'
+  ).textContent=
+    Math.floor(
+      state.happiness
+    )+'%';
+
+
+  const housing=
+    getHousingState();
+
+  document.getElementById(
+    'hudHousing'
+  ).textContent=
+    `${fmt(housing.houses)} / ${fmt(HOUSE_LOTS.length)}`;
+
+}
+
+
+/* =========================================================
+   SAVE / LOAD
+========================================================= */
+
+function saveGame(){
+
+  state.last=
+    Date.now();
+
+
+  localStorage.setItem(
+    'civilization_city_idle',
+    JSON.stringify(
+      state
+    )
+  );
+
+
+  toast(
+    'セーブしました'
+  );
+
+}
+
+
+window.saveGame=
+  saveGame;
+
+
+function loadGame(){
+
+  const raw=
+    localStorage.getItem(
+      'civilization_city_idle'
+    );
+
+
+  if(!raw)
+    return;
+
+
+  try{
+
+    const saved=
+      JSON.parse(raw);
+
+
+    Object.assign(
+      state,
+      saved
+    );
+
+
+    state.districts=
+      Object.assign(
+        {},
+        state.districts,
+        saved.districts||{}
+      );
+
+
+    state.infrastructure=Math.max(1,state.infrastructure||1);
+    state.housingBonus=Math.max(0,state.housingBonus||0);
+    state.migration=Math.max(0,state.migration||0);
+    state.policy=state.policy||'balanced';
+    state.festivals=Math.max(0,state.festivals||0);
+
+    for(
+      const d of DISTRICTS
+    ){
+
+      state.districts[d.id]=
+        Object.assign(
+          {
+            level:0
+          },
+          state.districts[d.id]||{}
+        );
+
+    }
+
+
+    const elapsed=
+      Math.min(
+        60*60*1000,
+        (
+          Date.now()-
+          (
+            saved.last||
+            Date.now()
+          )
+        )/1000
+      );
+
+
+    if(elapsed>20){
+
+      simulate(
+        elapsed
+      );
+
+
+      showModal(
+        '🌙 おかえりなさい',
+
+        `不在中の
+        <b>${fmt(elapsed/60)}</b>
+        分間、都市が発展しました。<br><small>（最大1000時間までオフライン進行）</small>`
+
+      );
+
+    }
+
+
+    state.last=
+      Date.now();
+
+  }
+  catch(e){
+
+    console.warn(
+      e
+    );
+
+  }
+
+}
+
+
+function resetGame(){
+
+  if(
+    !confirm(
+      '文明を最初からやり直しますか？'
+    )
+  )
+    return;
+
+
+  localStorage.removeItem(
+    'civilization_city_idle'
+  );
+
+
+  location.reload();
+
+}
+
+
+window.resetGame=
+  resetGame;
+
+
+/* =========================================================
+   LOG
+========================================================= */
+
+function addLog(text){
+
+  state.logs.unshift(
+    text
+  );
+
+
+  state.logs=
+    state.logs.slice(
+      0,
+      40
+    );
+
+}
+
+
+/* =========================================================
+   MAP CLICK
+========================================================= */
+
+renderer.domElement
+  .addEventListener(
+    'pointerdown',
+    e=>{
+
+      pointerDown={
+        x:e.clientX,
+        y:e.clientY,
+        t:performance.now()
+      };
+
+    }
+  );
+
+
+renderer.domElement
+  .addEventListener(
+    'pointerup',
+    e=>{
+
+      const dx=
+        e.clientX-
+        pointerDown.x;
+
+
+      const dy=
+        e.clientY-
+        pointerDown.y;
+
+
+      const dt=
+        performance.now()-
+        pointerDown.t;
+
+
+      /*
+        過度なドラッグをクリック扱いしない
+      */
+
+      if(
+        Math.hypot(dx,dy)>8 ||
+        dt>500
+      )
+        return;
+
+
+      const rect=
+        renderer.domElement
+          .getBoundingClientRect();
+
+
+      pointer.x=
+        (
+          (
+            e.clientX-
+            rect.left
+          )/
+          rect.width
+        )*2-1;
+
+
+      pointer.y=
+        -(
+          (
+            e.clientY-
+            rect.top
+          )/
+          rect.height
+        )*2+1;
+
+
+      raycaster.setFromCamera(
+        pointer,
+        camera
+      );
+
+
+      const hits=
+        raycaster.intersectObjects(
+          Array.from(
+            districtObjects.values()
+          ),
+          true
+        );
+
+
+      if(!hits.length)
+        return;
+
+
+      let o=
+        hits[0].object;
+
+
+      let id=null;
+
+
+      while(o){
+
+        if(
+          o.userData &&
+          o.userData.districtId
+        ){
+
+          id=
+            o.userData.districtId;
+
+          break;
+
+        }
+
+
+        o=o.parent;
+
+      }
+
+
+      if(id)
+        selectDistrict(
+          id
+        );
+
+    }
+  );
+
+
+/* =========================================================
+   RESIZE
+========================================================= */
+
+function resize(){
+
+  const rect=
+    mapEl.getBoundingClientRect();
+
+  const w=
+    Math.max(2, Math.round(rect.width));
+
+  const h=
+    Math.max(2, Math.round(rect.height));
+
+  const aspect=
+    w/Math.max(1,h);
+
+  const viewH=
+    40;
+
+  const viewW=
+    viewH*aspect;
+
+  camera.left=-viewW/2;
+  camera.right=viewW/2;
+  camera.top=viewH/2;
+  camera.bottom=-viewH/2;
+  camera.near=0.1;
+  camera.far=500;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(
+    w,
+    h,
+    false
+  );
+
+  canvas.style.width=w+'px';
+  canvas.style.height=h+'px';
+
+  camera.lookAt(
+    controls.target.x,
+    controls.target.y,
+    controls.target.z
+  );
+
+}
+
+window.addEventListener(
+  'resize',
+  resize,
+  {passive:true}
+);
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) saveGameSilent();
+});
+window.addEventListener('pagehide',saveGameSilent);
+
+function saveGameSilent(){
+  state.last=Date.now();
+  localStorage.setItem('civilization_city_idle',JSON.stringify(state));
+}
+
+
+if('ResizeObserver' in window){
+  const mapResizeObserver=
+    new ResizeObserver(()=>resize());
+  mapResizeObserver.observe(mapEl);
+}
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener(
+    'resize',
+    resize,
+    {passive:true}
+  );
+}
+
+
+/* 住宅再構築の前回値 */
+let lastHouseCount = -1;
+
+
+/* =========================================================
+   START
+========================================================= */
+
+/* JSFiddle/iPadではレイアウト確定前に script が実行される場合がある。
+   初期化→再構築→2フレーム後の resize/render の順で確実に描画する。 */
+resize();
+
+loadGame();
+
+rebuildMap();
+
+lastHouseCount=
+  getHousingState().houses;
+
+renderAll();
+
+controls.target.set(0,0,0);
+controls.update();
+resize();
+renderer.clear();
+renderer.render(scene,camera);
+
+requestAnimationFrame(()=>{
+  resize();
+  renderer.clear();
+  renderer.render(scene,camera);
+});
+
+
+/* 描画経路の最低限の健全性チェック。エラーでゲーム全体を止めず、
+   WebGLコンテキストが失われた場合だけ警告を出す。 */
+canvas.addEventListener('webglcontextlost',e=>{
+  e.preventDefault();
+  console.warn('WebGL context lost');
+});
+
+canvas.addEventListener('webglcontextrestored',()=>{
+  console.info('WebGL context restored');
+  resize();
+  rebuildMap();
+  renderAll();
+  renderer.clear();
+  renderer.render(scene,camera);
+});
+
+let last=
+  performance.now();
+
+
+let saveTick=0;
+
+let renderTick=0;
+
+function loop(t){
+
+  const dt=
+    Math.min(
+      1,
+      (t-last)/1000
+    );
+
+
+  last=t;
+
+
+  simulate(
+    dt
+  );
+
+
+  saveTick+=dt;
+
+  renderTick+=dt;
+
+
+  /*
+    自動保存
+  */
+
+  if(
+    saveTick>=120
+  ){
+
+    saveGameSilent();
+
+
+    saveTick=0;
+
+  }
+
+
+  /*
+    UI更新
+  */
+
+  if(
+    renderTick>.25
+  ){
+
+    const housing=
+      getHousingState();
+
+    /*
+      家の増減があった瞬間だけ
+      住宅街を作り直す。
+    */
+    if(
+      housing.houses !==
+      lastHouseCount
+    ){
+
+      const p=
+        eraPalette();
+
+      buildResidentialCity(
+        p
+      );
+
+      lastHouseCount=
+        housing.houses;
+
+    }
+
+    renderAll();
+
+    renderTick=0;
+
+  }
+
+
+  animateCitizenAgents(dt,t);
+
+  controls.update();
+
+
+  renderer.clear();
+  renderer.render(
+    scene,
+    camera
+  );
+
+
+  requestAnimationFrame(
+    loop
+  );
+
+}
+
+
+requestAnimationFrame(
+  loop
+);
+
+</script>
+
+</body>
+</html>

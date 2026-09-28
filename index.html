@@ -1178,13 +1178,14 @@ const DISTRICTS = [
     name:'首都広場',
     icon:'🏛',
     desc:
-      '文明の中心。人口上限と金生産を支えます。',
+      '文明の中心。人口上限と金生産に加え、記録と知識から科学を生み出します。',
     x:0,
     z:0,
     type:'capital',
     unlock:0,
     base:{
-      gold:0.65
+      gold:0.65,
+      science:0.18
     },
     popBase:18,
     growth:1.08
@@ -1229,13 +1230,14 @@ const DISTRICTS = [
     name:'石材採掘区',
     icon:'🪨',
     desc:
-      '石材を採掘する地区。高レベルになるほど巨大化します。',
+      '石材を採掘する地区。地表に露出した鉱石から、序盤でも少量の鉄を回収できます。',
     x:-10,
     z:-7,
     type:'stone',
     unlock:0,
     base:{
-      stone:1.55
+      stone:1.55,
+      iron:0.12
     },
     popBase:10,
     growth:1.11
@@ -1246,13 +1248,13 @@ const DISTRICTS = [
     name:'鉄鉱山',
     icon:'⛓',
     desc:
-      '鉄を生産する鉱山地区。鉄器時代以降に本格化。',
+      '鉄を生産する鉱山地区。青銅時代に解禁され、序盤の露頭鉄より大幅に効率が上がります。',
     x:10,
     z:-7,
     type:'iron',
     unlock:2,
     base:{
-      iron:0.75
+      iron:0.95
     },
     popBase:9,
     growth:1.12

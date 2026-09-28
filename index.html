@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>文明都市放置記</title>
+<title>文明都市放置記｜MEGA CITY</title>
 <style>
 :root{
   --bg:#080b12;
@@ -162,12 +162,10 @@ button{
   inset:0;
   width:100%;
   height:100%;
-  min-width:1px;
-  min-height:1px;
   touch-action:none;
   overflow:hidden;
   isolation:isolate;
-  background:#a9c8d7;
+  background:#9dbdca
 }
 
 #map canvas{
@@ -176,8 +174,7 @@ button{
   display:block;
   width:100% !important;
   height:100% !important;
-  z-index:0;
-  opacity:1;
+  z-index:0
 }
 
 .map-vignette{
@@ -188,7 +185,7 @@ button{
     radial-gradient(
       circle at 45% 45%,
       transparent 42%,
-      rgba(2,4,8,.16) 100%
+      rgba(2,4,8,.45) 100%
     )
 }
 
@@ -801,12 +798,12 @@ button{
         <div class="hud-card">
 
           <div class="hud-label">
-            住居
+            都市規模
           </div>
 
           <div class="hud-value"
-               id="hudHousing">
-            0 / 0
+               id="hudCity">
+            集落
           </div>
 
         </div>
@@ -815,13 +812,10 @@ button{
 
 
       <div class="map-help">
-
-        <b>地区をタップ</b>
-        → 強化　　
-        ドラッグ → マップ移動　　
-        ホイール/ピンチ → ズーム
-
+        <b>地区</b>タップ→詳細　 <b>ドラッグ</b>→移動　 <b>ホイール/ピンチ</b>→ズーム
       </div>
+
+      <div id="worldMode" style="position:absolute;right:16px;bottom:16px;display:none;padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(7,12,18,.88);backdrop-filter:blur(12px);font-size:10px;font-weight:1000;color:#e7edf4;pointer-events:none;z-index:5">派遣先をマップで選択</div>
 
     </section>
 
@@ -1024,6 +1018,19 @@ button{
      id="toast">
 </div>
 
+<div id="eventBanner" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.88);opacity:0;pointer-events:none;z-index:140;width:min(560px,92vw);padding:24px 26px;border:1px solid rgba(255,255,255,.18);border-radius:22px;background:rgba(8,13,20,.88);backdrop-filter:blur(18px);box-shadow:0 24px 100px rgba(0,0,0,.5);text-align:center;transition:.35s">
+  <div id="eventBannerKicker" style="font-size:10px;letter-spacing:.2em;color:#d5b56d;font-weight:1000">EVENT</div>
+  <div id="eventBannerTitle" style="font-size:30px;font-weight:1000;margin-top:8px">発見</div>
+  <div id="eventBannerText" style="font-size:12px;color:#bbc5d0;line-height:1.7;margin-top:8px"></div>
+</div>
+
+<div id="eraFlash" style="position:fixed;inset:0;z-index:145;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,238,176,.22),rgba(7,10,16,.92) 62%);transition:opacity .45s">
+  <div style="text-align:center">
+    <div id="eraFlashKicker" style="font-size:11px;letter-spacing:.28em;color:#dbc37e;font-weight:1000">NEW ERA</div>
+    <div id="eraFlashTitle" style="font-size:min(60px,11vw);font-weight:1000;margin-top:7px;text-shadow:0 14px 50px rgba(0,0,0,.45)"></div>
+    <div id="eraFlashText" style="font-size:13px;color:#d2d9e2;margin-top:10px"></div>
+  </div>
+</div>
 
 <script type="importmap">
 {
@@ -1178,7 +1185,7 @@ const DISTRICTS = [
     name:'首都広場',
     icon:'🏛',
     desc:
-      '文明の中心。人口上限と金生産に加え、記録と知識から科学を生み出します。',
+      '文明の中心。人口上限と金生産を支えます。',
     x:0,
     z:0,
     type:'capital',
@@ -1230,7 +1237,7 @@ const DISTRICTS = [
     name:'石材採掘区',
     icon:'🪨',
     desc:
-      '石材を採掘する地区。地表に露出した鉱石から、序盤でも少量の鉄を回収できます。',
+      '石材を採掘する地区。高レベルになるほど巨大化します。',
     x:-10,
     z:-7,
     type:'stone',
@@ -1336,13 +1343,46 @@ const DISTRICTS = [
 ];
 
 
+
+/* =========================================================
+   FACILITIES / CONSTRUCTION
+========================================================= */
+
+const FACILITIES = [
+  {id:'well',name:'井戸',icon:'💧',minEra:0,cost:{wood:30,stone:20},desc:'生活用水。人口増加と幸福度を少し押し上げる。',effects:{happiness:.8,popMax:4}},
+  {id:'granary',name:'共同穀倉',icon:'🌾',minEra:0,cost:{wood:50,stone:35},desc:'食料を保管し、農業を安定させる。',effects:{food:.28,storage:500}},
+  {id:'school',name:'学び舎',icon:'📚',minEra:0,cost:{wood:70,stone:45,science:30},desc:'記録・観察・教育から科学を生み出す。',effects:{science:.22,culture:.08}},
+  {id:'forge',name:'小鍛冶場',icon:'🔥',minEra:1,cost:{wood:90,stone:70,iron:8},desc:'序盤の鉄加工。鉄の採掘・加工効率を上げる。',effects:{iron:.26,production:.03}},
+  {id:'market',name:'市場',icon:'🏪',minEra:2,cost:{wood:110,stone:90,gold:45},desc:'交易が街に人と資金を呼び込む。',effects:{gold:.32,culture:.18,migration:.03}},
+  {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口成長を高める。',effects:{happiness:1.7,popMax:14}},
+  {id:'clinic',name:'診療所',icon:'🏥',minEra:4,cost:{stone:220,iron:35,gold:120,science:100},desc:'医療によって人口減少を抑える。',effects:{happiness:2.2,popMax:26}},
+  {id:'factory',name:'工場',icon:'🏭',minEra:5,cost:{wood:260,stone:340,iron:120,gold:180},desc:'大量生産を開始する。',effects:{iron:.55,gold:.5,production:.09}},
+  {id:'power',name:'発電所',icon:'⚡',minEra:6,cost:{stone:500,iron:260,gold:420,science:500},desc:'電力網。都市全体の生産力を増幅する。',effects:{science:.35,gold:.65,production:.16}},
+  {id:'research',name:'研究センター',icon:'🧬',minEra:7,cost:{stone:650,iron:300,gold:600,science:1200},desc:'研究を高速化する情報時代の中核施設。',effects:{science:1.35,culture:.4}},
+  {id:'spaceport',name:'宇宙港',icon:'🚀',minEra:8,cost:{stone:1000,iron:800,gold:1800,science:6000},desc:'惑星間物流の拠点。巨大な科学・金生産を得る。',effects:{science:2.6,gold:2.0,popMax:80}},
+  {id:'habitat',name:'軌道居住区',icon:'🛰️',minEra:9,cost:{iron:1800,gold:4000,science:15000},desc:'恒星文明の人口拡張設備。',effects:{science:5.5,gold:3.4,popMax:280}}
+];
+
+const ERA_SKY = [
+  0xb7d6e2,0xb7d7c7,0xcbd8cc,0xc6c8c4,0xbfc2c7,
+  0xaeb9c0,0x9fb5c2,0x8ba6b8,0x718ca4,0x4f7191
+];
+const ERA_GROUND = [
+  0x718c58,0x7b9361,0x819370,0x7b7e76,0x747872,
+  0x676f73,0x5e6d74,0x586976,0x52677a,0x4e6477
+];
+const ERA_ROAD = [
+  0x927451,0x8b7760,0x74736e,0x676a6c,0x5c6064,
+  0x4e555b,0x454c54,0x394450,0x303c48,0x293541
+];
+
 /* =========================================================
    STATE
 ========================================================= */
 
 const state = {
 
-  version:3,
+  version:5,
 
   last:Date.now(),
 
@@ -1394,12 +1434,26 @@ const state = {
 
   nextEvent:80,
 
-  /* 都市シミュレーション用 */
+  /* 都市シミュレーション */
+  mapRadius:44,
+  mapExpansion:0,
+  cityReach:16,
+  facilities:[],
   infrastructure:1,
   housingBonus:0,
   migration:0,
+  festivals:0,
   policy:'balanced',
-  festivals:0
+  worldTime:0,
+  discoveryCooldown:115,
+
+  worldSeed:417203,
+  seaClaims:0,
+  oceanPower:0,
+  forestClears:[],
+  expeditions:[],
+  roadsBuilt:0,
+  wonders:0
 };
 
 
@@ -1428,85 +1482,56 @@ state.districts.university.level=0;
 const scene =
   new THREE.Scene();
 
-/* iPad/JSFiddle では距離フォグが街全体を背景色へ溶かして
-   道路や家が見えなくなることがあるため、今回はフォグを使わない。 */
-scene.fog = null;
+scene.background=new THREE.Color(ERA_SKY[0]);
+scene.fog=new THREE.Fog(ERA_SKY[0],70,165);
 
+const camera=
+  new THREE.OrthographicCamera(-28,28,20,-20,.1,500);
+camera.position.set(36,34,36);
+camera.lookAt(0,0,0);
 
-const mapEl =
-  document.getElementById('map');
+const mapEl=document.getElementById('map');
+if(!mapEl) throw new Error('MAP_ELEMENT_NOT_FOUND');
 
-if(!mapEl){
-  throw new Error('MAP_ELEMENT_NOT_FOUND');
-}
-
-const canvas =
-  document.createElement('canvas');
-
-canvas.setAttribute(
-  'aria-label',
-  '文明都市3Dマップ'
-);
-
+const canvas=document.createElement('canvas');
+canvas.setAttribute('aria-label','文明都市3Dマップ');
 mapEl.appendChild(canvas);
 
-const camera =
-  new THREE.OrthographicCamera(
-    -28,
-    28,
-    20,
-    -20,
-    0.1,
-    500
-  );
-
-camera.position.set(
-  36,
-  34,
-  36
-);
-
-const renderer =
-  new THREE.WebGLRenderer({
-    canvas,
-    antialias:true,
-    alpha:false,
-    powerPreference:'high-performance'
-  });
-
-renderer.setPixelRatio(
-  Math.min(
-    window.devicePixelRatio || 1,
-    1.75
-  )
-);
-
-/* 現行 Three.js の PCFShadowMap を使用。
-   影を復活させて建物の立体感を出しつつ、
-   iPad向けに比較的軽い設定にする。 */
+const renderer=new THREE.WebGLRenderer({
+  canvas,
+  antialias:true,
+  alpha:false,
+  powerPreference:'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFShadowMap;
-renderer.outputColorSpace=
-  THREE.SRGBColorSpace;
-renderer.toneMapping=
-  THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.05;
-renderer.setClearColor(
-  0xa9c8d7,
-  1
-);
-scene.background=
-  new THREE.Color(0xa9c8d7);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.08;
+renderer.setClearColor(ERA_SKY[0],1);
 
 canvas.style.position='absolute';
 canvas.style.inset='0';
+canvas.style.width='100%';
+canvas.style.height='100%';
 canvas.style.zIndex='0';
-canvas.style.display='block';
-canvas.style.opacity='1';
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();console.warn('WebGL context lost');});
+canvas.addEventListener('webglcontextrestored',()=>{resize();rebuildMap();renderAll();});
 
-camera.lookAt(0,0,0);
+const districtObjects=new Map();
+const houseObjects=[];
+const facilityObjects=[];
+const citizenAgents=[];
+const smokePuffs=[];
+let selectedRing=null;
+let terrainGround=null;
+let buildMode=null;
+let discovery=null;
+let eraTransition=null;
+let cityPulse=0;
 
-
+/* Camera */
 /* Camera */
 
 const controls =
@@ -1524,13 +1549,7 @@ controls.dampingFactor=.08;
 controls.minZoom=.62;
 controls.maxZoom=1.8;
 
-controls.target.set(
-  0,
-  0,
-  0
-);
-
-camera.lookAt(0,0,0);
+controls.target.set(0,0,0);
 controls.update();
 
 controls.screenSpacePanning=false;
@@ -1538,28 +1557,23 @@ controls.screenSpacePanning=false;
 
 /* Lighting */
 
-const hemi =
+const hemi=
   new THREE.HemisphereLight(
-    0xeaf6ff,
-    0x41503f,
-    1.85
+    0xeaf7ff,
+    0x52614f,
+    1.9
   );
 
 scene.add(hemi);
 
-const ambient =
-  new THREE.AmbientLight(
-    0xffffff,
-    0.45
-  );
 
+const ambient=new THREE.AmbientLight(0xffffff,.35);
 scene.add(ambient);
 
-
-const sun =
+const sun=
   new THREE.DirectionalLight(
-    0xffedc6,
-    2.7
+    0xffebc4,
+    2.75
   );
 
 sun.position.set(
@@ -1570,12 +1584,9 @@ sun.position.set(
 
 sun.castShadow=true;
 
-sun.shadow.mapSize.set(
-  1024,
-  1024
-);
-sun.shadow.bias=-0.0008;
-sun.shadow.normalBias=0.025;
+sun.shadow.mapSize.set(1024,1024);
+sun.shadow.bias=-.0007;
+sun.shadow.normalBias=.025;
 
 sun.shadow.camera.left=-45;
 sun.shadow.camera.right=45;
@@ -1587,41 +1598,25 @@ scene.add(sun);
 
 /* City */
 
-const cityGroup =
-  new THREE.Group();
+const cityGroup=new THREE.Group();
+scene.add(cityGroup);
 
-scene.add(
-  cityGroup
-);
+const residentialGroup=new THREE.Group();
+const facilityGroup=new THREE.Group();
+const citizenGroup=new THREE.Group();
+const effectGroup=new THREE.Group();
+const worldGroup=new THREE.Group();
+scene.add(worldGroup);
+cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
 
-
-const districtObjects =
-  new Map();
-
-
-/* Residential city */
-
-const residentialGroup =
-  new THREE.Group();
-
-cityGroup.add(
-  residentialGroup
-);
-
-const houseObjects =
-  [];
-
-const citizenGroup = new THREE.Group();
-cityGroup.add(citizenGroup);
-const citizenAgents = [];
-
-const HOUSE_CAPACITY =
-  4;
-
-let selectedRing=null;
-
+const worldNodeObjects=[];
+let worldStreamKey='';
+let dispatchMode=null;
+const expeditionObjects=[];
+let buildPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
 
 /* Raycaster */
+
 
 const raycaster =
   new THREE.Raycaster();
@@ -1841,319 +1836,484 @@ window.closeModal=
    MAP PALETTE
 ========================================================= */
 
-function eraPalette(){
 
-  const v=ERA[state.era].visual;
-
-  const palettes=[
-    {base:0x6f8a55, roof:0x99613d, glass:0x759da0, road:0x8a6a4b, trim:0x654733},
-    {base:0x759364, roof:0xa56a41, glass:0x6f9da5, road:0x8a755e, trim:0x5e4937},
-    {base:0x7f916f, roof:0x9b604b, glass:0x6d98a0, road:0x77716a, trim:0x584f49},
-    {base:0x787a74, roof:0x76545b, glass:0x7b9ca5, road:0x66686a, trim:0x484b50},
-    {base:0x73766f, roof:0x80525a, glass:0x7da4b2, road:0x5b5d60, trim:0x3f444a},
-    {base:0x707875, roof:0x4f5a64, glass:0x6f9bb1, road:0x454b51, trim:0x2f353c},
-    {base:0x69737b, roof:0x4d606c, glass:0x65b4d2, road:0x3a424b, trim:0x293038},
-    {base:0x66727d, roof:0x426b84, glass:0x75c8e7, road:0x303943, trim:0x263038},
-    {base:0x697783, roof:0x496f93, glass:0x83d8f0, road:0x2c3540, trim:0x252e38},
-    {base:0x64727f, roof:0x5379a4, glass:0x99e8ff, road:0x29313b, trim:0x222a33}
-  ];
-
-  return palettes[v] || palettes[0];
-
+function makeMaterial(color,rough=.8,metal=0,emissive=0,ei=0){
+  return new THREE.MeshStandardMaterial({
+    color,roughness:rough,metalness:metal,
+    emissive:emissive||0,
+    emissiveIntensity:ei||0
+  });
 }
 
+function addWindow3(parent,x,y,z,w,h,color,rotY=0){
+  const m=new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,.035),
+    makeMaterial(color,.22,.08,color,.07)
+  );
+  m.position.set(x,y,z);m.rotation.y=rotY;parent.add(m);return m;
+}
+
+function addLowPolyTree(parent,x,z,scale=1){
+  const g=new THREE.Group();
+  g.position.set(x,0,z);g.scale.setScalar(scale);
+  g.add(cyl(.12,.55,mat(0x6b5038),0,.28,0,7));
+  const crown=new THREE.Mesh(new THREE.ConeGeometry(.5,1.15,7),mat(0x47724c));
+  crown.position.y=.95; crown.castShadow=true;g.add(crown);
+  parent.add(g);return g;
+}
+
+function addSmokeSource(parent,x,z,era=0){
+  if(era<3) return;
+  const count=era>=6?3:2;
+  for(let i=0;i<count;i++){
+    const m=new THREE.Mesh(
+      new THREE.SphereGeometry(.11+.025*i,7,6),
+      new THREE.MeshBasicMaterial({color:0xcfd4d6,transparent:true,opacity:.18,depthWrite:false})
+    );
+    m.position.set(x+(i%2)*.08,0+i*.16,z+(i%2)*.05);
+    smokePuffs.push({mesh:m,baseX:x,baseZ:z,phase:i*.9,speed:.17+.04*i,life:i*.9});
+    parent.add(m);
+  }
+}
+
+function addBridge(parent,x,z,vertical){
+  const bridge=box(vertical?1.85:7.2,.32,vertical?7.2:1.85,mat(0x867a69),x,.28,z);
+  parent.add(bridge);
+}
+
+const WORLD_CHUNK=64;
+const WORLD_STREAM_RADIUS=2;
+
+function hash2(x,z){
+  let n=(Math.imul(x|0,374761393)+Math.imul(z|0,668265263)+Math.imul((state.worldSeed||417203)|0,1442695041))|0;
+  n=(n^(n>>>13))|0;
+  n=Math.imul(n,1274126177);
+  n=(n^(n>>>16))|0;
+  return (n>>>0)/4294967296;
+}
+
+function chunkType(cx,cz){
+  if(Math.abs(cx)<=1 && Math.abs(cz)<=1) return 'plains';
+  const h=hash2(cx*17+3,cz*31-7);
+  const dist=Math.hypot(cx,cz);
+  if(dist>5 && h<.30) return 'sea';
+  if(h<.46) return 'forest';
+  if(h<.60) return 'hills';
+  return 'plains';
+}
+
+function isForestCleared(id){
+  return state.forestClears.includes(id);
+}
+
+function addWorldNode(type,id,x,z,radius){
+  const color=type==='forest'?0x8dbb63:type==='sea'?0x67d2ec:type==='lake'?0x69d5e3:0xe0bb62;
+  const ring=new THREE.Mesh(
+    new THREE.RingGeometry(radius*.80,radius,24),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false})
+  );
+  ring.rotation.x=-Math.PI/2;
+  ring.position.set(x,.34,z);
+  ring.userData.worldNode={type,id,x,z,radius};
+  worldGroup.add(ring);
+  worldNodeObjects.push(ring);
+}
+
+function addForestPatch(cx,cz){
+  const id=`forest_${cx}_${cz}`;
+  const x=cx*WORLD_CHUNK+20+hash2(cx+4,cz-5)*24;
+  const z=cz*WORLD_CHUNK+20+hash2(cx-8,cz+7)*24;
+  addWorldNode('forest',id,x,z,3.4);
+  if(isForestCleared(id)) return;
+  const count=16+Math.floor(hash2(cx+9,cz+11)*16);
+  for(let i=0;i<count;i++){
+    const a=i*2.399963+hash2(cx+i,cz-i)*.7;
+    const rr=2+(i%7)*.92;
+    addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.70+(i%4)*.12);
+  }
+}
+
+function addHillPatch(cx,cz){
+  const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
+  for(let i=0;i<7;i++){
+    const a=i*1.73+hash2(cx+i,cz-i)*3;
+    const rr=7+(i%3)*6;
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(2.1+(i%3)*.75,1),makeMaterial(0x78847f,.98));
+    rock.position.set(x+Math.cos(a)*rr,.95,z+Math.sin(a)*rr);
+    rock.scale.y=1.15+(i%2)*.28;
+    worldGroup.add(rock);
+  }
+}
+
+function addLake(cx,cz){
+  const id=`lake_${cx}_${cz}`;
+  const x=cx*WORLD_CHUNK+13+hash2(cx,cz)*37;
+  const z=cz*WORLD_CHUNK+13+hash2(cx+7,cz-5)*37;
+  const rx=7+hash2(cx-3,cz+4)*7;
+  const rz=5+hash2(cx+12,cz-1)*6;
+  const lake=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.14,32),makeMaterial(0x58b9cb,.20,.08));
+  lake.scale.set(rx,1,rz);
+  lake.position.set(x,.12,z);
+  worldGroup.add(lake);
+  addWorldNode('lake',id,x,z,Math.max(rx,rz));
+}
+
+function riverCenterX(x){
+  return 52 + Math.sin(x/62)*18 + Math.sin(x/21)*3;
+}
+
+function addRiverChunk(cx,cz){
+  const x=cx*WORLD_CHUNK+32;
+  const z=riverCenterX(x);
+  const localChunkCenter=cz*WORLD_CHUNK+32;
+  if(Math.abs(localChunkCenter-z)>38) return;
+  const river=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+4,.16,6.5),makeMaterial(0x3f9db4,.18,.08));
+  river.position.set(x,.10,z);
+  river.rotation.y=Math.sin(x/80)*.10;
+  worldGroup.add(river);
+  if(state.era>=3) addBridge(worldGroup,x,z,false);
+}
+
+function addSeaChunk(cx,cz){
+  const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
+  const sea=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+.5,.18,WORLD_CHUNK+.5),makeMaterial(0x2b7895,.14,.08));
+  sea.position.set(x,.02,z);
+  worldGroup.add(sea);
+  addWorldNode('sea',`sea_${cx}_${cz}`,x,z,7.5);
+}
+
+function rebuildWorldChunks(force=false){
+  const tx=Math.floor(controls.target.x/WORLD_CHUNK);
+  const tz=Math.floor(controls.target.z/WORLD_CHUNK);
+  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${state.forestClears.length}`;
+  if(!force && key===worldStreamKey) return;
+  worldStreamKey=key;
+  while(worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
+  worldNodeObjects.length=0;
+
+  for(let cx=tx-WORLD_STREAM_RADIUS;cx<=tx+WORLD_STREAM_RADIUS;cx++){
+    for(let cz=tz-WORLD_STREAM_RADIUS;cz<=tz+WORLD_STREAM_RADIUS;cz++){
+      const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
+      const biome=chunkType(cx,cz);
+      const groundColor=biome==='sea'?0x2b6e83:biome==='forest'?0x668f5c:biome==='hills'?0x7b867e:(ERA_GROUND[state.era]||0x718c58);
+      const ground=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+.35,.42,WORLD_CHUNK+.35),makeMaterial(groundColor,1));
+      ground.position.set(x,-.22,z);
+      ground.receiveShadow=true;
+      worldGroup.add(ground);
+      if(biome==='sea') addSeaChunk(cx,cz);
+      else if(biome==='forest') addForestPatch(cx,cz);
+      else if(biome==='hills') addHillPatch(cx,cz);
+      else if(hash2(cx*7,cz*11)<.23) addLake(cx,cz);
+      addRiverChunk(cx,cz);
+      if(biome==='plains'){
+        for(let i=0;i<7;i++){
+          const px=x-27+hash2(cx+i,cz-i)*54;
+          const pz=z-27+hash2(cx-i,cz+i)*54;
+          if(Math.abs(pz-riverCenterX(px))<4.5) continue;
+          addLowPolyTree(worldGroup,px,pz,.48+(i%4)*.11);
+        }
+      }
+    }
+  }
+}
+
+function worldBiomeAt(x,z){
+  const cx=Math.floor(x/WORLD_CHUNK),cz=Math.floor(z/WORLD_CHUNK);
+  const type=chunkType(cx,cz);
+  if(type==='sea') return 'sea';
+  const rz=Math.abs(z-riverCenterX(x));
+  if(rz<3.8) return 'river';
+  const centerX=cx*WORLD_CHUNK+13+hash2(cx,cz)*37;
+  const centerZ=cz*WORLD_CHUNK+13+hash2(cx+7,cz-5)*37;
+  const dx=(x-centerX)/8, dz=(z-centerZ)/7;
+  if(dx*dx+dz*dz<1) return 'lake';
+  return type;
+}
+
+function buildTerrainMap(){
+  rebuildWorldChunks(true);
+}
+
+function makeHouseLots(){
+  const lots=[];
+  const r=Math.min(150,Math.max(36,state.cityReach+12));
+  const spacing=8;
+  let id=0;
+  for(let gx=-Math.floor(r/spacing);gx<=Math.floor(r/spacing);gx++){
+    for(let gz=-Math.floor(r/spacing);gz<=Math.floor(r/spacing);gz++){
+      const cx=gx*spacing,cz=gz*spacing;
+      for(const ox of [-2.5,0,2.5]){
+        for(const oz of [-2.0,0,2.0]){
+          const x=cx+ox,z=cz+oz;
+          if(x<-r+3||x>r-3||z<-r+3||z>r-3) continue;
+          if(Math.abs(z-r*.62)<4.8) continue;
+          if(Math.hypot(x,z)<6.0) continue;
+          let bad=false;
+          for(const d of DISTRICTS){
+            if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?5.7:4.3)){bad=true;break;}
+          }
+          if(bad) continue;
+          lots.push({id:id++,x,z,dist:Math.hypot(x,z)});
+        }
+      }
+    }
+  }
+  lots.sort((a,b)=>a.dist-b.dist||a.z-b.z||a.x-b.x);
+  return lots;
+}
+
+let HOUSE_LOTS=makeHouseLots();
+
+function houseCapacity(){
+  return [4,5,7,9,12,18,28,48,90,180][state.era]||4;
+}
+
+function getHousingState(){
+  const per=houseCapacity();
+  const pop=Math.max(0,Math.floor(state.pop));
+  const reachable=Math.min(HOUSE_LOTS.length,Math.max(8,Math.floor(state.cityReach*state.cityReach*.8)));
+  const houses=Math.min(reachable,Math.max(1,Math.ceil(pop/per)));
+  return {population:pop,perHouse:per,houses,capacity:houses*per+state.housingBonus,shortage:Math.max(0,pop-houses*per-state.housingBonus)};
+}
+
+function drawHouseVisual(lot,occupied,p){
+  const era=state.era;
+  const g=new THREE.Group();
+  g.position.set(lot.x,0,lot.z);
+  g.userData.houseId=lot.id;
+
+  const wallColor=[0xb68f66,0xc49b6d,0xbca77c,0x9e9991,0x978f88,0x7a7d80,0x6f7b82,0x728b9b,0x7898aa,0x81a1b3][era];
+  const roofColor=[p.roof,0x996545,0x8b5947,0x68515a,0x71515a,0x4b5661,0x445f70,0x47708a,0x547f9c,0x6289af][era];
+  const wall=makeMaterial(wallColor,era>=7?.5:.86,era>=8?.1:0);
+  const roof=makeMaterial(roofColor,era>=6?.52:.76,era>=8?.12:0);
+  const dark=makeMaterial(p.trim||0x4a433d,.72,era>=6?.25:0);
+  const glass=era>=6?p.glass:0x7d9fa5;
+
+  if(era===0){
+    const hut=new THREE.Mesh(new THREE.CylinderGeometry(.5,.58,.62,8),wall);hut.position.y=.82;g.add(hut);
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.68,.58,8),roof);rt.position.y=1.42;g.add(rt);
+    const fire=new THREE.Mesh(new THREE.ConeGeometry(.10,.28,5),makeMaterial(0xffb348,.3,0,0xff5b21,1.2));fire.position.set(.62,.59,.18);g.add(fire);
+  }else if(era===1){
+    g.add(box(1.20,.78,1.0,wall,0,.91,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.84,.56,4),roof);rt.rotation.y=Math.PI/4;rt.position.y=1.58;g.add(rt);
+    g.add(box(.08,.78,.08,dark,-.42,.91,-.51),box(.08,.78,.08,dark,.42,.91,-.51),box(1.1,.07,.07,dark,0,1.2,-.51));
+  }else if(era===2){
+    g.add(box(1.25,.90,1.04,wall,0,.99,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.86,.50,4),roof);rt.rotation.y=Math.PI/4;rt.position.y=1.70;g.add(rt);
+    addWindow3(g,-.33,1.17,-.54,.2,.19,glass);addWindow3(g,.33,1.17,-.54,.2,.19,glass);
+    g.add(box(.20,.42,.035,dark,0,.75,-.55));
+  }else if(era===3){
+    g.add(box(1.28,1.05,1.06,wall,0,1.06,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.88,.58,6),roof);rt.position.y=1.84;g.add(rt);
+    addWindow3(g,-.35,1.25,-.55,.21,.21,glass);addWindow3(g,.35,1.25,-.55,.21,.21,glass);
+    g.add(box(.17,.44,.17,dark,.35,1.70,.2));
+  }else if(era===4){
+    g.add(box(1.34,1.22,1.08,wall,0,1.14,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.92,.80,4),roof);rt.rotation.y=Math.PI/4;rt.position.y=2.15;g.add(rt);
+    for(const x of [-.37,.37]) addWindow3(g,x,1.40,-.56,.22,.23,glass);g.add(box(.22,.50,.035,dark,0,.85,-.57));
+    g.add(box(.14,.34,.14,dark,.37,2.10,.16));
+  }else if(era===5){
+    g.add(box(1.38,1.5,1.10,wall,0,1.28,0),box(1.46,.1,1.18,roof,0,2.06,0));
+    for(const y of [1.28,1.75]) for(const x of [-.34,.34]) addWindow3(g,x,y,-.58,.22,.20,glass);
+    g.add(box(.16,.66,.16,dark,.35,2.35,.20));
+    addSmokeSource(g,.35,.20,era);
+  }else if(era===6){
+    g.add(box(1.40,1.78,1.12,wall,0,1.41,0),box(1.48,.10,1.20,roof,0,2.36,0));
+    for(const y of [1.30,1.82]) for(const x of [-.35,.35]) addWindow3(g,x,y,-.59,.24,.22,glass);
+    g.add(box(.22,.52,.04,dark,0,.88,-.59));
+  }else if(era===7){
+    g.add(box(1.48,2.22,1.15,wall,0,1.64,0),box(1.56,.10,1.23,roof,0,2.80,0));
+    for(let y=1.16;y<2.55;y+=.52) for(const x of [-.37,0,.37]) addWindow3(g,x,y,-.61,.20,.20,glass);
+    g.add(box(1.28,.06,.10,dark,0,1.02,-.66));
+  }else if(era===8){
+    g.add(box(1.55,2.58,1.20,wall,0,1.83,0));
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.78,.78,.12,10),roof);cap.position.y=3.16;g.add(cap);
+    for(let y=1.08;y<3.0;y+=.53) for(const x of [-.39,0,.39]) addWindow3(g,x,y,-.64,.21,.21,glass);
+    g.add(box(1.40,.06,1.20,makeMaterial(0x95dcf0,.3,.4,0x34bde9,.2),0,2.42,0));
+  }else{
+    g.add(box(1.58,3.0,1.22,wall,0,2.06,0));
+    const crown=new THREE.Mesh(new THREE.CylinderGeometry(.60,.78,.28,6),roof);crown.position.y=3.70;g.add(crown);
+    for(let y=1.08;y<3.45;y+=.52) for(const x of [-.40,0,.40]) addWindow3(g,x,y,-.66,.21,.22,glass);
+    const edge=makeMaterial(0x9deeff,.25,.6,0x32c8ff,.3);g.add(box(1.58,.045,.045,edge,0,.74,-.67),box(1.58,.045,.045,edge,0,3.48,-.67));
+  }
+
+  if(era<6){
+    const yard=new THREE.Mesh(new THREE.BoxGeometry(1.58,.025,1.28),makeMaterial(era<3?0x76925d:0x6e806b,1));yard.position.y=.52;g.add(yard);
+  }
+  const path=box(.18,.028,.38,makeMaterial(era<5?0xb5a284:0x8b9295,1),0,.54,-.72);g.add(path);
+
+  if(occupied>0){
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(.055,8,6),makeMaterial(0xffe9a8,.25,0,0xffb632,.65));bulb.position.set(.45,.92,-.61);g.add(bulb);
+    const person=makeCitizen(0,era);person.position.set(-.28,.52,-.68);g.add(person);
+    if(occupied>2){const person2=makeCitizen(1,era);person2.position.set(.22,.52,-.64);g.add(person2);}
+  }
+  if(era>=5&&occupied>0){g.add(box(.30,.10,.50,makeMaterial(era>=7?0x4b7186:0x5c6266,.45,.45),.48,.59,.42));}
+
+  residentialGroup.add(g);houseObjects.push(g);
+}
+
+function makeCitizen(index,era){
+  const g=new THREE.Group();
+  const clothes=[0x436b8d,0x7f5b58,0x6e628e,0x687b5f,0x8a704e,0x516778,0x61788e,0x4e7891,0x6d8ca1,0x5e7da0];
+  const shirt=makeMaterial(clothes[(index*5+era)%clothes.length],.92);
+  const skin=makeMaterial([0xe3ab82,0xc98c66,0xf0bd8d,0xb7775d][index%4],.92);
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.075,.17,3,5),shirt);torso.position.y=.24;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.085,8,6),skin);head.position.y=.44;
+  const leg1=box(.05,.18,.05,shirt,-.035,.09,0),leg2=box(.05,.18,.05,shirt,.035,.09,0);g.add(torso,head,leg1,leg2);
+  if(era>=5) g.add(box(.09,.11,.035,makeMaterial(0x454a50,.82),-.10,.30,.02));
+  g.scale.setScalar(era>=7?1.12:1);
+  return g;
+}
+
+function buildResidentialCity(p){
+  while(residentialGroup.children.length) residentialGroup.remove(residentialGroup.children[0]);
+  houseObjects.length=0;
+  const h=getHousingState();
+  for(let i=0;i<h.houses;i++){
+    const lot=HOUSE_LOTS[i];
+    if(!lot) break;
+    const occupied=Math.max(0,Math.min(h.perHouse,h.population-i*h.perHouse));
+    drawHouseVisual(lot,occupied,p);
+  }
+}
+
+function clearCitizens(){
+  while(citizenGroup.children.length) citizenGroup.remove(citizenGroup.children[0]);
+  citizenAgents.length=0;
+}
+
+function rebuildCitizenAgents(){
+  clearCitizens();
+  if(!state.pop) return;
+  const h=getHousingState();
+  const active=DISTRICTS.filter(d=>state.era>=d.unlock && state.districts[d.id].level>0);
+  const count=Math.min(85,Math.floor(state.pop));
+  for(let i=0;i<count;i++){
+    const home=HOUSE_LOTS[i%Math.max(1,h.houses)];
+    const job=active[i%Math.max(1,active.length)] || DISTRICTS[0];
+    const g=makeCitizen(i,state.era);
+    const rx=Math.round(home.x/8)*8, rz=Math.round(home.z/8)*8;
+    g.position.set(home.x,.55,home.z);
+    g.userData.points=[
+      new THREE.Vector3(home.x,.55,home.z),
+      new THREE.Vector3(rx,.55,home.z),
+      new THREE.Vector3(rx,.55,job.z),
+      new THREE.Vector3(job.x,.55,job.z),
+      new THREE.Vector3(rx,.55,job.z),
+      new THREE.Vector3(rx,.55,home.z),
+      new THREE.Vector3(home.x,.55,home.z)
+    ];
+    g.userData.segment=i%6;
+    g.userData.speed=.45+(i%7)*.06;
+    g.userData.phase=i*.73;
+    citizenGroup.add(g);citizenAgents.push(g);
+  }
+}
+
+function animateCitizens(dt,t){
+  for(const g of citizenAgents){
+    const pts=g.userData.points;if(!pts) continue;
+    let a=g.userData.segment,b=a+1;
+    if(b>=pts.length)b=0;
+    const d=new THREE.Vector3().subVectors(pts[b],g.position),len=d.length();
+    if(len<.08){g.userData.segment=b;continue;}
+    d.normalize();g.position.addScaledVector(d,(g.userData.speed||.6)*dt);g.rotation.y=Math.atan2(d.x,d.z);
+    g.position.y=.55+Math.sin(t*.006+g.userData.phase)*.014;
+  }
+}
+
+function facilityById(id){ return FACILITIES.find(x=>x.id===id); }
+function totalFacilityLevel(id){ return state.facilities.filter(x=>x.type===id).reduce((a,b)=>a+(b.level||1),0); }
+
+function buildFacilityVisual(f,p){
+  const def=facilityById(f.type);if(!def)return;
+  const g=new THREE.Group();g.position.set(f.x,0,f.z);g.userData.facilityId=f.id;g.userData.facilityType=f.type;
+  const base=box(2.1,.18,1.8,makeMaterial(0x424951,.82,.12),0,.10,0);g.add(base);
+  const era=state.era;
+  if(f.type==='well'){
+    g.add(cyl(.62,.36,makeMaterial(0x8a877d,1),0,.36,0,12));g.add(cyl(.28,.15,makeMaterial(0x346d7c,.2,.1),0,.53,0,12));
+  }else if(f.type==='granary'){
+    g.add(box(1.35,1.25,1.25,makeMaterial(0x9e774c,.88),0,.82,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.95,.5,6),makeMaterial(0x6e4e3c,.8));rt.position.y=1.70;g.add(rt);
+  }else if(f.type==='school'){
+    g.add(box(1.45,1.15,1.3,makeMaterial(0xa1a59d,.85),0,.82,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(.98,.42,4),makeMaterial(0x78564a,.72));rt.rotation.y=Math.PI/4;rt.position.y=1.60;g.add(rt);
+    addWindow3(g,-.42,1.02,-.67,.28,.25,p.glass);addWindow3(g,.42,1.02,-.67,.28,.25,p.glass);
+  }else if(f.type==='forge'){
+    g.add(box(1.55,1.35,1.2,makeMaterial(0x675148,.8,.08),0,.86,0));
+    g.add(cyl(.22,1.65,makeMaterial(0x373c40,.6,.45),.42,1.00,.18,10));addSmokeSource(g,.42,.18,Math.max(3,era));
+    g.add(cyl(.38,.10,makeMaterial(0xffb348,.3,0,0xff5b22,.95),-.38,.70,.20,8));
+  }else if(f.type==='market'){
+    for(const x of [-.65,0,.65]){g.add(cyl(.035,1.35,makeMaterial(0x5d4635,.9),x,.78,0,6));const c=new THREE.Mesh(new THREE.ConeGeometry(.42,.36,4),makeMaterial([0xa95b50,0x6b82ad,0xb09155][Math.abs(x*2)%3],.8));c.position.set(x,1.58,0);c.rotation.y=Math.PI/4;g.add(c);}
+  }else if(f.type==='bath'){
+    g.add(box(1.55,.95,1.35,makeMaterial(0x8d9ba0,.6),0,.68,0));g.add(cyl(.48,.18,makeMaterial(0x5b9a9e,.3,.05),0,1.20,0,16));
+  }else if(f.type==='clinic'){
+    g.add(box(1.6,1.45,1.35,makeMaterial(0xe0dfd7,.72),0,.92,0));addWindow3(g,-.42,1.20,-.70,.26,.25,p.glass);addWindow3(g,.42,1.20,-.70,.26,.25,p.glass);g.add(box(.56,.08,.08,makeMaterial(0xf1f1ee),0,1.76,-.70));g.add(box(.08,.36,.08,makeMaterial(0xf1f1ee),0,1.76,-.70));
+  }else if(f.type==='factory'){
+    g.add(box(1.7,1.5,1.45,makeMaterial(0x666b70,.76,.12),0,.86,0));
+    for(const x of [-.58,0,.58]) g.add(box(.28,.72,.04,makeMaterial(0x4d5962,.45,.35),x,.72,-.75));
+    g.add(cyl(.28,2.2,makeMaterial(0x4a4e52,.65,.4),.48,1.88,.20,10));addSmokeSource(g,.48,.20,era);
+  }else if(f.type==='power'){
+    const core=cyl(.58,2.7,makeMaterial(0x596b7b,.42,.5,0x2b6f9a,.08),0,1.45,0,12);g.add(core);
+    const glow=new THREE.Mesh(new THREE.TorusGeometry(.85,.08,8,24),makeMaterial(0x8be9ff,.22,.35,0x36c7ff,.85));glow.rotation.x=Math.PI/2;glow.position.y=1.9;g.add(glow);
+  }else if(f.type==='research'){
+    g.add(box(1.65,2.0,1.4,makeMaterial(0x677986,.36,.28),0,1.20,0));
+    for(let y=.9;y<2.4;y+=.5) for(const x of [-.42,0,.42]) addWindow3(g,x,y,-.74,.21,.20,p.glass);
+    g.add(cyl(.05,1.2,makeMaterial(0x9decff,.2,.5,0x39d1ff,.7),0,2.65,0,8));
+  }else if(f.type==='spaceport'){
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.3,.18,24),makeMaterial(0x586a78,.5,.2));pad.position.y=.28;g.add(pad);
+    const rocket=new THREE.Mesh(new THREE.CylinderGeometry(.23,.34,2.7,12),makeMaterial(0xdfe4e9,.28,.35));rocket.position.y=1.60;g.add(rocket);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.23,.48,12),makeMaterial(0x7ab6c9,.28,.25,0x2bb6e9,.2));nose.position.y=3.18;g.add(nose);
+  }else if(f.type==='habitat'){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.05,.22,8,28),makeMaterial(0x7aaac0,.24,.65,0x38c8ff,.5));ring.rotation.x=Math.PI/2;ring.position.y=2.2;g.add(ring);
+    g.add(cyl(.15,3.2,makeMaterial(0x9dbdcc,.3,.55),0,1.60,0,10));
+  }
+  facilityGroup.add(g);facilityObjects.push(g);
+}
+
+function buildFacilities(p){
+  while(facilityGroup.children.length)facilityGroup.remove(facilityGroup.children[0]);
+  facilityObjects.length=0;
+  for(const f of state.facilities) buildFacilityVisual(f,p);
+}
+
+function rebuildMap(){
+  while(cityGroup.children.length) cityGroup.remove(cityGroup.children[0]);
+  worldStreamKey='';
+  cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
+  districtObjects.clear();houseObjects.length=0;facilityObjects.length=0;smokePuffs.length=0;clearCitizens();
+  while(effectGroup.children.length) effectGroup.remove(effectGroup.children[0]);
+  HOUSE_LOTS=makeHouseLots();
+  const p=eraPalette();
+  const sky=ERA_SKY[state.era]||ERA_SKY[0];
+  renderer.setClearColor(sky,1);scene.background=new THREE.Color(sky);if(scene.fog)scene.fog.color.setHex(sky);
+  buildTerrainMap(p);
+  buildResidentialCity(p);
+  buildFacilities(p);
+  for(const d of DISTRICTS){
+    const ds=state.districts[d.id];
+    if(state.era<d.unlock && ds.level===0) continue;
+    const obj=buildDistrictVisual(d,p);districtObjects.set(d.id,obj);cityGroup.add(obj);
+  }
+  addCityCenter(p);
+  rebuildCitizenAgents();
+  highlight(state.selected);
+}
+
+function eraPalette(){
+  const v=ERA[state.era].visual;
+  return {
+    base:ERA_GROUND[v]||ERA_GROUND[0],
+    roof:[0x97603f,0xa16b45,0x86574a,0x76525a,0x745560,0x505c67,0x4b6476,0x4a728c,0x5b82a0,0x6a8eaf][v],
+    glass:[0x7d9fa4,0x76a4ab,0x6e9faa,0x76a4b0,0x7eadbb,0x68a2b9,0x63b8d4,0x72cde5,0x85def4,0xa0edff][v],
+    road:ERA_ROAD[v]||ERA_ROAD[0],
+    trim:[0x5a4637,0x5e4b3b,0x554c45,0x484950,0x42454a,0x323a42,0x2c3943,0x273744,0x23323f,0x202e3a][v]
+  };
+}
 
 /* =========================================================
    REBUILD MAP
 ========================================================= */
-
-function rebuildMap(){
-
-  while(
-    cityGroup.children.length
-  ){
-
-    cityGroup.remove(
-      cityGroup.children[0]
-    );
-
-  }
-
-
-  districtObjects.clear();
-
-  selectedRing=null;
-
-
-  const p=
-    eraPalette();
-
-  const skyColors=[0xb6d7e2,0xb7d6ca,0xc6d8cd,0xc7c9c5,0xb9c1c5,0xaeb8c0,0x9bb2c0,0x89a5ba,0x718ca7,0x516f91];
-  const sky=skyColors[state.era]||skyColors[0];
-  renderer.setClearColor(sky,1);
-  scene.background=new THREE.Color(sky);
-
-  cityGroup.visible = true;
-  cityGroup.position.set(0,0,0);
-  cityGroup.rotation.set(0,0,0);
-
-
-  /* Ground */
-
-  const ground=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        65,
-        1.2,
-        65
-      ),
-      new THREE.MeshStandardMaterial({
-        color:p.base,
-        roughness:1,
-        metalness:0
-      })
-    );
-
-  ground.position.y=-.6;
-  ground.receiveShadow=true;
-
-  cityGroup.add(
-    ground
-  );
-
-
-  /* Water */
-
-  const water1=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        7,
-        .8,
-        65
-      ),
-      new THREE.MeshStandardMaterial({color:0x2a7387,roughness:.24,metalness:.08,transparent:true,opacity:.86})
-    );
-
-  water1.position.set(
-    -29,
-    .2,
-    0
-  );
-
-  cityGroup.add(
-    water1
-  );
-
-
-  const water2=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        65,
-        .8,
-        5
-      ),
-      new THREE.MeshStandardMaterial({color:0x2a7387,roughness:.24,metalness:.08,transparent:true,opacity:.86})
-    );
-
-  water2.position.set(
-    0,
-    .2,
-    29.5
-  );
-
-  cityGroup.add(
-    water2
-  );
-
-
-  /* Roads */
-  const roadMaterial=new THREE.MeshStandardMaterial({color:p.road,roughness:state.era<3?1:.76,metalness:state.era>=6?.18:0});
-
-  for(
-    let i=-5;
-    i<=5;
-    i++
-  ){
-
-    const roadX=
-      box(
-        1.2,
-        .18,
-        65,
-        roadMaterial,
-        i*6,
-        .1,
-        0
-      );
-
-    cityGroup.add(
-      roadX
-    );
-
-
-    const roadZ=
-      box(
-        65,
-        .18,
-        1.2,
-        roadMaterial,
-        0,
-        .11,
-        i*6
-      );
-
-    cityGroup.add(
-      roadZ
-    );
-
-  }
-
-
-  /* Road edges */
-
-  for(
-    let i=-5;
-    i<=5;
-    i++
-  ){
-
-    const a=
-      box(
-        .12,
-        .2,
-        65,
-        mat(0x495257),
-        i*6-.67,
-        .2,
-        0
-      );
-
-    const b=
-      box(
-        .12,
-        .2,
-        65,
-        mat(0x495257),
-        i*6+.67,
-        .2,
-        0
-      );
-
-    cityGroup.add(
-      a,
-      b
-    );
-
-
-    const c=
-      box(
-        65,
-        .2,
-        .12,
-        mat(0x495257),
-        0,
-        .2,
-        i*6-.67
-      );
-
-    const d=
-      box(
-        65,
-        .2,
-        .12,
-        mat(0x495257),
-        0,
-        .2,
-        i*6+.67
-      );
-
-    cityGroup.add(
-      c,
-      d
-    );
-
-  }
-
-
-  /* 時代に応じた道路表現 */
-  addRoadMarkings(cityGroup);
-  addRoadSideProps(cityGroup);
-  addModernStreetFurniture(cityGroup);
-  for(let i=-5;i<=5;i+=2){
-    if(state.era>=6){
-      addStreetLamp(cityGroup,i*6-1.05,-29);
-      addStreetLamp(cityGroup,i*6+1.05,29);
-      addStreetLamp(cityGroup,-29,i*6-1.05);
-      addStreetLamp(cityGroup,29,i*6+1.05);
-    }
-  }
-
-
-  addTerrainDetails(
-    p
-  );
-
-
-  /*
-    人口に応じて住宅を建てる。
-    中心から外へ順番に埋まるので、
-    「人口が増える＝街が実際に広がる」
-    という見た目になる。
-  */
-  buildResidentialCity(
-    p
-  );
-
-
-  /* Districts */
-
-  for(
-    const d of DISTRICTS
-  ){
-
-    const ds=
-      state.districts[d.id];
-
-    if(
-      state.era<d.unlock &&
-      ds.level===0
-    ){
-
-      continue;
-
-    }
-
-
-    const obj=
-      buildDistrictVisual(
-        d,
-        p
-      );
-
-    districtObjects.set(
-      d.id,
-      obj
-    );
-
-    cityGroup.add(
-      obj
-    );
-
-  }
-
-
-  addCityCenter(
-    p
-  );
-
-  buildCitizenAgents();
-
-  highlight(
-    state.selected
-  );
-
-}
-
 
 /* =========================================================
    TERRAIN
@@ -2242,742 +2402,7 @@ function addTerrainDetails(p){
 }
 
 
-
 /* =========================================================
-   RESIDENTIAL CITY
-========================================================= */
-
-/*
-  道路の間に固定ロットを作る。
-  ランダム配置ではないので、再描画しても
-  家が別の場所へ飛ばない。
-*/
-function makeHouseLots(){
-
-  const lots=[];
-
-  const roadGap=6;
-  const offsets=[-1.7,0,1.7];
-
-  let id=0;
-
-  for(
-    let bx=-5;
-    bx<=5;
-    bx++
-  ){
-
-    for(
-      let bz=-5;
-      bz<=5;
-      bz++
-    ){
-
-      const cx=bx*roadGap;
-      const cz=bz*roadGap;
-
-      for(
-        const ox of offsets
-      ){
-
-        for(
-          const oz of offsets
-        ){
-
-          const x=cx+ox;
-          const z=cz+oz;
-
-          /*
-            水辺・大きな地区・中央広場と
-            住宅が重ならないようにする。
-          */
-          if(
-            x < -24.2 ||
-            z > 26.4
-          )
-            continue;
-
-          if(
-            Math.hypot(x,z)<5.2
-          )
-            continue;
-
-          let nearDistrict=false;
-
-          for(
-            const d of DISTRICTS
-          ){
-
-            const radius =
-              d.id==='capital'
-                ? 4.8
-                : 3.8;
-
-            if(
-              Math.hypot(
-                x-d.x,
-                z-d.z
-              ) < radius
-            ){
-
-              nearDistrict=true;
-              break;
-
-            }
-
-          }
-
-          if(nearDistrict)
-            continue;
-
-          lots.push({
-            id:id++,
-            x,
-            z,
-            dist:
-              Math.hypot(x,z)
-          });
-
-        }
-
-      }
-
-    }
-
-  }
-
-  lots.sort(
-    (a,b)=>
-      a.dist-b.dist ||
-      a.z-b.z ||
-      a.x-b.x
-  );
-
-  return lots;
-
-}
-
-
-const HOUSE_LOTS =
-  makeHouseLots();
-
-
-function housingCapacityPerHouse(){
-  return [4,4,6,6,8,15,24,40,80,180][state.era] || 4;
-}
-
-function getHousingState(){
-
-  const population=Math.max(0,state.pop);
-  const perHouse=housingCapacityPerHouse();
-  const houses=Math.min(
-    HOUSE_LOTS.length,
-    Math.max(1,Math.ceil(population/perHouse))
-  );
-
-  return {
-    population,
-    houses,
-    perHouse,
-    capacity:houses*perHouse + state.housingBonus,
-    shortage:Math.max(
-      0,
-      population-(HOUSE_LOTS.length*perHouse+state.housingBonus)
-    )
-  };
-
-}
-
-
-function clearResidentialCity(){
-
-  while(
-    residentialGroup.children.length
-  ){
-
-    residentialGroup.remove(
-      residentialGroup.children[0]
-    );
-
-  }
-
-  houseObjects.length=0;
-
-}
-
-
-function makeResident(
-  x,
-  z,
-  index,
-  era
-){
-
-  const g=
-    new THREE.Group();
-
-  const bodyColor=[
-    0x385f86,
-    0x5b6f8f,
-    0x765e72,
-    0x7b6550,
-    0x5a6b70,
-    0x485d74,
-    0x4b6f84,
-    0x6c5f86,
-    0x5e7093,
-    0x677a9b
-  ][era] || 0x526a80;
-
-  const body=
-    new THREE.Mesh(
-      new THREE.CapsuleGeometry(
-        .055,
-        .13,
-        3,
-        5
-      ),
-      new THREE.MeshStandardMaterial({
-        color:bodyColor,
-        roughness:.95
-      })
-    );
-
-  body.position.y=.23;
-
-  const head=
-    new THREE.Mesh(
-      new THREE.SphereGeometry(
-        .075,
-        7,
-        6
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0xe0aa7d,
-        roughness:.9
-      })
-    );
-
-  head.position.y=.39;
-
-  g.add(
-    body,
-    head
-  );
-
-  const px =
-    x +
-    (
-      [0,.15,-.15,.22][index] ||
-      0
-    );
-
-  const pz =
-    z +
-    (
-      [.48,.42,.53,.47][index] ||
-      .5
-    );
-
-  g.position.set(
-    px,
-    .46,
-    pz
-  );
-
-  g.userData.resident=true;
-
-  return g;
-
-}
-
-
-function addWindow(
-  parent,
-  x, y, z,
-  w, h,
-  color,
-  rotY=0
-){
-
-  const win = new THREE.Mesh(
-    new THREE.BoxGeometry(w,h,.035),
-    new THREE.MeshStandardMaterial({
-      color,
-      roughness:.24,
-      metalness:.08,
-      emissive:color,
-      emissiveIntensity:.04
-    })
-  );
-
-  win.position.set(x,y,z);
-  win.rotation.y=rotY;
-  win.castShadow=false;
-  parent.add(win);
-  return win;
-
-}
-
-function addFence(parent,x,z,w,rotY=0){
-
-  const fenceMat=
-    new THREE.MeshStandardMaterial({
-      color:0x806247,
-      roughness:.9
-    });
-
-  const rail=new THREE.Mesh(
-    new THREE.BoxGeometry(w,.08,.045),
-    fenceMat
-  );
-  rail.position.set(x,.52,z);
-  rail.rotation.y=rotY;
-  parent.add(rail);
-
-  const posts=Math.max(2,Math.round(w/0.38));
-  for(let i=0;i<posts;i++){
-    const t=new THREE.Mesh(
-      new THREE.BoxGeometry(.05,.28,.05),
-      fenceMat
-    );
-    const localX=
-      -w/2 + (posts===1 ? 0 : i*(w/(posts-1)));
-    t.position.set(x + localX*Math.cos(rotY), .64, z + localX*Math.sin(rotY));
-    parent.add(t);
-  }
-}
-
-function addStreetLamp(parent,x,z){
-
-  const poleMat=
-    new THREE.MeshStandardMaterial({
-      color:0x3b4147,
-      roughness:.8,
-      metalness:.45
-    });
-
-  const pole=cyl(.055,1.35,poleMat,x,.18,z,8);
-  const arm=box(.34,.055,.055,poleMat,x+.14,1.42,z);
-  const glowMat=
-    new THREE.MeshStandardMaterial({
-      color:0xffe8aa,
-      emissive:0xffc65e,
-      emissiveIntensity:.8,
-      roughness:.25
-    });
-  const lamp=cyl(.095,.08,glowMat,x+.27,1.39,z,8);
-  parent.add(pole,arm,lamp);
-}
-
-function addRoadMarkings(parent){
-
-  const era=state.era;
-  if(era<3) return;
-
-  const markMat=new THREE.MeshStandardMaterial({
-    color:era>=6?0xd6d9d6:0xc1bca9,
-    roughness:.86
-  });
-  const lineStep=era>=6?3.0:3.6;
-
-  for(let i=-5;i<=5;i++){
-    const x=i*6;
-    for(let z=-28;z<=28;z+=lineStep){
-      if(Math.abs(z)<2) continue;
-      parent.add(box(.045,.014,.62,markMat,x,.205,z));
-    }
-  }
-
-  for(let i=-5;i<=5;i++){
-    const z=i*6;
-    for(let x=-28;x<=28;x+=lineStep){
-      if(Math.abs(x)<2) continue;
-      parent.add(box(.62,.014,.045,markMat,x,.215,z));
-    }
-  }
-}
-
-
-function addRoadSideProps(parent){
-  const era=state.era;
-  if(era>=6) return;
-  const shrubMat=mat(era<2?0x668353:0x59745a);
-  for(let i=-4;i<=4;i++){
-    const x=i*6+1.15;
-    parent.add(cyl(.11,.22,shrubMat,x,.28,-2.45,7));
-    parent.add(cyl(.10,.19,shrubMat,x+2.3,.27,2.45,7));
-  }
-}
-
-
-function addModernStreetFurniture(parent){
-  const era=state.era;
-  if(era<6) return;
-  const metal=mat(era>=8?0x4a6878:0x454b51,.45);
-  for(let i=-4;i<=4;i+=2){
-    const x=i*6+1.2;
-    parent.add(cyl(.045,1.18,metal,x,.18,-2.45,7));
-    const lightMat=new THREE.MeshStandardMaterial({color:0xc9f3ff,emissive:0x48c7ff,emissiveIntensity:era>=8?.8:.35,roughness:.25});
-    parent.add(cyl(.09,.06,lightMat,x+0.04,1.42,-2.45,8));
-  }
-}
-
-
-function buildHouse(
-  lot,
-  occupied,
-  p
-){
-
-  const g=new THREE.Group();
-  g.position.set(lot.x,0,lot.z);
-  g.userData.houseId=lot.id;
-  g.userData.occupied=occupied;
-  g.userData.era=state.era;
-
-  const era=state.era;
-  const density=lot.dist<12 ? 1.08 : 1;
-
-  const wallColors=[
-    0xb99063,0xc39a6c,0xb9a07c,0x9c9186,0x968b82,
-    0x777b80,0x6d7881,0x718b9c,0x7897aa,0x7f9eaf
-  ];
-  const roofColors=[
-    p.roof,0x9b6845,0x8b5a49,0x684e58,0x6f4d57,
-    0x48535d,0x425f70,0x426e88,0x4f7b9b,0x5c82a9
-  ];
-
-  const wall=new THREE.MeshStandardMaterial({
-    color:wallColors[era], roughness:era>=7?.52:.82, metalness:era>=7?.08:0
-  });
-  const roof=new THREE.MeshStandardMaterial({
-    color:roofColors[era], roughness:era>=6?.5:.76, metalness:era>=8?.12:0
-  });
-  const dark=new THREE.MeshStandardMaterial({color: p.trim, roughness:.72, metalness:era>=5?.25:0});
-  const warm=new THREE.MeshStandardMaterial({
-    color:0xffdf9a, emissive:0xffa52f,
-    emissiveIntensity:occupied?(.18+era*.03):0, roughness:.25
-  });
-
-  /* 道路側の小さな区画 */
-  const base=new THREE.Mesh(
-    new THREE.BoxGeometry(1.58,0.10,1.28),
-    new THREE.MeshStandardMaterial({
-      color:era<3?0x806b53:era<6?0x737574:0x59636a,
-      roughness:1
-    })
-  );
-  base.position.y=.47;
-  g.add(base);
-
-  if(era===0){
-    /* 原始：円形小屋＋焚き火 */
-    const hut=new THREE.Mesh(
-      new THREE.CylinderGeometry(.48,.55,.62,8),
-      wall
-    );
-    hut.position.y=.78;
-    g.add(hut);
-
-    const roofTop=new THREE.Mesh(
-      new THREE.ConeGeometry(.62,.52,8),
-      roof
-    );
-    roofTop.position.y=1.34;
-    g.add(roofTop);
-
-    const fire=new THREE.Mesh(
-      new THREE.ConeGeometry(.10,.28,5),
-      warm
-    );
-    fire.position.set(.62,.58,.10);
-    g.add(fire);
-  }
-  else if(era===1){
-    /* 村：木組み住宅 */
-    const body=box(1.18,.76,1.00,wall,0,.90,0);
-    g.add(body);
-    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.82,.56,4),roof);
-    roofTop.rotation.y=Math.PI/4;
-    roofTop.position.y=1.56;
-    g.add(roofTop);
-    for(const x of [-.42,.42]) g.add(box(.075,.78,.075,dark,x,.90,-.51));
-    g.add(box(1.1,.075,.075,dark,0,1.20,-.51));
-  }
-  else if(era===2){
-    /* 青銅：石壁＋瓦屋根 */
-    const body=box(1.22,.88,1.02,wall,0,.98,0);
-    g.add(body);
-    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.84,.48,4),roof);
-    roofTop.rotation.y=Math.PI/4;
-    roofTop.position.y=1.66;
-    g.add(roofTop);
-    g.add(box(.22,.40,.04,dark,0,.73,-.53));
-    for(const x of [-.34,.34]) addWindow(g,x,1.13,-.535,.19,.18,0x83a6ad);
-  }
-  else if(era===3){
-    /* 鉄器：石造家＋煙突 */
-    const body=box(1.26,1.00,1.04,wall,0,1.03,0);
-    g.add(body);
-    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.88,.56,6),roof);
-    roofTop.position.y=1.81;
-    g.add(roofTop);
-    g.add(box(.18,.46,.18,dark,.34,1.68,.20));
-    for(const x of [-.34,.34]) addWindow(g,x,1.18,-.545,.20,.21,0x87a5ad);
-  }
-  else if(era===4){
-    /* 中世：屋根が急な長屋風住宅 */
-    const body=box(1.30,1.18,1.06,wall,0,1.12,0);
-    g.add(body);
-    const roofTop=new THREE.Mesh(new THREE.ConeGeometry(.90,.78,4),roof);
-    roofTop.rotation.y=Math.PI/4;
-    roofTop.position.y=2.06;
-    g.add(roofTop);
-    g.add(box(.21,.48,.04,dark,0,.86,-.55));
-    for(const x of [-.36,.36]) addWindow(g,x,1.36,-.55,.22,.22,0x8fb1b6);
-    g.add(box(.14,.34,.14,dark,.36,2.05,.16));
-  }
-  else if(era===5){
-    /* 産業：レンガのテラスハウス＋工場型煙突 */
-    const body=box(1.32,1.45,1.08,wall,0,1.26,0);
-    g.add(body);
-    g.add(box(1.40,.10,1.15,roof,0,2.02,0));
-    g.add(box(.16,.62,.16,dark,.35,2.30,.20));
-    addWindow(g,-.32,1.28,-.56,.23,.20,0x7faab6);
-    addWindow(g,.32,1.28,-.56,.23,.20,0x7faab6);
-    addWindow(g,-.32,1.73,-.56,.23,.20,0x7faab6);
-    addWindow(g,.32,1.73,-.56,.23,.20,0x7faab6);
-  }
-  else if(era===6){
-    /* 電気：2階建て近代住宅＋電柱 */
-    const body=box(1.34,1.70,1.10,wall,0,1.38,0);
-    g.add(body);
-    g.add(box(1.42,.10,1.18,roof,0,2.26,0));
-    g.add(box(.22,.52,.04,dark,0,.88,-.57));
-    for(const y of [1.35,1.85]){
-      addWindow(g,-.35,y,-.57,.25,.22,p.glass);
-      addWindow(g,.35,y,-.57,.25,.22,p.glass);
-    }
-    const pole=cyl(.035,1.55,dark,.76,.52,.30,6);
-    const wire=box(.65,.02,.02,dark,.43,2.00,.30);
-    g.add(pole,wire);
-  }
-  else if(era===7){
-    /* 情報：集合住宅 */
-    const body=box(1.44,2.18,1.12,wall,0,1.62,0);
-    g.add(body);
-    g.add(box(1.52,.10,1.20,roof,0,2.76,0));
-    for(let row=0;row<3;row++){
-      for(const x of [-.37,0,.37]){
-        addWindow(g,x,1.18+row*.52,-.58,.20,.20,p.glass);
-      }
-    }
-    g.add(box(1.25,.055,.10,dark,0,1.02,-.63));
-  }
-  else if(era===8){
-    /* 宇宙：モジュール住宅＋発光ガラス */
-    const body=box(1.50,2.55,1.16,wall,0,1.82,0);
-    g.add(body);
-    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.78,.78,.12,8),roof);
-    cap.position.y=3.15;
-    g.add(cap);
-    for(let row=0;row<4;row++){
-      for(const x of [-.38,0,.38]) addWindow(g,x,1.08+row*.53,-.60,.21,.21,p.glass);
-    }
-    const band=new THREE.MeshStandardMaterial({color:0x92cfe2,emissive:0x3db4ea,emissiveIntensity:.18,metalness:.5,roughness:.35});
-    g.add(box(1.38,.06,1.18,band,0,2.42,0));
-  }
-  else{
-    /* 恒星文明：縦型スマートタワー */
-    const body=box(1.48,2.95,1.16,wall,0,2.03,0);
-    g.add(body);
-    const crown=new THREE.Mesh(new THREE.CylinderGeometry(.58,.75,.28,6),roof);
-    crown.position.y=3.64;
-    g.add(crown);
-    for(let row=0;row<5;row++){
-      for(const x of [-.39,0,.39]) addWindow(g,x,1.05+row*.52,-.60,.21,.23,p.glass);
-    }
-    const edge=new THREE.MeshStandardMaterial({color:0x9be7ff,emissive:0x37b8ff,emissiveIntensity:.22,metalness:.65,roughness:.25});
-    g.add(box(1.52,.045,.045,edge,0,.72,-.61));
-    g.add(box(1.52,.045,.045,edge,0,3.48,-.61));
-  }
-
-  /* 共通の庭・玄関・街路樹 */
-  if(era<6){
-    const yard=new THREE.Mesh(
-      new THREE.BoxGeometry(1.54,.025,1.22),
-      new THREE.MeshStandardMaterial({color:era<3?0x78945e:0x71846d,roughness:1})
-    );
-    yard.position.y=.525;
-    g.add(yard);
-  }
-
-  const path=new THREE.Mesh(
-    new THREE.BoxGeometry(.18,.028,.38),
-    new THREE.MeshStandardMaterial({color:era<5?0xb4a184:0x8b9296,roughness:1})
-  );
-  path.position.set(0,.55,-.72);
-  g.add(path);
-
-  /* 住民がいる家には生活感 */
-  if(occupied>0){
-    const lamp=new THREE.Mesh(new THREE.SphereGeometry(.055,8,6),warm);
-    lamp.position.set(.46,.92,-.59);
-    g.add(lamp);
-  }
-
-  const visibleResidents=era>=7?1:Math.min(2,occupied);
-  for(let i=0;i<visibleResidents;i++){
-    const r=makeResident(0,0,i,era);
-    r.scale.setScalar(era>=6?1.15:1.0);
-    r.position.z=-.64 + (i*.16);
-    r.position.x=-.28+(i*.22);
-    r.position.y=.51;
-    g.add(r);
-  }
-
-  if(era>=5 && occupied>=1){
-    const parked=new THREE.Mesh(
-      new THREE.BoxGeometry(.28,.10,.48),
-      new THREE.MeshStandardMaterial({color:era>=7?0x466b80:0x5a5f63,metalness:.45,roughness:.45})
-    );
-    parked.position.set(.49,.59,.44);
-    g.add(parked);
-  }
-
-  residentialGroup.add(g);
-  houseObjects.push(g);
-
-}
-
-
-function buildResidentialCity(p){
-
-  clearResidentialCity();
-
-  if(residentialGroup.parent!==cityGroup){
-    cityGroup.add(residentialGroup);
-  }
-
-  const housing=getHousingState();
-
-  for(let i=0;i<housing.houses;i++){
-    const lot=HOUSE_LOTS[i];
-    if(!lot) break;
-
-    const remaining=housing.population-i*housing.perHouse;
-    const occupied=Math.max(0,Math.min(housing.perHouse,remaining));
-    buildHouse(lot,occupied,p);
-  }
-
-}
-
-
-function clearCitizenAgents(){
-  while(citizenGroup.children.length){
-    citizenGroup.remove(citizenGroup.children[0]);
-  }
-  citizenAgents.length=0;
-}
-
-function makeCitizenAgent(index,p){
-
-  const g=new THREE.Group();
-  const era=state.era;
-  const palette=[0x3d6484,0x875b50,0x6d5f8e,0x6c7855,0x8b704e,0x4c6675,0x6b7a8f,0x4f7590,0x688ba0,0x6280a0];
-  const shirt=new THREE.MeshStandardMaterial({color:palette[(index*7+era*3)%palette.length],roughness:.9});
-  const skin=new THREE.MeshStandardMaterial({color:[0xe2ac84,0xc98e69,0xf0bd8f,0xb97659][index%4],roughness:.9});
-
-  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.075,.16,3,5),shirt);
-  torso.position.y=.24;
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.085,8,6),skin);
-  head.position.y=.43;
-  const leg1=box(.055,.18,.055,shirt,-.035,.095,0);
-  const leg2=box(.055,.18,.055,shirt,.035,.095,0);
-  g.add(torso,head,leg1,leg2);
-
-  if(era>=5){
-    const bag=box(.09,.11,.035,new THREE.MeshStandardMaterial({color:0x444a52,roughness:.8}),-.10,.30,.015);
-    g.add(bag);
-  }
-
-  g.scale.setScalar(era>=7?1.15:1.0);
-  g.userData.speed=.55+((index*13)%25)/100;
-  g.userData.phase=(index*.73)%6.28;
-  return g;
-}
-
-function buildCitizenAgents(){
-
-  clearCitizenAgents();
-  if(citizenGroup.parent!==cityGroup) cityGroup.add(citizenGroup);
-
-  const housing=getHousingState();
-  if(housing.houses<=0 || state.pop<=0) return;
-
-  const count=Math.min(90,Math.max(0,Math.floor(state.pop)));
-  const activeDistricts=DISTRICTS.filter(d=>state.era>=d.unlock && state.districts[d.id].level>0);
-
-  for(let i=0;i<count;i++){
-    const home=HOUSE_LOTS[i%housing.houses];
-    const job=activeDistricts[i%Math.max(1,activeDistricts.length)] || DISTRICTS[0];
-    const hx=home.x, hz=home.z;
-    const roadX=Math.round(hx/6)*6;
-    const roadZ=Math.round(hz/6)*6;
-    const tx=job.x, tz=job.z;
-    const points=[
-      new THREE.Vector3(hx,.52,hz),
-      new THREE.Vector3(roadX,.52,hz),
-      new THREE.Vector3(roadX,.52,tz),
-      new THREE.Vector3(tx,.52,tz),
-      new THREE.Vector3(roadX,.52,tz),
-      new THREE.Vector3(roadX,.52,hz),
-      new THREE.Vector3(hx,.52,hz)
-    ];
-
-    const g=makeCitizenAgent(i);
-    const startOffset=(i%7)/7;
-    g.position.copy(points[0]);
-    g.userData.points=points;
-    g.userData.segment=Math.floor(startOffset*(points.length-1))%(points.length-1);
-    g.userData.t=startOffset;
-    g.userData.direction=1;
-    g.userData.home=home.id;
-    g.userData.job=job.id;
-    citizenGroup.add(g);
-    citizenAgents.push(g);
-  }
-}
-
-function animateCitizenAgents(dt,t){
-  for(const g of citizenAgents){
-    const pts=g.userData.points;
-    if(!pts || pts.length<2) continue;
-    let a=g.userData.segment;
-    let b=a+g.userData.direction;
-    if(b<0) b=pts.length-1;
-    if(b>=pts.length) b=0;
-
-    const target=pts[b];
-    const dir=new THREE.Vector3().subVectors(target,g.position);
-    const dist=dir.length();
-    const speed=g.userData.speed || .65;
-
-    if(dist<.05){
-      g.userData.segment=b;
-    }else{
-      dir.normalize();
-      g.position.addScaledVector(dir,speed*dt);
-      g.rotation.y=Math.atan2(dir.x,dir.z);
-    }
-    g.position.y=.52 + Math.sin(t*.004+g.userData.phase)*.012;
-  }
-}
-
-
-/* =========================================================
-   DISTRICT MATERIAL/* =========================================================
    DISTRICT MATERIAL
 ========================================================= */
 
@@ -3760,33 +3185,39 @@ function drawBuildings(
       r
     );
 
-    /* 屋根の端と正面窓で建物の情報量を増やす */
-    if(d.type!=='industry' || state.era<7){
-      const trim=new THREE.Mesh(
-        new THREE.BoxGeometry(w+.04,.055,.055),
-        new THREE.MeshStandardMaterial({
-          color:0x4d4540,
-          roughness:.7
-        })
+
+    if(state.era>=6){
+
+      const win=
+        mat(
+          p.glass,
+          .3
+        );
+
+
+      const ww=
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            w*.5,
+            .25,
+            .04
+          ),
+          win
+        );
+
+
+      ww.position.set(
+        x,
+        .42+h*.58,
+        z-dep/2-.025
       );
-      trim.position.set(x,.42+h+.18,z-dep/2-.025);
-      g.add(trim);
-    }
 
-    const frontWindowColor=
-      state.era>=6 ? p.glass : 0x7697a2;
-    addWindow(
-      g, x, .42+h*.58, z-dep/2-.03,
-      Math.max(.18,w*.38), .16, frontWindowColor
-    );
 
-    if(state.era>=5){
-      addWindow(
-        g, x+w/2+.03, .42+h*.58, z,
-        Math.max(.14,dep*.32), .15, frontWindowColor, Math.PI/2
+      g.add(
+        ww
       );
-    }
 
+    }
 
   }
 
@@ -3845,94 +3276,101 @@ function drawBuildings(
 
 function addCityCenter(){
 
-  const era=state.era;
-  const lvl=Math.max(1,state.districts.capital.level);
-  const stoneMat=mat(era<3?0xbca47c:era<6?0x958f88:0x6f7b84,.75);
-  const accentMat=mat(era<5?0x9c7045:era<7?0x58758a:0x65c8e4,.42);
+  const lvl=
+    Math.max(
+      1,
+      state.districts.capital.level
+    );
 
-  const plaza=new THREE.Mesh(
-    new THREE.CylinderGeometry(3.2,3.35,.26,32),
-    new THREE.MeshStandardMaterial({color:era<4?0x9a815d:era<7?0x68737c:0x53636e,roughness:.78})
+
+  const plaza=
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        2.8,
+        2.8,
+        .35,
+        8
+      ),
+      mat(0x9c8452)
+    );
+
+
+  plaza.position.y=.46;
+
+
+  cityGroup.add(
+    plaza
   );
-  plaza.position.y=.45;
-  cityGroup.add(plaza);
 
-  if(era<=1){
-    const fire=new THREE.Mesh(new THREE.ConeGeometry(.45,.65,8),new THREE.MeshStandardMaterial({color:0xffa94d,emissive:0xff5a21,emissiveIntensity:1.25}));
-    fire.position.y=.83;
-    cityGroup.add(fire);
-    for(let i=0;i<8;i++){
-      const post=cyl(.06,.65,mat(0x654734),2.0,.55*Math.sin(i*.78),2.0*Math.cos(i*.78),6);
-      post.position.set(Math.cos(i*.785)*2.0,.7,Math.sin(i*.785)*2.0);
-      cityGroup.add(post);
-    }
-  }else if(era<=3){
-    const podium=box(2.9,.42,2.9,stoneMat,0,.69,0);
-    cityGroup.add(podium);
-    const hall=box(1.75,1.55,1.75,stoneMat,0,1.67,0);
-    cityGroup.add(hall);
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(1.45,.65,4),mat(0x7a4f44));
-    roof.rotation.y=Math.PI/4; roof.position.y=2.78; cityGroup.add(roof);
-    for(const x of [-.55,0,.55]) cityGroup.add(cyl(.09,1.25,mat(0xc6b58d),x,1.02,-.98,8));
-  }else if(era===4){
-    const palace=box(2.35,2.0,2.15,stoneMat,0,1.45,0);
-    cityGroup.add(palace);
-    for(const x of [-1.0,1.0]){
-      cityGroup.add(cyl(.42,3.15,stoneMat,x,2.02,0,10));
-      cityGroup.add(new THREE.Mesh(new THREE.ConeGeometry(.5,.55,8),mat(0x7b4d55)));
-      cityGroup.children[cityGroup.children.length-1].position.set(x,3.85,0);
-    }
-    const gate=box(.55,.85,2.2,mat(0x4e4a4a),0,1.00,-1.15);
-    cityGroup.add(gate);
-  }else if(era===5){
-    const station=box(2.8,1.65,2.3,stoneMat,0,1.28,0);
-    cityGroup.add(station);
-    for(let x of [-.9,0,.9]) cityGroup.add(box(.16,2.6,.16,accentMat,x,1.70,-.72));
-    cityGroup.add(cyl(.34,1.1,mat(0x4a4b4f),0,2.80,.15,10));
-    cityGroup.add(cyl(.46,1.6,mat(0x4a4b4f),-1.0,3.05,.20,10));
-  }else if(era===6){
-    const tower=box(2.6,3.8,2.5,stoneMat,0,2.35,0);
-    cityGroup.add(tower);
-    for(let y=1.3;y<4.1;y+=.65) for(let x of [-.75,0,.75]) addWindow(cityGroup,x,y,-1.27,.26,.25,0x65bddd);
-    cityGroup.add(box(2.95,.16,2.85,accentMat,0,4.3,0));
-  }else if(era===7){
-    const tower=box(2.5,5.0,2.4,stoneMat,0,2.95,0);
-    cityGroup.add(tower);
-    for(let y=1.25;y<5.1;y+=.62) for(let x of [-.78,0,.78]) addWindow(cityGroup,x,y,-1.23,.27,.25,0x78d5ec);
-    const antenna=cyl(.05,2.2,accentMat,0,6.55,0,8); cityGroup.add(antenna);
-  }else if(era===8){
-    const core=cyl(1.75,6.0,stoneMat,0,3.45,0,16); cityGroup.add(core);
-    for(let i=0;i<8;i++){
-      const a=i*Math.PI/4;
-      const wing=box(.70,3.6,1.0,accentMat,Math.cos(a)*1.95,2.3,Math.sin(a)*1.95);
-      wing.rotation.y=a;
-      cityGroup.add(wing);
-    }
-    const halo=new THREE.Mesh(new THREE.TorusGeometry(2.55,.10,8,32),new THREE.MeshStandardMaterial({color:0x8feaff,emissive:0x38bfff,emissiveIntensity:.8,metalness:.5,roughness:.25}));
-    halo.rotation.x=Math.PI/2; halo.position.y=4.2; cityGroup.add(halo);
-  }else{
-    const core=cyl(1.65,7.2,stoneMat,0,4.05,0,16); cityGroup.add(core);
-    for(let i=0;i<6;i++){
-      const a=i*Math.PI/3;
-      const wing=box(.78,5.0,1.18,accentMat,Math.cos(a)*1.95,2.75,Math.sin(a)*1.95);
-      wing.rotation.y=a; cityGroup.add(wing);
-    }
-    const crown=new THREE.Mesh(new THREE.SphereGeometry(.55,16,12),new THREE.MeshStandardMaterial({color:0x9df4ff,emissive:0x36cfff,emissiveIntensity:1.2,roughness:.18,metalness:.25}));
-    crown.position.y=7.85; cityGroup.add(crown);
-  }
 
-  /* 広場を囲む街灯／植栽 */
-  for(let i=0;i<8;i++){
-    const a=i*Math.PI/4;
-    const r=2.45;
-    const x=Math.cos(a)*r,z=Math.sin(a)*r;
-    if(era>=6) addStreetLamp(cityGroup,x,z);
-    else{
-      const tree=cyl(.10,.35,mat(0x6c503a),x,.58,z,6);
-      const crown=new THREE.Mesh(new THREE.SphereGeometry(.28,7,6),mat(era<3?0x64824f:0x5d7452));
-      crown.position.set(x,.90,z);
-      cityGroup.add(tree,crown);
+  const monument=
+    cyl(
+      .55,
+      3.5,
+      mat(0xd4c18b),
+      0,
+      .62,
+      0,
+      8
+    );
+
+
+  cityGroup.add(
+    monument
+  );
+
+
+  const cap=
+    new THREE.Mesh(
+      new THREE.ConeGeometry(
+        .65,
+        .8,
+        8
+      ),
+      mat(0xb06d3f)
+    );
+
+
+  cap.position.y=4.25;
+
+
+  cityGroup.add(
+    cap
+  );
+
+
+  if(state.era>=6){
+
+    for(
+      let i=0;
+      i<4;
+      i++
+    ){
+
+      const h=
+        4+
+        state.era*.45;
+
+
+      const t=
+        box(
+          .2,
+          h,
+          .2,
+          mat(0x77a8c7),
+          -1.7+
+          i*1.13,
+          .5,
+          -2.3
+        );
+
+
+      cityGroup.add(
+        t
+      );
+
     }
+
   }
 
 }
@@ -4192,6 +3630,235 @@ function formatCost(cost){
 }
 
 
+
+function facilityCost(def){
+  const mult=Math.pow(1.28,Math.max(0,totalFacilityLevel(def.id)-1));
+  const out={};for(const [k,v] of Object.entries(def.cost))out[k]=Math.ceil(v*mult);return out;
+}
+function canBuildFacility(def){
+  if(state.era<def.minEra) return false;
+  return canAfford(facilityCost(def));
+}
+function startBuildFacility(id){
+  const def=facilityById(id);if(!def)return;
+  if(state.era<def.minEra){toast(`${ERA[def.minEra].name}で解禁`);return;}
+  const cost=facilityCost(def);
+  if(!canAfford(cost)){toast('建設資源が足りません');return;}
+  buildMode=id;
+  toast(`${def.icon} ${def.name}の建設場所をマップから選択`);
+}
+window.startBuildFacility=startBuildFacility;
+function cancelBuildMode(){buildMode=null;toast('建設モードを解除');}
+window.cancelBuildMode=cancelBuildMode;
+function placeFacilityAt(x,z){
+  const def=facilityById(buildMode);if(!def)return;
+  const sx=Math.round(x),sz=Math.round(z);
+  if(Math.hypot(sx,sz)>state.mapRadius){toast('まだこの土地は領土外です。先に領土を拡張してください');return;}
+  const biome=worldBiomeAt(sx,sz);
+  if(biome==='sea'||biome==='river'||biome==='lake'){toast('水上にはこの設備を建設できません');return;}
+  if(Math.hypot(sx,sz)<5.0){toast('中央広場には建設できません');return;}
+  for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存施設に近すぎます');return;}}
+  for(const f of state.facilities){if(Math.hypot(sx-f.x,sz-f.z)<3.0){toast('他の設備に近すぎます');return;}}
+  const cost=facilityCost(def);if(!canAfford(cost)){buildMode=null;toast('資源が足りなくなりました');return;}
+  pay(cost);
+  const id=`f_${Date.now()}_${Math.floor(Math.random()*100000)}`;
+  state.facilities.push({id,type:def.id,x:sx,z:sz,level:1});
+  state.housingBonus+=def.effects?.popMax||0;
+  state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
+  addLog(`${def.icon}${def.name}を建設しました。`);
+  buildMode=null;
+  rebuildMap();renderAll();
+}
+
+function expandMap(){
+  const factor=Math.pow(1.26,state.mapExpansion);
+  const cost={wood:Math.ceil(320*factor),stone:Math.ceil(280*factor),gold:Math.ceil(110*factor)};
+  if(!canAfford(cost)){toast('領土拡張の資源が足りません');return;}
+  pay(cost);
+  state.mapRadius=Math.min(100000,state.mapRadius+24+state.mapExpansion*3);
+  state.cityReach=Math.min(150,state.cityReach+6);
+  state.mapExpansion++;
+  addLog(`領土を拡張しました。都市圏が外へ広がり、新しい海・川・森林を探索できるようになりました。`);
+  rebuildMap();renderAll();
+  toast(`🗺 領土Lv.${state.mapExpansion}：探索範囲拡大`);
+}
+window.expandMap=expandMap;
+
+function publicWorks(){
+  const cost={wood:180,stone:150,gold:50};
+  if(!canAfford(cost)){toast('公共事業に必要な資源が足りません');return;}
+  pay(cost);
+  state.infrastructure++;
+  state.roadsBuilt++;
+  state.housingBonus+=6;
+  state.popMax+=5;
+  state.happiness=Math.min(100,state.happiness+2);
+  addLog('🛠 公共事業が完了し、道路・水路・物流網が改善されました。');
+  rebuildMap();renderAll();
+  toast('公共事業が完成しました');
+}
+window.publicWorks=publicWorks;
+
+function startDispatch(type){
+  if(type!=='forest' && type!=='sea') return;
+  dispatchMode=type;
+  const el=document.getElementById('worldMode');
+  if(el){el.style.display='block';el.textContent=type==='forest'?'🌲 伐採隊：森林のマークをタップ':'⚓ 海洋隊：海のマークをタップ';}
+  toast(type==='forest'?'森林をタップして伐採隊を派遣':'海をタップして航海隊を派遣');
+}
+window.startDispatch=startDispatch;
+
+function cancelDispatch(){
+  dispatchMode=null;
+  const el=document.getElementById('worldMode');if(el)el.style.display='none';
+}
+window.cancelDispatch=cancelDispatch;
+
+function makeExpeditionVisual(e){
+  const g=new THREE.Group();
+  if(e.type==='sea'){
+    const hull=box(.9,.18,.32,makeMaterial(0x4c514d,.72,.18),0,.66,0);
+    const mast=cyl(.025,.95,makeMaterial(0x705438,.85),0,.55,0,6);
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute([0,.95,0,0,.08,0,.56,.08,0],3));
+    geo.computeVertexNormals();
+    const sail=new THREE.Mesh(geo,makeMaterial(0xe5e4d9,.9));
+    g.add(hull,mast,sail);
+  }else{
+    const d=makeDigger().group;d.scale.setScalar(.78);g.add(d);
+  }
+  g.position.set(e.x,.42,e.z);
+  return g;
+}
+
+function beginDispatch(type,x,z,nodeId){
+  if(type==='forest' && isForestCleared(nodeId)){toast('この森林区画はすでに開発済みです');cancelDispatch();return;}
+  const cost=type==='forest'?{food:55,gold:15}:{food:120,gold:50};
+  if(!canAfford(cost)){toast('派遣に必要な資源が足りません');cancelDispatch();return;}
+  pay(cost);
+  const workers=Math.max(1,Math.min(10,Math.floor(state.pop/5)));
+  const duration=type==='forest'?24:40;
+  state.expeditions.push({id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type,x,z,nodeId,workers,duration,remaining:duration});
+  addLog(type==='forest'?`🌲 ${workers}人の伐採隊を派遣しました。`:`⚓ ${workers}人の航海隊を派遣しました。`);
+  cancelDispatch();rebuildMap();renderAll();
+  toast(type==='forest'?'伐採隊が出発しました':'航海隊が出港しました');
+}
+
+function completeDispatch(e){
+  if(e.type==='forest'){
+    const wood=Math.round(e.workers*(40+state.era*9));
+    state.resources.wood=(state.resources.wood||0)+wood;
+    if(e.nodeId && !state.forestClears.includes(e.nodeId)) state.forestClears.push(e.nodeId);
+    addLog(`🌲 伐採隊が帰還。木材+${wood}`);
+    showBanner('FOREST OPERATION','森林開発完了',`伐採隊${e.workers}人が木材${wood}を持ち帰りました。`,1500);
+  }else{
+    const gold=Math.round(90+e.workers*25+state.era*25);
+    const power=e.workers*2+state.era+1;
+    state.oceanPower+=power;
+    state.seaClaims++;
+    state.resources.gold=(state.resources.gold||0)+gold;
+    state.mapRadius=Math.min(100000,state.mapRadius+28);
+    addLog(`⚓ 海域を制圧。新航路を確保し金+${gold}`);
+    showBanner('OCEAN CLAIM','海域制圧',`新しい航路を確保。金 +${gold}　制海力 +${power}`,1700);
+  }
+  state.expeditions=state.expeditions.filter(x=>x.id!==e.id);
+  rebuildMap();renderAll();
+}
+
+function simulateExpeditions(sec){
+  for(const e of [...state.expeditions]){
+    e.remaining-=sec;
+    if(e.remaining<=0) completeDispatch(e);
+  }
+}
+
+function cyclePolicy(){
+  const p=['balanced','food','industry','science'];
+  state.policy=p[(p.indexOf(state.policy)+1)%p.length];
+  const label={balanced:'均衡',food:'食料優先',industry:'生産優先',science:'研究優先'}[state.policy];
+  toast(`都市政策：${label}`);addLog(`都市政策を「${label}」に変更しました。`);renderAll();
+}
+window.cyclePolicy=cyclePolicy;
+function holdFestival(){
+  const cost={food:260,gold:80};if(!canAfford(cost)){toast('祭りの資源が足りません');return;}
+  pay(cost);state.happiness=Math.min(100,state.happiness+9);state.migration+=2;state.festivals=(state.festivals||0)+1;
+  addLog('街で祭りが開催されました。住民が集まり人口流入が起きています。');showBanner('CITY EVENT','祭り','街中が賑わい、住民が広場へ集まっています。',1400);renderAll();
+}
+window.holdFestival=holdFestival;
+
+function showBanner(kicker,title,text,duration=1800){
+  const b=document.getElementById('eventBanner');if(!b)return;
+  document.getElementById('eventBannerKicker').textContent=kicker;
+  document.getElementById('eventBannerTitle').textContent=title;
+  document.getElementById('eventBannerText').textContent=text;
+  b.style.opacity='1';b.style.transform='translate(-50%,-50%) scale(1)';
+  clearTimeout(window.__bannerTimer);window.__bannerTimer=setTimeout(()=>{b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(.88)'},duration);
+}
+
+function makeDigger(){
+  const g=new THREE.Group();
+  const shirt=makeMaterial(0x7a6248,.9),skin=makeMaterial(0xd79b73,.9),tool=makeMaterial(0x51463d,.78);
+  g.add(new THREE.Mesh(new THREE.CapsuleGeometry(.12,.22,3,5),shirt));g.children[0].position.y=.28;
+  const h=new THREE.Mesh(new THREE.SphereGeometry(.12,8,6),skin);h.position.y=.52;g.add(h);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(.07,.38,.07),shirt);arm.position.set(.18,.38,0);arm.rotation.z=-.65;g.add(arm);
+  const pick=box(.06,.70,.05,tool,.35,.55,0);pick.rotation.z=-.95;g.add(pick);
+  return {group:g,pick};
+}
+
+function triggerDiscovery(){
+  if(discovery||state.discoveryCooldown>0)return;
+  const x=-10,z=-7;
+  const rig=makeDigger();rig.group.position.set(x,.52,z+1.7);effectGroup.add(rig.group);
+  const hole=new THREE.Mesh(new THREE.CylinderGeometry(.56,.70,.10,18),makeMaterial(0x28221d,1));hole.position.set(x,.43,z);effectGroup.add(hole);
+  const oreMat=makeMaterial(0x8a6852,.45,.4,0x5d2f22,.1);
+  const ore= new THREE.Mesh(new THREE.OctahedronGeometry(.24,0),oreMat);ore.position.set(x,.50,z);ore.scale.set(.25,.2,.25);effectGroup.add(ore);
+  discovery={rig,hole,ore,x,z,t:0,phase:'zoom',originPos:camera.position.clone(),originTarget:controls.target.clone(),originZoom:camera.zoom};
+  controls.enabled=false;showBanner('SUDDEN DISCOVERY','地中から何かが出てきた！','採掘区の住民が掘削中に異常な光を発見しました。',2400);
+  state.discoveryCooldown=190+Math.random()*120;
+}
+
+function finishDiscovery(){
+  if(!discovery)return;
+  state.resources.iron=(state.resources.iron||0)+260;
+  state.resources.science=(state.resources.science||0)+420;
+  state.scienceTotal+=420;
+  state.productionTotal+=260;
+  addLog('⛏ 掘削中に鉱石と古い知識片が発見されました。鉄+260、科学+420。');
+  showBanner('DISCOVERY','大発見','鉱石と古い知識片が回収されました。',1700);
+  showModal('⛏ 地下遺物を発見',`採掘中の住民が地下から特殊な鉱石と古い知識片を見つけました。<br><br><b>鉄 +260</b><br><b>科学 +420</b>`);
+  effectGroup.remove(discovery.rig.group,discovery.hole,discovery.ore);
+  camera.position.copy(discovery.originPos);controls.target.copy(discovery.originTarget);camera.zoom=discovery.originZoom;camera.updateProjectionMatrix();controls.enabled=true;discovery=null;
+  renderAll();
+}
+
+function animateDiscovery(dt){
+  if(!discovery)return;
+  discovery.t+=dt;
+  if(discovery.phase==='zoom'){
+    const k=Math.min(1,discovery.t/.65);const e=k*k*(3-2*k);
+    camera.position.lerpVectors(discovery.originPos,new THREE.Vector3(discovery.x+12,18,discovery.z+14),e);
+    controls.target.lerpVectors(discovery.originTarget,new THREE.Vector3(discovery.x,0,discovery.z),e);
+    camera.zoom=discovery.originZoom+(2.0-discovery.originZoom)*e;camera.updateProjectionMatrix();
+    if(k>=1){discovery.phase='dig';discovery.t=0;}
+  }else if(discovery.phase==='dig'){
+    discovery.rig.pick.rotation.z=-.95+Math.sin(discovery.t*6.5)*.7;
+    discovery.rig.group.position.y=.50+Math.abs(Math.sin(discovery.t*3))*0.04;
+    discovery.ore.rotation.y+=dt*2.4;
+    if(discovery.t>2.8){discovery.phase='reveal';discovery.t=0;}
+  }else if(discovery.phase==='reveal'){
+    const k=Math.min(1,discovery.t/.55);discovery.ore.scale.setScalar(.25+k*1.7);discovery.ore.position.y=.50+k*.55;discovery.ore.material.emissiveIntensity=.1+k*1.1;
+    if(discovery.t>.9)finishDiscovery();
+  }
+}
+
+function startEraTransition(oldEra,newEra){
+  const fx=document.getElementById('eraFlash');if(!fx)return;
+  const title=document.getElementById('eraFlashTitle');const txt=document.getElementById('eraFlashText');
+  title.textContent=ERA[newEra].name;txt.textContent='街の建物・道路・設備・環境が新しい時代へ変化しています。';
+  fx.style.opacity='1';
+  setTimeout(()=>{rebuildMap();fx.style.opacity='0';showBanner('ERA SHIFT','文明が進化した','街全体の外観と設備が更新されました。',1900);},650);
+}
+
 /* =========================================================
    UPGRADE
 ========================================================= */
@@ -4291,9 +3958,7 @@ function upgradeSelected(){
 
 }
 
-/* ES module 内の関数は inline onclick から見えないため、
-   HTML の onclick から呼べるよう window に公開する。 */
-window.upgradeSelected = upgradeSelected;
+window.upgradeSelected=upgradeSelected;
 
 
 /* =========================================================
@@ -4354,7 +4019,7 @@ function hireToDistrict(){
 
 }
 
-window.hireToDistrict = hireToDistrict;
+window.hireToDistrict=hireToDistrict;
 
 
 function fireFromDistrict(){
@@ -4377,7 +4042,7 @@ function fireFromDistrict(){
 
 }
 
-window.fireFromDistrict = fireFromDistrict;
+window.fireFromDistrict=fireFromDistrict;
 
 
 /* =========================================================
@@ -4399,13 +4064,6 @@ function rates(){
 
   const eraMult=
     ERA[state.era].mult;
-
-  const policyMult={
-    balanced:{food:1,wood:1,stone:1,iron:1,gold:1,science:1,culture:1},
-    food:{food:1.28,wood:.90,stone:.92,iron:.90,gold:.92,science:.92,culture:1.02},
-    industry:{food:.92,wood:1.10,stone:1.12,iron:1.24,gold:1.20,science:1.03,culture:.94},
-    science:{food:.92,wood:.94,stone:.94,iron:.94,gold:.96,science:1.30,culture:1.15}
-  }[state.policy] || null;
 
 
   for(
@@ -4447,13 +4105,24 @@ function rates(){
         v*
         lvl*
         workerMul*
-        eraMult*
-        (policyMult?.[k]||1);
+        eraMult;
 
     }
 
   }
 
+
+  /* 建設した設備による生産・都市効果 */
+  for(const f of state.facilities){
+    const def=facilityById(f.type);
+    if(!def) continue;
+    const lv=f.level||1;
+    const mul=1+Math.max(0,lv-1)*.15;
+    for(const [k,v] of Object.entries(def.effects||{})){
+      if(['happiness','popMax','migration','storage','production'].includes(k)) continue;
+      out[k]=(out[k]||0)+v*mul;
+    }
+  }
 
   /* Food upkeep */
 
@@ -4472,6 +4141,8 @@ function rates(){
     1+
     state.era*.035;
 
+  out.gold *= 1 + (state.seaClaims||0)*.008;
+
 
   out.food *=
     Math.max(
@@ -4479,6 +4150,13 @@ function rates(){
       state.happiness/100
     );
 
+  const infra=1+(state.infrastructure-1)*.012;
+  for(const k of ['food','wood','stone','iron','gold','science','culture']) out[k]*=infra;
+
+  const policy={balanced:1,food:1.04,industry:1.05,science:1.06}[state.policy]||1;
+  out.science*=state.policy==='science'?policy:1;
+  out.food*=state.policy==='food'?policy:1;
+  if(state.policy==='industry'){out.wood*=policy;out.stone*=policy;out.iron*=policy;out.gold*=policy;}
 
   return out;
 
@@ -4542,6 +4220,27 @@ function simulate(sec){
   }
 
 
+  /* 施設の人口容量・幸福度・インフラ効果 */
+  let facilityHappy=0;
+  let facilityPopMax=0;
+  let facilityMigration=0;
+  let facilityStorage=0;
+  let facilityProduction=0;
+  for(const f of state.facilities){
+    const def=facilityById(f.type); if(!def) continue;
+    const lv=f.level||1;
+    facilityHappy += (def.effects?.happiness||0)*.008*lv;
+    facilityPopMax += (def.effects?.popMax||0)*lv;
+    facilityMigration += (def.effects?.migration||0)*lv;
+    facilityStorage += (def.effects?.storage||0)*lv;
+    facilityProduction += (def.effects?.production||0)*lv;
+  }
+  state.happiness=THREE.MathUtils.clamp(state.happiness+sec*facilityHappy,0,100);
+  state.popMax=Math.max(1,state.popMax + sec*facilityPopMax*.0035);
+  state.migration += sec*facilityMigration*.08;
+  state.storage=Math.max(5000,state.storage+sec*facilityStorage*.00025);
+  state.productionTotal += sec*facilityProduction*.2;
+
   /* Population */
 
   if(
@@ -4549,10 +4248,10 @@ function simulate(sec){
     state.pop<state.popMax
   ){
 
-    const housing=getHousingState();
-    const housingRoom=housing.capacity>state.pop ? 1 : .35;
-    const growthBase=.010 + state.happiness*.00008 + state.infrastructure*.00055 + state.migration*.00045;
-    state.pop += sec*growthBase*housingRoom;
+    const h=getHousingState();
+    const room=h.capacity>state.pop?1:.25;
+    const growth=.0105+state.happiness*.00008+state.infrastructure*.0005+state.migration*.00022;
+    state.pop += sec*growth*room;
 
 
     state.pop=
@@ -4608,11 +4307,16 @@ function simulate(sec){
   state.year +=
     sec/7;
 
+  state.worldTime=(state.worldTime||0)+sec;
+  state.discoveryCooldown=Math.max(0,(state.discoveryCooldown||0)-sec);
+  state.cityReach=Math.min(state.mapRadius-3,Math.max(state.cityReach,16+Math.sqrt(Math.max(0,state.pop))*0.72+state.mapExpansion*4));
+  if(state.pop>25 && state.discoveryCooldown<=0 && Math.random()<sec*.0022){
+    triggerDiscovery();
+  }
+
 
   state.nextEvent -=
     sec;
-
-  state.migration=Math.max(0,state.migration-sec*.00018);
 
 
   /* Capacity */
@@ -4649,54 +4353,12 @@ function simulate(sec){
 
   }
 
-}
+  simulateExpeditions(sec);
 
-
-function publicWorks(){
-  const cost={wood:180,stone:140,gold:60};
-  if(!canAfford(cost)){
-    toast('公共事業に必要な資源が足りません');
-    return;
-  }
-  pay(cost);
-  state.infrastructure++;
-  state.housingBonus+=6;
-  state.popMax+=4;
-  state.happiness=Math.min(100,state.happiness+2);
-  addLog(`公共事業で道路・上下水道・街路が改善されました（インフラLv.${state.infrastructure}）。`);
-  rebuildMap(); renderAll();
 }
-window.publicWorks=publicWorks;
-
-function holdFestival(){
-  const cost={food:260,gold:80};
-  if(!canAfford(cost)){
-    toast('祭りに必要な食料と金が足りません');
-    return;
-  }
-  pay(cost);
-  state.happiness=Math.min(100,state.happiness+9);
-  state.migration+=1;
-  state.festivals++;
-  addLog('街で祭りが開催され、住民の流入と幸福度が上がりました。');
-  renderAll();
-}
-window.holdFestival=holdFestival;
-
-function cyclePolicy(){
-  const policies=['balanced','food','industry','science'];
-  const labels={balanced:'均衡',food:'食料優先',industry:'生産優先',science:'研究優先'};
-  const i=policies.indexOf(state.policy);
-  state.policy=policies[(i+1)%policies.length];
-  toast(`政策：${labels[state.policy]}`);
-  addLog(`都市政策を「${labels[state.policy]}」に変更しました。`);
-  renderAll();
-}
-window.cyclePolicy=cyclePolicy;
 
 
 /* =========================================================
-   EVOLUTION/* =========================================================
    EVOLUTION
 ========================================================= */
 
@@ -4736,22 +4398,9 @@ function canEvolve(){
     ERA[state.era+1];
 
 
-  /*
-    時代進行条件は、下部に表示している「科学」資源を
-    そのまま判定に使う。
-    以前は scienceTotal（累積研究量）を参照していたため、
-    科学が500あっても scienceTotal が0の保存データでは
-    ずっと条件未達になっていた。
-  */
-  const currentScience =
-    Math.max(
-      0,
-      Number(state.resources.science) || 0
-    );
-
   return (
     state.pop>=next.popNeed &&
-    currentScience>=next.scienceNeed &&
+    (Number(state.resources.science)||0)>=next.scienceNeed &&
     districtThreshold()
   );
 
@@ -4771,6 +4420,7 @@ function evolve(){
   }
 
 
+  const oldEra=state.era;
   state.era++;
 
 
@@ -4795,7 +4445,7 @@ function evolve(){
   );
 
 
-  rebuildMap();
+  startEraTransition(oldEra,state.era);
   renderAll();
 
 
@@ -4812,7 +4462,7 @@ function evolve(){
 
 }
 
-window.evolve = evolve;
+window.evolve=evolve;
 
 
 /* =========================================================
@@ -4820,6 +4470,11 @@ window.evolve = evolve;
 ========================================================= */
 
 function randomEvent(){
+
+  if(!discovery && Math.random()<.30){
+    triggerDiscovery();
+    return;
+  }
 
   const events=[
 
@@ -5088,25 +4743,6 @@ function renderSide(){
   `
 
     <div class="section">
-      <div class="section-head">
-        <div class="section-title">都市の暮らし</div>
-        <div class="muted" style="font-size:9px">インフラLv.${state.infrastructure}</div>
-      </div>
-      <div class="stat-grid">
-        <div class="mini-stat"><div class="mini-label">歩いている住民</div><div class="mini-value">${Math.min(90,Math.floor(state.pop))}人</div></div>
-        <div class="mini-stat"><div class="mini-label">1軒の収容</div><div class="mini-value">${housingCapacityPerHouse()}人</div></div>
-        <div class="mini-stat"><div class="mini-label">祭り開催数</div><div class="mini-value">${fmt(state.festivals||0)}</div></div>
-        <div class="mini-stat"><div class="mini-label">政策</div><div class="mini-value">${({balanced:'均衡',food:'食料',industry:'生産',science:'研究'})[state.policy]||'均衡'}</div></div>
-      </div>
-      <div class="action-row" style="margin-top:9px">
-        <button class="secondary" onclick="publicWorks()">🛠 公共事業</button>
-        <button class="secondary" onclick="holdFestival()">🎉 祭り</button>
-      </div>
-      <button class="secondary" style="margin-top:7px" onclick="cyclePolicy()">⚙️ 都市政策を切替</button>
-    </div>
-
-
-    <div class="section">
 
       <div class="level-row">
 
@@ -5163,62 +4799,6 @@ function renderSide(){
         "></i>
 
       </div>
-
-    </div>
-
-
-    <div class="section">
-
-      <div class="section-head">
-
-        <div class="section-title">
-          住宅と人口
-        </div>
-
-        <div class="muted"
-             style="font-size:9px">
-          1軒 ${housingCapacityPerHouse()}人
-        </div>
-
-      </div>
-
-      <div class="stat-grid">
-
-        <div class="mini-stat">
-          <div class="mini-label">
-            入居中の家
-          </div>
-          <div class="mini-value">
-            ${fmt(getHousingState().houses)}
-          </div>
-        </div>
-
-        <div class="mini-stat">
-          <div class="mini-label">
-            住宅容量
-          </div>
-          <div class="mini-value">
-            ${fmt(getHousingState().capacity)}
-          </div>
-        </div>
-
-      </div>
-
-      ${
-        getHousingState().shortage>0
-          ? `
-            <div class="muted"
-                 style="
-                   margin-top:8px;
-                   font-size:9px;
-                   color:#e7a36f
-                 ">
-              ⚠ 住宅ロットが埋まりました。
-              高密度都市へ移行中。
-            </div>
-          `
-          : ''
-      }
 
     </div>
 
@@ -5451,6 +5031,38 @@ function renderSide(){
 
 
     <div class="section">
+      <div class="section-head">
+        <div class="section-title">🏗 都市を建設する</div>
+        <div class="muted" style="font-size:9px">時代で解禁</div>
+      </div>
+      <div class="muted" style="font-size:10px;line-height:1.55;margin-bottom:8px">
+        建設を選んでからマップ上の空き地をタップ。道路・住居・地区の隙間へ実際に設備が増えます。
+      </div>
+      <div class="action-row">
+        ${FACILITIES.filter(f=>state.era>=f.minEra).slice(0,10).map(f=>{
+          const c=facilityCost(f),ok=canAfford(c);
+          return `<button class="secondary" title="${formatCost(c)}" onclick="startBuildFacility('${f.id}')" ${ok?'':'disabled'}>${f.icon} ${f.name}<br><small style="opacity:.62">${formatCost(c)}</small></button>`;
+        }).join('')}
+      </div>
+      <div class="action-row" style="margin-top:7px">
+        <button class="secondary" onclick="expandMap()">🗺 領土を拡張</button>
+        <button class="secondary" onclick="publicWorks()">🛠 公共事業</button>
+      </div>
+      <div class="action-row" style="margin-top:7px">
+        <button class="secondary" onclick="cyclePolicy()">⚙️ 都市政策</button>
+        <button class="secondary" onclick="holdFestival()">🎉 祭りを開催</button>
+      </div>
+      <div class="action-row" style="margin-top:7px">
+        <button class="secondary" onclick="startDispatch('forest')">🌲 伐採隊</button>
+        <button class="secondary" onclick="startDispatch('sea')">⚓ 海洋隊</button>
+      </div>
+      ${dispatchMode ? `<button class="secondary" style="margin-top:7px" onclick="cancelDispatch()">✕ 派遣モード解除</button>` : ''}
+      ${buildMode ? `<button class="secondary" style="margin-top:7px" onclick="cancelBuildMode()">✕ 建設モード解除（${facilityById(buildMode)?.name||''}）</button>` : ''}
+      <div class="muted" style="font-size:9px;margin-top:8px">設備 ${state.facilities.length}件　/　領土Lv.${state.mapExpansion}　/　海域 ${state.seaClaims||0}　/　制海力 ${state.oceanPower||0}</div>
+      <div class="muted" style="font-size:9px;margin-top:4px">派遣中 ${state.expeditions.length}隊　/　森林開発 ${state.forestClears.length}区画</div>
+    </div>
+
+    <div class="section">
 
       <div class="section-head">
 
@@ -5637,13 +5249,10 @@ function renderAll(){
     )+'%';
 
 
-  const housing=
-    getHousingState();
-
   document.getElementById(
-    'hudHousing'
+    'hudCity'
   ).textContent=
-    `${fmt(housing.houses)} / ${fmt(HOUSE_LOTS.length)}`;
+    `${ERA[state.era].label}・領土Lv.${state.mapExpansion}・海${state.seaClaims||0}`;
 
 }
 
@@ -5652,29 +5261,17 @@ function renderAll(){
    SAVE / LOAD
 ========================================================= */
 
-function saveGame(){
-
-  state.last=
-    Date.now();
-
-
-  localStorage.setItem(
-    'civilization_city_idle',
-    JSON.stringify(
-      state
-    )
-  );
-
-
-  toast(
-    'セーブしました'
-  );
-
+function saveGameSilent(){
+  state.last=Date.now();
+  localStorage.setItem('civilization_city_idle',JSON.stringify(state));
 }
 
+function saveGame(){
+  saveGameSilent();
+  toast('セーブしました');
+}
 
-window.saveGame=
-  saveGame;
+window.saveGame=saveGame;
 
 
 function loadGame(){
@@ -5708,12 +5305,29 @@ function loadGame(){
         saved.districts||{}
       );
 
+    state.mapRadius=Math.max(36,Math.min(100000,Number(saved.mapRadius)||44));
+    state.mapExpansion=Math.max(0,Number(saved.mapExpansion)||0);
+    state.cityReach=Math.max(12,Number(saved.cityReach)||16);
+    state.facilities=Array.isArray(saved.facilities)?saved.facilities:[];
+    state.infrastructure=Math.max(1,Number(saved.infrastructure)||1);
+    state.housingBonus=Math.max(0,Number(saved.housingBonus)||0);
+    state.migration=Math.max(0,Number(saved.migration)||0);
+    state.festivals=Math.max(0,Number(saved.festivals)||0);
+    state.policy=saved.policy||'balanced';
+    state.worldTime=Math.max(0,Number(saved.worldTime)||0);
+    state.discoveryCooldown=Math.max(0,Number(saved.discoveryCooldown)||100);
+    state.worldSeed=Number(saved.worldSeed)||417203;
+    state.seaClaims=Math.max(0,Number(saved.seaClaims)||0);
+    state.oceanPower=Math.max(0,Number(saved.oceanPower)||0);
+    state.forestClears=Array.isArray(saved.forestClears)?saved.forestClears:[];
+    state.expeditions=Array.isArray(saved.expeditions)?saved.expeditions:[];
+    state.roadsBuilt=Math.max(0,Number(saved.roadsBuilt)||0);
+    state.wonders=Math.max(0,Number(saved.wonders)||0);
 
-    state.infrastructure=Math.max(1,state.infrastructure||1);
-    state.housingBonus=Math.max(0,state.housingBonus||0);
-    state.migration=Math.max(0,state.migration||0);
-    state.policy=state.policy||'balanced';
-    state.festivals=Math.max(0,state.festivals||0);
+    /* 過去セーブの科学値が表示値とズレていた場合を救済 */
+    state.resources.science=Math.max(0,Number(state.resources.science)||0);
+    state.resources.iron=Math.max(0,Number(state.resources.iron)||0);
+
 
     for(
       const d of DISTRICTS
@@ -5755,7 +5369,7 @@ function loadGame(){
 
         `不在中の
         <b>${fmt(elapsed/60)}</b>
-        分間、都市が発展しました。<br><small>（最大1000時間までオフライン進行）</small>`
+        分間、都市が発展しました。`
 
       );
 
@@ -5901,6 +5515,26 @@ renderer.domElement
         camera
       );
 
+      if(dispatchMode){
+        const nodeHits=raycaster.intersectObjects(worldNodeObjects,true);
+        if(nodeHits.length){
+          let q=nodeHits[0].object;
+          while(q && !q.userData.worldNode) q=q.parent;
+          const node=q&&q.userData.worldNode;
+          if(node && ((dispatchMode==='forest'&&node.type==='forest')||(dispatchMode==='sea'&&node.type==='sea'))){
+            beginDispatch(dispatchMode,node.x,node.z,node.id);
+            return;
+          }
+        }
+        toast(dispatchMode==='forest'?'森林マークをタップしてください':'海のマークをタップしてください');
+        return;
+      }
+
+      if(buildMode){
+        const hit=raycaster.ray.intersectPlane(buildPlane,new THREE.Vector3());
+        if(hit){placeFacilityAt(hit.x,hit.z);return;}
+      }
+
 
       const hits=
         raycaster.intersectObjects(
@@ -5956,239 +5590,121 @@ renderer.domElement
 ========================================================= */
 
 function resize(){
-
-  const rect=
-    mapEl.getBoundingClientRect();
-
-  const w=
-    Math.max(2, Math.round(rect.width));
-
-  const h=
-    Math.max(2, Math.round(rect.height));
-
-  const aspect=
-    w/Math.max(1,h);
-
-  const viewH=
-    40;
-
-  const viewW=
-    viewH*aspect;
-
-  camera.left=-viewW/2;
-  camera.right=viewW/2;
-  camera.top=viewH/2;
-  camera.bottom=-viewH/2;
-  camera.near=0.1;
-  camera.far=500;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(
-    w,
-    h,
-    false
-  );
-
-  canvas.style.width=w+'px';
-  canvas.style.height=h+'px';
-
-  camera.lookAt(
-    controls.target.x,
-    controls.target.y,
-    controls.target.z
-  );
-
+  const rect=mapEl.getBoundingClientRect();
+  const w=Math.max(2,Math.round(rect.width));
+  const h=Math.max(2,Math.round(rect.height));
+  const aspect=w/Math.max(1,h),viewH=44,viewW=viewH*aspect;
+  camera.left=-viewW/2;camera.right=viewW/2;camera.top=viewH/2;camera.bottom=-viewH/2;
+  camera.near=.1;camera.far=500;camera.updateProjectionMatrix();
+  renderer.setSize(w,h,false);
 }
-
-window.addEventListener(
-  'resize',
-  resize,
-  {passive:true}
-);
-
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden) saveGameSilent();
-});
-window.addEventListener('pagehide',saveGameSilent);
-
-function saveGameSilent(){
-  state.last=Date.now();
-  localStorage.setItem('civilization_city_idle',JSON.stringify(state));
-}
-
-
-if('ResizeObserver' in window){
-  const mapResizeObserver=
-    new ResizeObserver(()=>resize());
-  mapResizeObserver.observe(mapEl);
-}
-
-if(window.visualViewport){
-  window.visualViewport.addEventListener(
-    'resize',
-    resize,
-    {passive:true}
-  );
-}
-
-
-/* 住宅再構築の前回値 */
-let lastHouseCount = -1;
-
+window.addEventListener('resize',resize,{passive:true});
+if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.observe(mapEl);}
 
 /* =========================================================
    START
 ========================================================= */
 
-/* JSFiddle/iPadではレイアウト確定前に script が実行される場合がある。
-   初期化→再構築→2フレーム後の resize/render の順で確実に描画する。 */
 resize();
-
 loadGame();
-
 rebuildMap();
-
-lastHouseCount=
-  getHousingState().houses;
-
+rebuildWorldChunks(true);
 renderAll();
-
-controls.target.set(0,0,0);
-controls.update();
 resize();
-renderer.clear();
-renderer.render(scene,camera);
+renderer.clear();renderer.render(scene,camera);
 
-requestAnimationFrame(()=>{
-  resize();
-  renderer.clear();
-  renderer.render(scene,camera);
-});
-
-
-/* 描画経路の最低限の健全性チェック。エラーでゲーム全体を止めず、
-   WebGLコンテキストが失われた場合だけ警告を出す。 */
-canvas.addEventListener('webglcontextlost',e=>{
-  e.preventDefault();
-  console.warn('WebGL context lost');
-});
-
-canvas.addEventListener('webglcontextrestored',()=>{
-  console.info('WebGL context restored');
-  resize();
-  rebuildMap();
-  renderAll();
-  renderer.clear();
-  renderer.render(scene,camera);
-});
-
-let last=
-  performance.now();
-
-
+let last=performance.now();
 let saveTick=0;
-
 let renderTick=0;
 
-function loop(t){
-
-  const dt=
-    Math.min(
-      1,
-      (t-last)/1000
-    );
-
-
-  last=t;
-
-
-  simulate(
-    dt
-  );
-
-
-  saveTick+=dt;
-
-  renderTick+=dt;
-
-
-  /*
-    自動保存
-  */
-
-  if(
-    saveTick>=120
-  ){
-
-    saveGameSilent();
-
-
-    saveTick=0;
-
+function animateExpeditions(dt,t){
+  while(expeditionObjects.length<state.expeditions.length){
+    const e=state.expeditions[expeditionObjects.length];
+    const g=makeExpeditionVisual(e);
+    g.userData.expeditionId=e.id;
+    effectGroup.add(g);expeditionObjects.push(g);
   }
-
-
-  /*
-    UI更新
-  */
-
-  if(
-    renderTick>.25
-  ){
-
-    const housing=
-      getHousingState();
-
-    /*
-      家の増減があった瞬間だけ
-      住宅街を作り直す。
-    */
-    if(
-      housing.houses !==
-      lastHouseCount
-    ){
-
-      const p=
-        eraPalette();
-
-      buildResidentialCity(
-        p
-      );
-
-      lastHouseCount=
-        housing.houses;
-
+  for(let i=expeditionObjects.length-1;i>=0;i--){
+    const g=expeditionObjects[i];
+    if(!state.expeditions.some(e=>e.id===g.userData.expeditionId)){
+      effectGroup.remove(g);expeditionObjects.splice(i,1);
+      continue;
     }
-
-    renderAll();
-
-    renderTick=0;
-
+    const e=state.expeditions.find(x=>x.id===g.userData.expeditionId);
+    if(!e)continue;
+    const progress=Math.max(0,Math.min(1,1-e.remaining/e.duration));
+    const outbound=progress<.5;
+    const k=outbound?progress*2:(1-progress)*2;
+    const start=new THREE.Vector3(0,.42,0);
+    /* 出発地点は都心付近。遠征先へ移動して戻る。 */
+    const sx=0,sz=0;
+    const ex=e.x,ez=e.z;
+    g.position.set(
+      THREE.MathUtils.lerp(sx,ex,outbound?k:1-k),
+      .46+Math.sin(t*.006+i)*.025,
+      THREE.MathUtils.lerp(sz,ez,outbound?k:1-k)
+    );
+    if(e.type==='sea') g.rotation.y=Math.atan2(ez-sz,ex-sx);
+    else g.rotation.y=Math.atan2(ez-sz,ex-sx);
   }
-
-
-  animateCitizenAgents(dt,t);
-
-  controls.update();
-
-
-  renderer.clear();
-  renderer.render(
-    scene,
-    camera
-  );
-
-
-  requestAnimationFrame(
-    loop
-  );
-
 }
 
+function updateWorldMood(dt,t){
+  const cycle=(state.worldTime%140)/140;
+  const sunAngle=cycle*Math.PI*2;
+  sun.position.set(Math.cos(sunAngle)*45,28+Math.sin(sunAngle)*25,24);
+  const daylight=Math.max(.20,.55+Math.sin(sunAngle)*.45);
+  sun.intensity=1.65+daylight*1.35;
+  ambient.intensity=.22+daylight*.32;
+  hemi.intensity=1.2+daylight*.85;
 
-requestAnimationFrame(
-  loop
-);
+  for(const q of smokePuffs){
+    q.life+=dt*q.speed;
+    if(q.life>2.5){q.life=0;q.mesh.position.set(q.baseX,.55,q.baseZ);}
+    q.mesh.position.y+=dt*q.speed;
+    q.mesh.position.x=q.baseX+Math.sin(q.life*1.8+q.phase)*.08;
+    q.mesh.position.z=q.baseZ+Math.cos(q.life*1.3+q.phase)*.05;
+    q.mesh.scale.setScalar(1+q.life*.55);
+    q.mesh.material.opacity=.18*Math.max(0,1-q.life/2.5);
+  }
+
+  animateCitizens(dt,t);
+  animateDiscovery(dt);
+  animateExpeditions(dt,t);
+
+  /* 水面の反射感をゆっくり変える */
+  cityPulse+=dt;
+  for(const f of facilityObjects){
+    if(f.userData.facilityType==='power'||f.userData.facilityType==='research'||f.userData.facilityType==='habitat'){
+      f.position.y=.01+Math.sin(t*.002+f.position.x)*.018;
+      f.rotation.y+=dt*.05;
+    }
+  }
+}
+
+function loop(t){
+  const dt=Math.min(1,(t-last)/1000);last=t;
+  simulate(dt);
+  updateWorldMood(dt,t);
+
+  saveTick+=dt;renderTick+=dt;
+  if(saveTick>=120){
+    state.last=Date.now();
+    localStorage.setItem('civilization_city_idle',JSON.stringify(state));
+    saveTick=0;
+  }
+  if(renderTick>.35){
+    const hc=getHousingState().houses;
+    if(window.__lastHouseCount!==hc){buildResidentialCity(eraPalette());rebuildCitizenAgents();window.__lastHouseCount=hc;}
+    renderAll();renderTick=0;
+  }
+
+  controls.update();
+  rebuildWorldChunks(false);
+  renderer.clear();renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 
 </script>
 

@@ -705,6 +705,11 @@ button{
   }
 }
 
+
+.world-mode-pulse{animation:worldPulse 1.1s ease-in-out infinite alternate}
+@keyframes worldPulse{from{box-shadow:0 0 0 rgba(255,218,132,0)}to{box-shadow:0 0 28px rgba(255,218,132,.22)}}
+
+.mission-panel{position:absolute;right:16px;top:84px;width:min(330px,calc(100vw - 32px));padding:13px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(8,13,19,.88);backdrop-filter:blur(16px);box-shadow:0 18px 60px rgba(0,0,0,.35);z-index:8;display:none;pointer-events:auto}.mission-panel.show{display:block}.mission-kicker{font-size:9px;letter-spacing:.14em;color:#d7bd79;font-weight:1000}.mission-title{font-size:17px;font-weight:1000;margin-top:3px}.mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.mission-stat{padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.045)}.mission-label{font-size:8px;color:#8f9aaa}.mission-value{font-size:12px;font-weight:1000;margin-top:2px}.mission-route{font-size:10px;color:#c4ccd6;line-height:1.55;margin-top:8px}.mission-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.mission-btn{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px;background:#171d27;color:#eef2f6;font-weight:1000;cursor:pointer}.mission-btn.confirm{background:linear-gradient(135deg,#e9c46b,#a96f31);color:#171108;border:0}.world-route-note{font-size:9px;color:#9aa5b3;margin-top:7px}.mission-workers{margin-top:9px;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}.mission-workers-head{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#a8b2bf}.worker-stepper{display:grid;grid-template-columns:34px 1fr 34px;gap:7px;align-items:center;margin-top:7px}.worker-stepper button{height:30px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#18202a;color:#eef2f6;font-size:15px;font-weight:1000;cursor:pointer}.worker-slider{width:100%;accent-color:#e7c46e}.worker-count{font-size:16px;font-weight:1000;text-align:center}.mission-mini{font-size:8px;color:#818c9a;margin-top:5px;line-height:1.45}.personnel-card{padding:10px 11px;border-radius:12px;background:linear-gradient(135deg,rgba(89,111,135,.16),rgba(218,170,94,.08));border:1px solid rgba(255,255,255,.08);margin-bottom:8px}.personnel-card .pc-row{display:flex;justify-content:space-between;align-items:center;gap:8px}.personnel-big{font-size:19px;font-weight:1000;letter-spacing:.02em}.personnel-sub{font-size:9px;color:#98a4b2}.personnel-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:7px}.personnel-bar>i{display:block;height:100%;background:linear-gradient(90deg,#a9d18e,#e6c56e);border-radius:99px}
 </style>
 </head>
 
@@ -811,11 +816,40 @@ button{
       </div>
 
 
+      <div id="missionTracker" style="position:absolute;left:16px;top:118px;width:180px;display:none;z-index:6;pointer-events:none"></div>
+
       <div class="map-help">
         <b>地区</b>タップ→詳細　 <b>ドラッグ</b>→移動　 <b>ホイール/ピンチ</b>→ズーム
       </div>
 
       <div id="worldMode" style="position:absolute;right:16px;bottom:16px;display:none;padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(7,12,18,.88);backdrop-filter:blur(12px);font-size:10px;font-weight:1000;color:#e7edf4;pointer-events:none;z-index:5">派遣先をマップで選択</div>
+
+<div id="missionPanel" class="mission-panel">
+  <div class="mission-kicker" id="missionKicker">MISSION TARGET</div>
+  <div class="mission-title" id="missionTitle">目的地</div>
+  <div class="mission-grid">
+    <div class="mission-stat"><div class="mission-label">地点</div><div class="mission-value" id="missionCoord">—</div></div>
+    <div class="mission-stat"><div class="mission-label">地形</div><div class="mission-value" id="missionBiome">—</div></div>
+    <div class="mission-stat"><div class="mission-label">到着まで</div><div class="mission-value" id="missionEta">—</div></div>
+    <div class="mission-stat"><div class="mission-label" id="missionRangeLabel">派遣範囲</div><div class="mission-value" id="missionRange">—</div></div>
+  </div>
+  <div class="mission-workers">
+    <div class="mission-workers-head"><span>派遣人数を調整</span><span id="missionAvailable">訓練済み —</span></div>
+    <div class="worker-stepper">
+      <button onclick="changePendingWorkers(-1)">−</button>
+      <div class="worker-count" id="missionWorkers">—</div>
+      <button onclick="changePendingWorkers(1)">＋</button>
+    </div>
+    <input id="missionWorkerSlider" class="worker-slider" type="range" min="1" max="1" step="1" value="1" oninput="setPendingWorkers(this.value)">
+    <div class="mission-mini" id="missionWorkerNote">人数が増えるほど、派遣範囲とコストが上がります。</div>
+  </div>
+  <div class="mission-route" id="missionRoute">駐屯地 → 目的地</div>
+  <div class="world-route-note" id="missionExtra"></div>
+  <div class="mission-actions">
+    <button class="mission-btn" onclick="cancelPendingMission()">キャンセル</button>
+    <button class="mission-btn confirm" onclick="confirmPendingMission()">ここへ派遣</button>
+  </div>
+</div>
 
     </section>
 
@@ -1349,19 +1383,29 @@ const DISTRICTS = [
 ========================================================= */
 
 const FACILITIES = [
-  {id:'well',name:'井戸',icon:'💧',minEra:0,cost:{wood:30,stone:20},desc:'生活用水。人口増加と幸福度を少し押し上げる。',effects:{happiness:.8,popMax:4}},
-  {id:'granary',name:'共同穀倉',icon:'🌾',minEra:0,cost:{wood:50,stone:35},desc:'食料を保管し、農業を安定させる。',effects:{food:.28,storage:500}},
-  {id:'school',name:'学び舎',icon:'📚',minEra:0,cost:{wood:70,stone:45,science:30},desc:'記録・観察・教育から科学を生み出す。',effects:{science:.22,culture:.08}},
-  {id:'forge',name:'小鍛冶場',icon:'🔥',minEra:1,cost:{wood:90,stone:70,iron:8},desc:'序盤の鉄加工。鉄の採掘・加工効率を上げる。',effects:{iron:.26,production:.03}},
-  {id:'market',name:'市場',icon:'🏪',minEra:2,cost:{wood:110,stone:90,gold:45},desc:'交易が街に人と資金を呼び込む。',effects:{gold:.32,culture:.18,migration:.03}},
-  {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口成長を高める。',effects:{happiness:1.7,popMax:14}},
-  {id:'clinic',name:'診療所',icon:'🏥',minEra:4,cost:{stone:220,iron:35,gold:120,science:100},desc:'医療によって人口減少を抑える。',effects:{happiness:2.2,popMax:26}},
-  {id:'factory',name:'工場',icon:'🏭',minEra:5,cost:{wood:260,stone:340,iron:120,gold:180},desc:'大量生産を開始する。',effects:{iron:.55,gold:.5,production:.09}},
-  {id:'power',name:'発電所',icon:'⚡',minEra:6,cost:{stone:500,iron:260,gold:420,science:500},desc:'電力網。都市全体の生産力を増幅する。',effects:{science:.35,gold:.65,production:.16}},
-  {id:'research',name:'研究センター',icon:'🧬',minEra:7,cost:{stone:650,iron:300,gold:600,science:1200},desc:'研究を高速化する情報時代の中核施設。',effects:{science:1.35,culture:.4}},
-  {id:'spaceport',name:'宇宙港',icon:'🚀',minEra:8,cost:{stone:1000,iron:800,gold:1800,science:6000},desc:'惑星間物流の拠点。巨大な科学・金生産を得る。',effects:{science:2.6,gold:2.0,popMax:80}},
-  {id:'habitat',name:'軌道居住区',icon:'🛰️',minEra:9,cost:{iron:1800,gold:4000,science:15000},desc:'恒星文明の人口拡張設備。',effects:{science:5.5,gold:3.4,popMax:280}}
+  {id:'trainingGround',name:'養成所',icon:'🪖',minEra:0,category:'人員育成',placement:'land',cost:{wood:95,stone:65},desc:'市民を派遣要員として訓練する最初の施設。時間をかけて訓練済み人員を増やします。',effects:{trainingRate:.0055,trainingCap:2.5,personnelCap:12,production:.01}},
+  {id:'academy',name:'教育施設',icon:'🎓',minEra:1,category:'人員育成',placement:'nearTraining',requiresFacility:'trainingGround',cost:{wood:145,stone:110,science:35},desc:'養成所と連携して教育速度・養成人数上限を大きく伸ばす施設。',effects:{trainingRate:.011,trainingCap:5,personnelCap:28,production:.018}},
+  {id:'garrison',name:'駐屯地',icon:'🏕️',minEra:1,category:'派遣拠点',placement:'edge',requiresFacility:'trainingGround',cost:{wood:170,stone:135,iron:12},desc:'訓練済みの派遣隊がここから出発します。Lv.が上がるほど同時派遣枠と行動半径が増えます。',effects:{garrisonSlots:1,rangeBonus:3.5,personnelCap:4}},
+  {id:'well',name:'井戸',icon:'💧',minEra:0,category:'生活',placement:'land',cost:{wood:30,stone:20},desc:'住宅街の水供給。人口容量と幸福度を上げる。',effects:{happiness:.8,popMax:4}},
+  {id:'granary',name:'共同穀倉',icon:'🌾',minEra:0,category:'食料',placement:'nearFarm',cost:{wood:50,stone:35},desc:'農地の収穫を集約し、食料生産と保管量を増やす。',effects:{food:.28,storage:500}},
+  {id:'school',name:'学び舎',icon:'📚',minEra:0,category:'研究',placement:'nearCity',cost:{wood:70,stone:45,science:30},desc:'記録・教育を行い科学と文化を生み出す。',effects:{science:.22,culture:.08}},
+  {id:'sawmill',name:'製材所',icon:'🪵',minEra:0,category:'資源',placement:'forestEdge',unique:true,cost:{wood:75,stone:35},desc:'森林の木材を製品化する拠点。木材生産量を大きく増やす。',effects:{wood:.72,production:.025}},
+  {id:'quarryWorks',name:'採石場',icon:'⛏️',minEra:0,category:'資源',placement:'nearQuarry',unique:true,cost:{wood:65,stone:90},desc:'露天採掘を本格化。石材生産を強化し、時代と共に採掘設備が巨大化する。',effects:{stone:.80,production:.025}},
+  {id:'forge',name:'小鍛冶場',icon:'🔥',minEra:1,category:'資源',placement:'nearQuarry',cost:{wood:90,stone:70,iron:8},desc:'序盤の鉄加工。採掘した鉄を加工し、鉄の生産を増やす。',effects:{iron:.26,production:.03}},
+  {id:'ironworks',name:'製鉄所',icon:'⚒️',minEra:2,category:'資源',placement:'nearMine',unique:true,cost:{wood:150,stone:180,iron:45,gold:40},desc:'鉄鉱山と物流を結ぶ大型製鉄施設。高レベルほど鉄生産が増える。',effects:{iron:1.15,production:.07}},
+  {id:'market',name:'市場',icon:'🏪',minEra:2,category:'商業',placement:'nearCity',cost:{wood:110,stone:90,gold:45},desc:'交易商が集まり、金と文化と人口流入を生む。',effects:{gold:.32,culture:.18,migration:.03}},
+  {id:'harbor',name:'港湾',icon:'⚓',minEra:3,category:'海運',placement:'coast',unique:true,cost:{wood:220,stone:180,gold:100},desc:'海へ出るための大型港。海洋遠征の効率と金収入を上げる。',effects:{gold:.55,production:.05,ocean:.8}},
+  {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,category:'生活',placement:'nearCity',cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口容量を増やす。',effects:{happiness:1.7,popMax:14}},
+  {id:'fortress',name:'要塞',icon:'🏰',minEra:4,category:'防衛',placement:'hillsOrEdge',unique:true,cost:{stone:420,iron:55,gold:120},desc:'外縁部を守る大型防衛施設。討伐隊の成功報酬と領域維持を支える。',effects:{happiness:.7,popMax:18,production:.045}},
+  {id:'clinic',name:'診療所',icon:'🏥',minEra:4,category:'生活',placement:'nearCity',cost:{stone:220,iron:35,gold:120,science:100},desc:'医療によって人口成長と幸福度を支える。',effects:{happiness:2.2,popMax:26}},
+  {id:'factory',name:'工場',icon:'🏭',minEra:5,category:'工業',placement:'land',unique:true,cost:{wood:260,stone:340,iron:120,gold:180},desc:'大量生産施設。時代に応じて工場形態が変化する。',effects:{iron:.55,gold:.5,production:.09}},
+  {id:'railhub',name:'鉄道駅',icon:'🚂',minEra:5,category:'物流',placement:'nearRoad',unique:true,cost:{stone:300,iron:160,gold:220},desc:'物流と人口移動を高速化し、都市圏を広げる。',effects:{gold:.28,migration:.05,production:.10}},
+  {id:'power',name:'発電所',icon:'⚡',minEra:6,category:'電力',placement:'nearRiver',unique:true,cost:{stone:500,iron:260,gold:420,science:500},desc:'電力網の中心。都市全体の研究・金・生産を増幅する。',effects:{science:.35,gold:.65,production:.16}},
+  {id:'research',name:'研究センター',icon:'🧬',minEra:7,category:'研究',placement:'nearCity',unique:true,cost:{stone:650,iron:300,gold:600,science:1200},desc:'情報時代の研究中枢。大量の科学を生み出す。',effects:{science:1.35,culture:.4}},
+  {id:'spaceport',name:'宇宙港',icon:'🚀',minEra:8,category:'宇宙',placement:'edge',unique:true,cost:{stone:1000,iron:800,gold:1800,science:6000},desc:'惑星間物流の拠点。巨大な科学・金生産を得る。',effects:{science:2.6,gold:2.0,popMax:80}},
+  {id:'habitat',name:'軌道居住区',icon:'🛰️',minEra:9,category:'宇宙',placement:'edge',unique:true,cost:{iron:1800,gold:4000,science:15000},desc:'恒星文明の人口拡張設備。',effects:{science:5.5,gold:3.4,popMax:280}}
 ];
+
 
 const ERA_SKY = [
   0xb7d6e2,0xb7d7c7,0xcbd8cc,0xc6c8c4,0xbfc2c7,
@@ -1382,7 +1426,7 @@ const ERA_ROAD = [
 
 const state = {
 
-  version:5,
+  version:9,
 
   last:Date.now(),
 
@@ -1452,8 +1496,15 @@ const state = {
   oceanPower:0,
   forestClears:[],
   expeditions:[],
+  trainedPersonnel:0,
+  trainingQueue:0,
+  trainingProgress:0,
   roadsBuilt:0,
-  wonders:0
+  wonders:0,
+  selectedFacility:null,
+  huntClaims:[],
+  territorySites:[],
+  territoryClaims:[]
 };
 
 
@@ -1530,6 +1581,10 @@ let buildMode=null;
 let discovery=null;
 let eraTransition=null;
 let cityPulse=0;
+let pendingMission=null;
+let missionPreviewGroup=null;
+let pendingMissionWorkers=1;
+
 
 /* Camera */
 /* Camera */
@@ -1845,6 +1900,9 @@ function makeMaterial(color,rough=.8,metal=0,emissive=0,ei=0){
   });
 }
 
+
+function metallic(color,rough=.35,metal=.75){return makeMaterial(color,rough,metal);}
+
 function addWindow3(parent,x,y,z,w,h,color,rotY=0){
   const m=new THREE.Mesh(
     new THREE.BoxGeometry(w,h,.035),
@@ -1853,12 +1911,21 @@ function addWindow3(parent,x,y,z,w,h,color,rotY=0){
   m.position.set(x,y,z);m.rotation.y=rotY;parent.add(m);return m;
 }
 
-function addLowPolyTree(parent,x,z,scale=1){
+function addLowPolyTree(parent,x,z,scale=1,variant=0){
   const g=new THREE.Group();
   g.position.set(x,0,z);g.scale.setScalar(scale);
-  g.add(cyl(.12,.55,mat(0x6b5038),0,.28,0,7));
-  const crown=new THREE.Mesh(new THREE.ConeGeometry(.5,1.15,7),mat(0x47724c));
-  crown.position.y=.95; crown.castShadow=true;g.add(crown);
+  const trunk=makeMaterial(variant%3===0?0x6b5038:variant%3===1?0x775941:0x5d493a,.96);
+  const crown=makeMaterial(variant%3===0?0x47724c:variant%3===1?0x3e6d48:0x557a49,.98);
+  g.add(cyl(.11,.62,trunk,0,.31,0,7));
+  if(variant%3===0){
+    const a=new THREE.Mesh(new THREE.ConeGeometry(.48,1.05,7),crown);a.position.y=.98;g.add(a);
+    const b=new THREE.Mesh(new THREE.ConeGeometry(.30,.65,7),crown);b.position.y=1.38;g.add(b);
+  }else if(variant%3===1){
+    const a=new THREE.Mesh(new THREE.SphereGeometry(.42,8,6),crown);a.position.y=1.05;g.add(a);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.29,8,6),crown);b.position.set(.20,1.34,0);g.add(b);
+  }else{
+    const a=new THREE.Mesh(new THREE.ConeGeometry(.58,1.24,6),crown);a.position.y=1.02;g.add(a);
+  }
   parent.add(g);return g;
 }
 
@@ -1923,25 +1990,44 @@ function addForestPatch(cx,cz){
   const id=`forest_${cx}_${cz}`;
   const x=cx*WORLD_CHUNK+20+hash2(cx+4,cz-5)*24;
   const z=cz*WORLD_CHUNK+20+hash2(cx-8,cz+7)*24;
-  addWorldNode('forest',id,x,z,3.4);
+  addWorldNode('forest',id,x,z,4.1);
   if(isForestCleared(id)) return;
-  const count=16+Math.floor(hash2(cx+9,cz+11)*16);
+
+  const count=26+Math.floor(hash2(cx+9,cz+11)*24);
   for(let i=0;i<count;i++){
-    const a=i*2.399963+hash2(cx+i,cz-i)*.7;
-    const rr=2+(i%7)*.92;
-    addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.70+(i%4)*.12);
+    const a=i*2.399963+hash2(cx+i*3,cz-i*5)*.9;
+    const rr=1.5+(i%9)*.72;
+    addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.62+(i%5)*.12,i%3);
+  }
+
+  const rockMat=makeMaterial(0x77786f,.98);
+  for(let i=0;i<5;i++){
+    const a=hash2(cx+i*8,cz+i*3)*Math.PI*2;
+    const rr=2+hash2(cx-i,cz+i)*2.4;
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.18+(i%3)*.08,0),rockMat);
+    rock.position.set(x+Math.cos(a)*rr,.22,z+Math.sin(a)*rr);
+    worldGroup.add(rock);
   }
 }
 
 function addHillPatch(cx,cz){
   const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
-  for(let i=0;i<7;i++){
+  const rock=makeMaterial(0x737b78,.96);
+  for(let i=0;i<10;i++){
     const a=i*1.73+hash2(cx+i,cz-i)*3;
-    const rr=7+(i%3)*6;
-    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(2.1+(i%3)*.75,1),makeMaterial(0x78847f,.98));
-    rock.position.set(x+Math.cos(a)*rr,.95,z+Math.sin(a)*rr);
-    rock.scale.y=1.15+(i%2)*.28;
-    worldGroup.add(rock);
+    const rr=4+(i%4)*3.6;
+    const m=new THREE.Mesh(
+      new THREE.DodecahedronGeometry(2.0+(i%3)*.75,1),
+      rock
+    );
+    m.position.set(x+Math.cos(a)*rr,.75+(i%2)*.22,z+Math.sin(a)*rr);
+    m.scale.set(1.1+(i%2)*.3,1.2+(i%3)*.2,1.0+(i%2)*.25);
+    m.rotation.y=a;
+    worldGroup.add(m);
+  }
+  if(state.era>=3){
+    const path=box(2.1,.08,10,makeMaterial(0x6f6a5f,.98),x,.43,z+2.5);
+    path.rotation.y=.15;worldGroup.add(path);
   }
 }
 
@@ -1951,11 +2037,16 @@ function addLake(cx,cz){
   const z=cz*WORLD_CHUNK+13+hash2(cx+7,cz-5)*37;
   const rx=7+hash2(cx-3,cz+4)*7;
   const rz=5+hash2(cx+12,cz-1)*6;
-  const lake=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.14,32),makeMaterial(0x58b9cb,.20,.08));
-  lake.scale.set(rx,1,rz);
-  lake.position.set(x,.12,z);
-  worldGroup.add(lake);
+  const bank=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.12,32),makeMaterial(0x7f9b69,.95));
+  bank.scale.set(rx+1.2,1,rz+1.0);bank.position.set(x,.07,z);worldGroup.add(bank);
+  const lake=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.16,32),new THREE.MeshStandardMaterial({color:0x4aafc4,roughness:.18,metalness:.08,transparent:true,opacity:.90}));
+  lake.scale.set(rx,1,rz);lake.position.set(x,.13,z);worldGroup.add(lake);
   addWorldNode('lake',id,x,z,Math.max(rx,rz));
+  /* 波紋 */
+  for(let i=0;i<3;i++){
+    const ripple=new THREE.Mesh(new THREE.RingGeometry(.9+i*.55,1.0+i*.55,24),new THREE.MeshBasicMaterial({color:0xa9e4ee,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));
+    ripple.rotation.x=-Math.PI/2;ripple.position.set(x+Math.cos(i*2.2)*rx*.35,.23,z+Math.sin(i*1.7)*rz*.28);ripple.scale.set(1.5,1,.8);worldGroup.add(ripple);
+  }
 }
 
 function riverCenterX(x){
@@ -1963,29 +2054,158 @@ function riverCenterX(x){
 }
 
 function addRiverChunk(cx,cz){
-  const x=cx*WORLD_CHUNK+32;
-  const z=riverCenterX(x);
-  const localChunkCenter=cz*WORLD_CHUNK+32;
-  if(Math.abs(localChunkCenter-z)>38) return;
-  const river=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+4,.16,6.5),makeMaterial(0x3f9db4,.18,.08));
-  river.position.set(x,.10,z);
-  river.rotation.y=Math.sin(x/80)*.10;
-  worldGroup.add(river);
-  if(state.era>=3) addBridge(worldGroup,x,z,false);
+  const x0=cx*WORLD_CHUNK;
+  const centerLocal=cz*WORLD_CHUNK+32;
+  const width=7.2;
+  const samples=5;
+  for(let i=0;i<samples;i++){
+    const x=x0+i*(WORLD_CHUNK/(samples-1));
+    const z=riverCenterX(x)+Math.sin((x+cz*11)/18)*1.8;
+    if(Math.abs(centerLocal-z)>40)continue;
+    const angle=Math.atan2(riverCenterX(x+3)-riverCenterX(x-3),6);
+    const bank=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK/(samples-1)+2,.10,width+2.0),makeMaterial(0x76946a,.98));
+    bank.position.set(x,.05,z);bank.rotation.y=angle;worldGroup.add(bank);
+    const river=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK/(samples-1)+2,.16,width),new THREE.MeshStandardMaterial({color:state.era>=6?0x338ea9:0x3f9fb5,roughness:.15,metalness:.10,transparent:true,opacity:.92}));
+    river.position.set(x,.13,z);river.rotation.y=angle;worldGroup.add(river);
+  }
+  if(state.era>=3 && Math.abs(centerLocal-riverCenterX(x0+32))<38) addBridge(worldGroup,x0+32,riverCenterX(x0+32),false);
 }
 
 function addSeaChunk(cx,cz){
   const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
-  const sea=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+.5,.18,WORLD_CHUNK+.5),makeMaterial(0x2b7895,.14,.08));
-  sea.position.set(x,.02,z);
-  worldGroup.add(sea);
+  const sea=new THREE.Mesh(new THREE.BoxGeometry(WORLD_CHUNK+.5,.18,WORLD_CHUNK+.5),new THREE.MeshStandardMaterial({color:state.era>=7?0x215e79:0x2b7895,roughness:.16,metalness:.12,transparent:true,opacity:.93}));
+  sea.position.set(x,.02,z);worldGroup.add(sea);
+  /* 海面の波の帯 */
+  for(let i=0;i<4;i++){
+    const wave=box(1.7,.012,.045,new THREE.MeshStandardMaterial({color:0xb2ebf0,roughness:.12,transparent:true,opacity:.32}),x-24+hash2(cx+i,cz)*48,.14,z-24+hash2(cx-i,cz+i)*48);
+    wave.rotation.y=hash2(cx+i*2,cz-i*2)*Math.PI;worldGroup.add(wave);
+  }
   addWorldNode('sea',`sea_${cx}_${cz}`,x,z,7.5);
+}
+
+function addTerritorySite(site){
+  const flagMat=makeMaterial(site.type==='sea'?0x4ec3df:0xe0ad57,.42,.1,site.type==='sea'?0x2ea9d4:0xe3a43b,.35);
+  const pole=cyl(.035,1.25,makeMaterial(0x4b453e,.85),site.x,.45,site.z,6);
+  const flag=box(.46,.26,.035,flagMat,site.x+.22,.95,site.z);
+  worldGroup.add(pole,flag);
+}
+
+
+/* =========================================================
+   TERRITORY UNION VISUAL
+   重複する開放円を1枚の「領域」にまとめ、重なり部分が濃くならないようにする
+========================================================= */
+
+function buildTerritoryUnionVisual(){
+  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
+  const group=new THREE.Group();
+  if(!claims.length) return group;
+
+  const visited=new Array(claims.length).fill(false);
+  const clusters=[];
+
+  for(let i=0;i<claims.length;i++){
+    if(visited[i]) continue;
+    const queue=[i];
+    visited[i]=true;
+    const ids=[];
+    while(queue.length){
+      const a=queue.shift();
+      ids.push(a);
+      const ca=claims[a];
+      const ra=Math.max(3,Number(ca.radius)||10);
+      for(let b=0;b<claims.length;b++){
+        if(visited[b]) continue;
+        const cb=claims[b];
+        const rb=Math.max(3,Number(cb.radius)||10);
+        const d=Math.hypot((ca.x||0)-(cb.x||0),(ca.z||0)-(cb.z||0));
+        if(d<=ra+rb+.15){
+          visited[b]=true;
+          queue.push(b);
+        }
+      }
+    }
+    clusters.push(ids);
+  }
+
+  const MAX=32;
+  for(const ids of clusters){
+    for(let start=0;start<ids.length;start+=MAX){
+      const slice=ids.slice(start,start+MAX);
+      let minX=Infinity,minZ=Infinity,maxX=-Infinity,maxZ=-Infinity;
+      const centers=[],radii=[];
+      for(const idx of slice){
+        const c=claims[idx];
+        const x=Number(c.x)||0,z=Number(c.z)||0,r=Math.max(3,Number(c.radius)||10);
+        centers.push(new THREE.Vector2(x,z));
+        radii.push(r);
+        minX=Math.min(minX,x-r);maxX=Math.max(maxX,x+r);
+        minZ=Math.min(minZ,z-r);maxZ=Math.max(maxZ,z+r);
+      }
+      const pad=1.3;
+      minX-=pad;maxX+=pad;minZ-=pad;maxZ+=pad;
+      const w=Math.max(2,maxX-minX),h=Math.max(2,maxZ-minZ);
+      const geom=new THREE.PlaneGeometry(w,h,1,1);
+      geom.rotateX(-Math.PI/2);
+      geom.translate((minX+maxX)/2,.335,(minZ+maxZ)/2);
+
+      const eraColor=state.era>=6?0x5fcbe0:0xd8ad59;
+      const uniforms={
+        uCenters:{value:centers},
+        uRadii:{value:radii},
+        uCount:{value:slice.length},
+        uColor:{value:new THREE.Color(eraColor)},
+        uTime:{value:0}
+      };
+      const mat=new THREE.ShaderMaterial({
+        uniforms,
+        transparent:true,
+        depthWrite:false,
+        side:THREE.DoubleSide,
+        vertexShader:`
+          varying vec2 vWorldXZ;
+          void main(){
+            vec4 wp=modelMatrix*vec4(position,1.0);
+            vWorldXZ=wp.xz;
+            gl_Position=projectionMatrix*viewMatrix*wp;
+          }
+        `,
+        fragmentShader:`
+          #define MAX_CLAIMS 32
+          varying vec2 vWorldXZ;
+          uniform vec2 uCenters[MAX_CLAIMS];
+          uniform float uRadii[MAX_CLAIMS];
+          uniform int uCount;
+          uniform vec3 uColor;
+          uniform float uTime;
+          void main(){
+            float sdf=100000.0;
+            for(int i=0;i<MAX_CLAIMS;i++){
+              if(i>=uCount) break;
+              sdf=min(sdf,distance(vWorldXZ,uCenters[i])-uRadii[i]);
+            }
+            float aa=max(.025,fwidth(sdf)*1.7);
+            float fill=1.0-smoothstep(-aa,aa,sdf);
+            float edge=1.0-smoothstep(.02,.44,abs(sdf));
+            float alpha=fill*.075 + edge*.28;
+            if(alpha<.012) discard;
+            gl_FragColor=vec4(uColor,alpha);
+          }
+        `
+      });
+      const mesh=new THREE.Mesh(geom,mat);
+      mesh.renderOrder=4;
+      mesh.userData.territoryUnion=true;
+      group.add(mesh);
+    }
+  }
+  return group;
 }
 
 function rebuildWorldChunks(force=false){
   const tx=Math.floor(controls.target.x/WORLD_CHUNK);
   const tz=Math.floor(controls.target.z/WORLD_CHUNK);
-  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${state.forestClears.length}`;
+  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
   while(worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
@@ -2015,6 +2235,31 @@ function rebuildWorldChunks(force=false){
       }
     }
   }
+  /* 都市圏に道路網を生成。自然地形は避けて分岐する。 */
+  const roadLimit=Math.min(120,Math.max(20,state.cityReach));
+  const roadMat=new THREE.MeshStandardMaterial({color:ERA_ROAD[state.era]||ERA_ROAD[0],roughness:state.era<5?.92:.70,metalness:state.era>=6?.12:0});
+  const curbMat=new THREE.MeshStandardMaterial({color:state.era>=5?0x596069:0x766b5d,roughness:.95});
+  for(let o=-Math.floor(roadLimit/8)*8;o<=Math.floor(roadLimit/8)*8;o+=8){
+    const roadA=box(1.65,.11,roadLimit*2,roadMat,o,.12,0);worldGroup.add(roadA);
+    const roadB=box(roadLimit*2,.11,1.65,roadMat,0,.12,o);worldGroup.add(roadB);
+    worldGroup.add(box(.05,.06,roadLimit*2,curbMat,o-0.84,.18,0));
+    worldGroup.add(box(roadLimit*2,.06,.05,curbMat,0,.18,o+0.84));
+  }
+
+  /* 領域境界 */
+  if(state.mapRadius<900){
+    const border=new THREE.Mesh(new THREE.RingGeometry(Math.max(12,state.mapRadius-.35),state.mapRadius,96),new THREE.MeshBasicMaterial({color:state.era>=6?0x74d5ec:0xe7bc63,transparent:true,opacity:.25,side:THREE.DoubleSide,depthWrite:false}));
+    border.rotation.x=-Math.PI/2;border.position.y=.32;worldGroup.add(border);
+  }
+
+  /* 新しく開放した小さな円形領域。
+     重なる円はシェーダー上で1つの領域として描画し、重複部分を濃くしない。 */
+  const territoryUnion=buildTerritoryUnionVisual();
+  worldGroup.add(territoryUnion);
+
+  for(const site of (state.territorySites||[])) addTerritorySite(site);
+  for(const site of (state.huntClaims||[])) { const ring=new THREE.Mesh(new THREE.RingGeometry(1.1,1.24,18),new THREE.MeshBasicMaterial({color:0xe0a34e,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.set(site.x,.32,site.z); worldGroup.add(ring); }
+
 }
 
 function worldBiomeAt(x,z){
@@ -2223,51 +2468,287 @@ function animateCitizens(dt,t){
 }
 
 function facilityById(id){ return FACILITIES.find(x=>x.id===id); }
+
+function facilityMaxLevel(def){
+  return Math.max(1,2+Math.floor(Math.max(0,state.era-def.minEra)/2));
+}
+
+function facilityUpgradeCost(f){
+  const def=facilityById(f.type); if(!def)return {};
+  const lv=Math.max(1,f.level||1);
+  const mult=Math.pow(1.52,lv-1);
+  const out={};
+  for(const [k,v] of Object.entries(def.cost)) out[k]=Math.ceil(v*.72*mult);
+  return out;
+}
+
+function placementLabel(def){
+  return ({
+    land:'陸地',nearFarm:'農地の近く',forestEdge:'森林の近く',nearQuarry:'採石場の近く',
+    nearMine:'鉄鉱山の近く',nearCity:'都市の近く',coast:'海岸',hillsOrEdge:'丘陵・都市外縁',
+    nearRoad:'道路沿い',nearRiver:'川沿い',edge:'都市外縁',nearTraining:'養成所の近く'
+  })[def.placement]||'陸地';
+}
+
+function hasNearDistrict(type,x,z,dist=10){
+  const found=DISTRICTS.find(d=>d.type===type && state.era>=d.unlock && Math.hypot(x-d.x,z-d.z)<=dist);
+  return !!found;
+}
+
+function hasNearbyFacilityType(type,x,z,dist=12){
+  return state.facilities.some(f=>f.type===type && Math.hypot(x-f.x,z-f.z)<=dist);
+}
+
+function placementAllowed(def,x,z){
+  const biome=worldBiomeAt(x,z);
+  if(def.placement==='land') return !['sea','river','lake'].includes(biome);
+  if(def.placement==='nearFarm') return hasNearDistrict('farm',x,z) || Math.hypot(x+10,z-5)<11;
+  if(def.placement==='forestEdge') return biome==='forest' || worldBiomeAt(x+8,z)==='forest' || worldBiomeAt(x-8,z)==='forest' || worldBiomeAt(x,z+8)==='forest' || worldBiomeAt(x,z-8)==='forest';
+  if(def.placement==='nearQuarry') return hasNearDistrict('stone',x,z) || Math.hypot(x+10,z+7)<12;
+  if(def.placement==='nearMine') return hasNearDistrict('iron',x,z) || hasNearbyFacilityType('quarryWorks',x,z,14) || biome==='hills';
+  if(def.placement==='nearCity') return Math.hypot(x,z)<=Math.max(18,state.cityReach*.72);
+  if(def.placement==='coast') return ['sea'].includes(worldBiomeAt(x+6,z)) || ['sea'].includes(worldBiomeAt(x-6,z)) || ['sea'].includes(worldBiomeAt(x,z+6)) || ['sea'].includes(worldBiomeAt(x,z-6));
+  if(def.placement==='hillsOrEdge') return biome==='hills' || Math.hypot(x,z)>=Math.max(18,state.cityReach*.75);
+  if(def.placement==='nearRoad') return Math.abs(x/6-Math.round(x/6))<.5 || Math.abs(z/6-Math.round(z/6))<.5;
+  if(def.placement==='nearRiver') return worldBiomeAt(x,z)==='river' || worldBiomeAt(x+7,z)==='river' || worldBiomeAt(x-7,z)==='river' || worldBiomeAt(x,z+7)==='river' || worldBiomeAt(x,z-7)==='river';
+  if(def.placement==='nearTraining') return hasNearbyFacilityType('trainingGround',x,z,10);
+  if(def.placement==='edge') return Math.hypot(x,z)>=Math.max(22,state.cityReach*.82);
+  return true;
+}
+
+function facilityPlacementOk(def,x,z){
+  if(placementAllowed(def,x,z)) return true;
+  toast(`${def.icon}${def.name}は「${placementLabel(def)}」に建設してください`);
+  return false;
+}
+
+function selectFacility(id){
+  if(!state.facilities.some(f=>f.id===id)) return;
+  state.selectedFacility=id;
+  renderSide();
+  highlightFacility(id);
+  if(window.innerWidth<=980)document.getElementById('side')?.classList.add('open');
+}
+window.selectFacility=selectFacility;
+
+let selectedFacilityRing=null;
+function highlightFacility(id){
+  if(selectedFacilityRing){cityGroup.remove(selectedFacilityRing);selectedFacilityRing=null;}
+  const f=state.facilities.find(x=>x.id===id);if(!f)return;
+  selectedFacilityRing=new THREE.Mesh(new THREE.RingGeometry(1.55,1.72,32),new THREE.MeshBasicMaterial({color:0xf0c66d,transparent:true,opacity:.9,side:THREE.DoubleSide,depthWrite:false}));
+  selectedFacilityRing.rotation.x=-Math.PI/2;selectedFacilityRing.position.set(f.x,.45,f.z);cityGroup.add(selectedFacilityRing);
+}
+
+function upgradeFacility(id){
+  const f=state.facilities.find(x=>x.id===id);if(!f)return;
+  const def=facilityById(f.type);if(!def)return;
+  const max=f.maxLevel||facilityMaxLevel(def);
+  if((f.level||1)>=max){toast(`現在の時代ではLv.${max}が上限です。時代が進むとさらに強化できます`);return;}
+  const cost=facilityUpgradeCost(f);
+  if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
+  pay(cost);f.level=(f.level||1)+1;
+  if(def.effects?.popMax)state.housingBonus+=def.effects.popMax*.12;
+  addLog(`${def.icon}${def.name}をLv.${f.level}へ強化しました。`);
+  rebuildMap();state.selectedFacility=f.id;renderSide();highlightFacility(f.id);
+  toast(`${def.icon}${def.name} Lv.${f.level}`);
+}
+window.upgradeFacility=upgradeFacility;
+
+
 function totalFacilityLevel(id){ return state.facilities.filter(x=>x.type===id).reduce((a,b)=>a+(b.level||1),0); }
 
 function buildFacilityVisual(f,p){
   const def=facilityById(f.type);if(!def)return;
-  const g=new THREE.Group();g.position.set(f.x,0,f.z);g.userData.facilityId=f.id;g.userData.facilityType=f.type;
-  const base=box(2.1,.18,1.8,makeMaterial(0x424951,.82,.12),0,.10,0);g.add(base);
+  const g=new THREE.Group();
+  const lv=Math.max(1,f.level||1);
   const era=state.era;
-  if(f.type==='well'){
-    g.add(cyl(.62,.36,makeMaterial(0x8a877d,1),0,.36,0,12));g.add(cyl(.28,.15,makeMaterial(0x346d7c,.2,.1),0,.53,0,12));
+  const growth=1+(lv-1)*.12;
+  g.position.set(f.x,0,f.z);
+  g.scale.setScalar(1);
+  g.userData.facilityId=f.id;
+  g.userData.facilityType=f.type;
+  g.userData.level=lv;
+
+  const baseMat=makeMaterial(0x475057,.76,.12);
+  g.add(box(2.5*growth,.18,2.05*growth,baseMat,0,.10,0));
+
+  const walls=p;
+  if(f.type==='trainingGround'){
+    /* 養成所は「ただの小屋」に見えないよう、訓練場・門・的・武器ラック・旗・看板をまとめた専用外観 */
+    const wood=makeMaterial(0x765238,.90),dark=makeMaterial(0x44382f,.86),cloth=makeMaterial(state.era>=5?0x46698a:0xb56e47,.70);
+    const floor=makeMaterial(state.era>=5?0x606a68:0x897258,.96);
+    g.add(box(4.10*growth,.16,3.15*growth,floor,0,.10,.08));
+    /* 主棟 */
+    g.add(box(1.65*growth,1.38*growth,1.18*growth,wood,-.88*growth,.82*growth,.25*growth));
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(1.30*growth,.62*growth,4),makeMaterial(state.era>=5?0x3f4f59:0x5b4033,.82));
+    roof.rotation.y=Math.PI/4;roof.position.set(-.88*growth,1.82*growth,.25*growth);g.add(roof);
+    addWindow3(g,-1.12*growth,1.03*growth,-.37*growth,.30*growth,.25*growth,p.glass);
+    addWindow3(g,-.64*growth,1.03*growth,-.37*growth,.30*growth,.25*growth,p.glass);
+    g.add(box(.24*growth,.60*growth,.05,makeMaterial(0x3b302a,.92),-.88*growth,.55*growth,-.37*growth));
+    /* 訓練門 */
+    for(const x of [-1.95,1.95])g.add(cyl(.10*growth,1.85*growth,wood,x*growth,.98*growth,-1.25*growth,8));
+    g.add(box(4.0*growth,.12*growth,.12*growth,wood,0,1.90*growth,-1.25*growth));
+    /* 周囲の柵 */
+    for(let i=-4;i<=4;i++){
+      if(Math.abs(i)<=1)continue;
+      g.add(cyl(.055*growth,.62*growth,dark,i*.43*growth,.38*growth,-1.48*growth,6));
+    }
+    /* 訓練人形3体 */
+    for(const x of [-.05,.62,1.28]){
+      const dummy=cyl(.13*growth,.72*growth,makeMaterial(0x9b6d49,.88),x*growth,.58*growth,.55*growth,8);g.add(dummy);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.16*growth,8,6),makeMaterial(0xd0a075,.90));head.position.set(x*growth,1.10*growth,.55*growth);g.add(head);
+      g.add(box(.72*growth,.045*growth,.055*growth,cloth,x*growth,1.42*growth,.55*growth));
+    }
+    /* 武器ラック */
+    g.add(box(.09*growth,.76*growth,.09*growth,wood,1.73*growth,.66*growth,.52*growth));
+    g.add(box(.92*growth,.07*growth,.08*growth,wood,1.73*growth,1.08*growth,.52*growth));
+    for(let i=0;i<4;i++)g.add(cyl(.018*growth,.65*growth,metallic(0xbfc5c8,.22,.65),1.36*growth+i*.24*growth,.72*growth,.52*growth,6));
+    /* 大きめの旗 */
+    g.add(cyl(.055*growth,2.25*growth,wood,1.78*growth,1.20*growth,-1.28*growth,7));
+    const banner=new THREE.Mesh(new THREE.PlaneGeometry(.62*growth,.82*growth),cloth);
+    banner.position.set(2.08*growth,1.58*growth,-1.28*growth);banner.rotation.y=Math.PI/2;g.add(banner);
+    /* 看板 */
+    const signMat=makeMaterial(state.era>=5?0x34434d:0x513b2d,.88);
+    g.add(box(1.28*growth,.48*growth,.09*growth,signMat,-.88*growth,2.10*growth,-1.02*growth));
+    const signTextCanvas=document.createElement('canvas');signTextCanvas.width=256;signTextCanvas.height=72;
+    const sc=signTextCanvas.getContext('2d');sc.fillStyle=state.era>=5?'#d8f1ff':'#f5dfb1';sc.font='bold 38px sans-serif';sc.textAlign='center';sc.textBaseline='middle';sc.fillText('養成所',128,36);
+    const stx=new THREE.CanvasTexture(signTextCanvas);stx.colorSpace=THREE.SRGBColorSpace;
+    const signPlane=new THREE.Mesh(new THREE.PlaneGeometry(.98*growth,.28*growth),new THREE.MeshBasicMaterial({map:stx,transparent:true}));
+    signPlane.position.set(-.88*growth,2.10*growth,-1.075*growth);g.add(signPlane);
+    /* 訓練場の松明 */
+    for(const x of [-1.65,1.65]){
+      g.add(cyl(.045*growth,.72*growth,wood,x*growth,.42*growth,.25*growth,7));
+      const glow=new THREE.Mesh(new THREE.SphereGeometry(.12*growth,8,6),new THREE.MeshStandardMaterial({color:0xffb35b,emissive:0xff6a25,emissiveIntensity:1.2,roughness:.25}));
+      glow.position.set(x*growth,.92*growth,.25*growth);g.add(glow);
+    }
+    /* 訓練生の小さな立ち姿 */
+    for(const [px,pz] of [[-.05,.98],[.95,-.10],[1.48,.06]]){
+      const trainee=makeCitizen(px*17+lv,state.era);trainee.scale.setScalar(.86*growth);trainee.position.set(px*growth,.52*growth,pz*growth);g.add(trainee);
+    }
+  }else if(f.type==='academy'){
+    const wall=makeMaterial(state.era>=6?0x6d7c89:0x9b8462,.82),roof=makeMaterial(state.era>=6?0x465a69:0x644f42,.82);
+    g.add(box(1.85*growth,1.35*growth,1.48*growth,wall,0,.83*growth,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(1.15*growth,.56*growth,4),roof);rt.rotation.y=Math.PI/4;rt.position.y=1.78*growth;g.add(rt);
+    addWindow3(g,-.52*growth,1.08*growth,-.78*growth,.28*growth,.24*growth,p.glass);addWindow3(g,.52*growth,1.08*growth,-.78*growth,.28*growth,.24*growth,p.glass);
+    g.add(box(.08,1.20*growth,.08,makeMaterial(0x5b4634,.9),0,.88*growth,.78));
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(.48*growth,.30*growth),makeMaterial(0xc79b52,.78));flag.position.set(.24*growth,1.62*growth,.78);flag.rotation.y=Math.PI;g.add(flag);
+  }else if(f.type==='garrison'){
+    const stone=makeMaterial(state.era>=6?0x65717b:0x867c6d,.85),wood=makeMaterial(0x654b37,.9);
+    g.add(box(1.95*growth,1.08*growth,1.55*growth,stone,0,.74*growth,0));
+    for(const x of [-.82,.82]){g.add(cyl(.24*growth,1.75*growth,stone,x,.92,[-.63,.63][x<0?0:1],8));}
+    g.add(box(1.20*growth,.55*growth,.22*growth,wood,0,.60*growth,-.82*growth));
+    g.add(box(.10,.95*growth,.10,wood,0,1.02*growth,.84*growth));
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(.52*growth,.32*growth),makeMaterial(0x9d5a4d,.82));flag.position.set(.26*growth,1.42*growth,.84*growth);flag.rotation.y=Math.PI;g.add(flag);
+  }else if(f.type==='well'){
+    g.add(cyl(.68*growth,.38,makeMaterial(0x8d8b82,.96),0,.37,0,16));
+    g.add(cyl(.30*growth,.12,makeMaterial(0x2d7d8e,.22,.05),0,.57,0,16));
+    g.add(box(.08,.70,.08,makeMaterial(0x5b4634,.9),-.58,.55,0));
+    g.add(box(.08,.70,.08,makeMaterial(0x5b4634,.9),.58,.55,0));
   }else if(f.type==='granary'){
-    g.add(box(1.35,1.25,1.25,makeMaterial(0x9e774c,.88),0,.82,0));
-    const rt=new THREE.Mesh(new THREE.ConeGeometry(.95,.5,6),makeMaterial(0x6e4e3c,.8));rt.position.y=1.70;g.add(rt);
+    g.add(box(1.55*growth,1.35*growth,1.35*growth,makeMaterial(0x9d7449,.88),0,.86*growth,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(1.05*growth,.58*growth,6),makeMaterial(0x6c4f3c,.8));rt.position.y=1.70*growth;g.add(rt);
+    for(let x of [-.5,0,.5]) addWindow3(g,x*growth,1.12*growth,-.71*growth,.22*growth,.2*growth,p.glass);
   }else if(f.type==='school'){
-    g.add(box(1.45,1.15,1.3,makeMaterial(0xa1a59d,.85),0,.82,0));
-    const rt=new THREE.Mesh(new THREE.ConeGeometry(.98,.42,4),makeMaterial(0x78564a,.72));rt.rotation.y=Math.PI/4;rt.position.y=1.60;g.add(rt);
-    addWindow3(g,-.42,1.02,-.67,.28,.25,p.glass);addWindow3(g,.42,1.02,-.67,.28,.25,p.glass);
+    g.add(box(1.55*growth,1.25*growth,1.42*growth,makeMaterial(0xaaad9f,.86),0,.85*growth,0));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(1.05*growth,.50*growth,4),makeMaterial(0x76584e,.74));rt.rotation.y=Math.PI/4;rt.position.y=1.72*growth;g.add(rt);
+    addWindow3(g,-.43*growth,1.10*growth,-.74*growth,.28*growth,.23*growth,p.glass);addWindow3(g,.43*growth,1.10*growth,-.74*growth,.28*growth,.23*growth,p.glass);
+    g.add(box(.10,.48,.08,makeMaterial(0x5b463d),0,.65*growth,-.78*growth));
+  }else if(f.type==='sawmill'){
+    const h=1.25*growth;
+    g.add(box(1.65*growth,h,1.38*growth,makeMaterial(0x8a6545,.9),0,.75*growth,0));
+    g.add(new THREE.Mesh(new THREE.ConeGeometry(1.12*growth,.48*growth,5),makeMaterial(0x5f4838,.84)));
+    g.children[g.children.length-1].position.y=1.52*growth;
+    for(let i=0;i<4+lv;i++)g.add(cyl(.09,.62,makeMaterial(0x6f4d34,.9),-1.0+i*.36,.55,-.95,7));
+  }else if(f.type==='quarryWorks'){
+    const stone=makeMaterial(0x7f8582,.95);
+    for(let i=0;i<Math.min(5,lv+2);i++){
+      const rock=new THREE.Mesh(new THREE.DodecahedronGeometry((.55+i*.04)*growth,1),stone);
+      rock.position.set(-.9+i*.45,.72+(i%2)*.18,.25+(i%2)*.35);g.add(rock);
+    }
+    if(lv>=2){
+      g.add(cyl(.08,1.9*growth,makeMaterial(0x5f676a,.58,.25),.75,.96,-.05,8));
+      g.add(box(1.45*growth,.07,.07,makeMaterial(0x52585c,.6,.2),0,1.75*growth,.10));
+    }
   }else if(f.type==='forge'){
-    g.add(box(1.55,1.35,1.2,makeMaterial(0x675148,.8,.08),0,.86,0));
-    g.add(cyl(.22,1.65,makeMaterial(0x373c40,.6,.45),.42,1.00,.18,10));addSmokeSource(g,.42,.18,Math.max(3,era));
-    g.add(cyl(.38,.10,makeMaterial(0xffb348,.3,0,0xff5b22,.95),-.38,.70,.20,8));
+    g.add(box(1.6*growth,1.4*growth,1.25*growth,makeMaterial(0x675048,.8,.08),0,.88*growth,0));
+    g.add(cyl(.24*growth,1.75*growth,makeMaterial(0x363b3f,.6,.45),.42,.95*growth,.18,10));addSmokeSource(g,.42,.18,Math.max(3,era));
+    g.add(cyl(.40*growth,.12,makeMaterial(0xffb34a,.3,0,0xff5b22,.95),-.38,.72*growth,.20,8));
+  }else if(f.type==='ironworks'){
+    const h=(1.7+.25*Math.min(5,lv-1))*growth;
+    g.add(box(1.85*growth,h,1.55*growth,makeMaterial(0x646a6f,.68,.18),0,.86+h/2,0));
+    for(let x of [-.65,0,.65])g.add(box(.30,.78,.045,makeMaterial(0x48545c,.45,.4),x,.76,-.82));
+    for(let x of [-.6,.6]){g.add(cyl(.22,2.1*growth,makeMaterial(0x454a4d,.6,.42),x,1.85,.2,10));addSmokeSource(g,x,.2,era);}
   }else if(f.type==='market'){
-    for(const x of [-.65,0,.65]){g.add(cyl(.035,1.35,makeMaterial(0x5d4635,.9),x,.78,0,6));const c=new THREE.Mesh(new THREE.ConeGeometry(.42,.36,4),makeMaterial([0xa95b50,0x6b82ad,0xb09155][Math.abs(x*2)%3],.8));c.position.set(x,1.58,0);c.rotation.y=Math.PI/4;g.add(c);}
+    const colors=[0xa55b52,0x6883aa,0xb18b50,0x6f9a83];
+    for(let i=0;i<4;i++){
+      const x=-.78+i*.52;
+      g.add(cyl(.035,1.35,makeMaterial(0x5d4635,.9),x,.78,0,6));
+      const c=new THREE.Mesh(new THREE.ConeGeometry(.35,.30,4),makeMaterial(colors[i],.8));c.position.set(x,1.55,0);c.rotation.y=Math.PI/4;g.add(c);
+      g.add(box(.32,.12,.18,makeMaterial(0x9a774c,.9),x,.90,.36));
+    }
+  }else if(f.type==='harbor'){
+    const dock=makeMaterial(0x77573c,.9);
+    g.add(box(2.0*growth,.22,1.15*growth,dock,0,.33,.48));
+    for(let i=-2;i<=2;i++)g.add(cyl(.07,.55,dock,i*.42,.45,.84,7));
+    g.add(box(.18,1.8*growth,.18,makeMaterial(0x555d62,.6,.45),-.70,.95,.22));
+    g.add(box(1.35*growth,.08,.08,makeMaterial(0x555d62,.6,.45),-.02,1.65,.22));
+    const ship=box(1.05,.15,.34,makeMaterial(0x54443a,.8),.28,.62,.92);g.add(ship);
+    const sail=new THREE.Mesh(new THREE.PlaneGeometry(.48,.72),makeMaterial(0xe6e5dd,.9));sail.position.set(.28,1.05,.92);sail.rotation.y=Math.PI/2;g.add(sail);
   }else if(f.type==='bath'){
-    g.add(box(1.55,.95,1.35,makeMaterial(0x8d9ba0,.6),0,.68,0));g.add(cyl(.48,.18,makeMaterial(0x5b9a9e,.3,.05),0,1.20,0,16));
+    g.add(box(1.65*growth,1.0*growth,1.42*growth,makeMaterial(0x8c9aa0,.62),0,.70*growth,0));
+    g.add(cyl(.48*growth,.18,makeMaterial(0x5b9a9e,.3,.05),0,1.25*growth,0,18));
+  }else if(f.type==='fortress'){
+    const wall=makeMaterial(era>=6?0x64717b:.7*0xffffff,.82);
+    const c=era>=4?0x8f9595:0x8f7657;
+    for(const x of [-.78,.78])for(const z of [-.50,.50]){
+      const tower=cyl(.33*growth,1.9*growth,makeMaterial(c,.88),x,.58,z,10);g.add(tower);
+      const roof=new THREE.Mesh(new THREE.ConeGeometry(.38*growth,.32*growth,8),makeMaterial(0x5f5151,.78));roof.position.set(x,1.68*growth,z);g.add(roof);
+    }
+    g.add(box(1.75*growth,.75*growth,.20*growth,wall,0,.93*growth,0));
+    if(lv>=3)g.add(box(1.95*growth,.20,1.45*growth,makeMaterial(0x626a70,.75),0,1.75*growth,0));
   }else if(f.type==='clinic'){
-    g.add(box(1.6,1.45,1.35,makeMaterial(0xe0dfd7,.72),0,.92,0));addWindow3(g,-.42,1.20,-.70,.26,.25,p.glass);addWindow3(g,.42,1.20,-.70,.26,.25,p.glass);g.add(box(.56,.08,.08,makeMaterial(0xf1f1ee),0,1.76,-.70));g.add(box(.08,.36,.08,makeMaterial(0xf1f1ee),0,1.76,-.70));
+    g.add(box(1.72*growth,1.48*growth,1.42*growth,makeMaterial(0xe0dfd7,.72),0,.95*growth,0));
+    addWindow3(g,-.45*growth,1.20*growth,-.74*growth,.28*growth,.25*growth,p.glass);addWindow3(g,.45*growth,1.20*growth,-.74*growth,.28*growth,.25*growth,p.glass);
+    g.add(box(.56*growth,.08,.08,makeMaterial(0xf1f1ee),0,1.80*growth,-.76));g.add(box(.08,.36*growth,.08,makeMaterial(0xf1f1ee),0,1.80*growth,-.76));
   }else if(f.type==='factory'){
-    g.add(box(1.7,1.5,1.45,makeMaterial(0x666b70,.76,.12),0,.86,0));
-    for(const x of [-.58,0,.58]) g.add(box(.28,.72,.04,makeMaterial(0x4d5962,.45,.35),x,.72,-.75));
-    g.add(cyl(.28,2.2,makeMaterial(0x4a4e52,.65,.4),.48,1.88,.20,10));addSmokeSource(g,.48,.20,era);
+    const industrial=era>=7?0x5e6b78:0x666b70;
+    g.add(box(1.95*growth,(1.55+.22*Math.min(lv,5))*growth,1.62*growth,makeMaterial(industrial,.64,.15),0,.90*growth,0));
+    for(const x of [-.62,0,.62])addWindow3(g,x,.95*growth,-.84*growth,.28,.25,p.glass);
+    for(const x of [-.55,.55]){g.add(cyl(.30*growth,(2.2+.25*lv)*growth,makeMaterial(0x4a4e52,.58,.45),x,2.0,.20,10));addSmokeSource(g,x,.2,era);}
+  }else if(f.type==='railhub'){
+    g.add(box(2.0*growth,1.1*growth,1.35*growth,makeMaterial(0x72777a,.7,.18),0,.75*growth,0));
+    g.add(box(2.18*growth,.12,1.52*growth,makeMaterial(0x3f454a,.72,.45),0,1.36*growth,0));
+    for(const x of [-.7,0,.7])addWindow3(g,x,.95*growth,-.70*growth,.3,.24,p.glass);
+    g.add(box(2.3,.05,.08,makeMaterial(0x42484c,.5,.55),0,.34,1.0));
   }else if(f.type==='power'){
-    const core=cyl(.58,2.7,makeMaterial(0x596b7b,.42,.5,0x2b6f9a,.08),0,1.45,0,12);g.add(core);
-    const glow=new THREE.Mesh(new THREE.TorusGeometry(.85,.08,8,24),makeMaterial(0x8be9ff,.22,.35,0x36c7ff,.85));glow.rotation.x=Math.PI/2;glow.position.y=1.9;g.add(glow);
+    const core=cyl((.58+.06*lv)*growth,2.8*growth,makeMaterial(0x596b7b,.40,.55,0x2b6f9a,.12),0,1.45*growth,0,16);g.add(core);
+    const glow=new THREE.Mesh(new THREE.TorusGeometry((.88+.05*lv)*growth,.08,8,28),makeMaterial(0x8be9ff,.22,.35,0x36c7ff,.95));glow.rotation.x=Math.PI/2;glow.position.y=(1.9+.1*lv)*growth;g.add(glow);
+    for(let i=0;i<4;i++){const a=i*Math.PI/2;g.add(box(.10,.9,.10,makeMaterial(0x4e5d67,.5,.4),Math.cos(a)*1.05*growth,.55,Math.sin(a)*1.05*growth));}
   }else if(f.type==='research'){
-    g.add(box(1.65,2.0,1.4,makeMaterial(0x677986,.36,.28),0,1.20,0));
-    for(let y=.9;y<2.4;y+=.5) for(const x of [-.42,0,.42]) addWindow3(g,x,y,-.74,.21,.20,p.glass);
-    g.add(cyl(.05,1.2,makeMaterial(0x9decff,.2,.5,0x39d1ff,.7),0,2.65,0,8));
+    const h=(2.0+.35*Math.min(lv,4))*growth;
+    g.add(box(1.75*growth,h,1.48*growth,makeMaterial(0x657988,.34,.30),0,1.05+h/2,0));
+    for(let y=.9;y<2.4+lv*.25;y+=.45)for(const x of [-.44,0,.44])addWindow3(g,x*growth,y*growth,-.78*growth,.21,.19,p.glass);
+    g.add(cyl(.05,1.4*growth,makeMaterial(0x9decff,.2,.5,0x39d1ff,.9),0,2.7*growth,0,8));
   }else if(f.type==='spaceport'){
-    const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.15,1.3,.18,24),makeMaterial(0x586a78,.5,.2));pad.position.y=.28;g.add(pad);
-    const rocket=new THREE.Mesh(new THREE.CylinderGeometry(.23,.34,2.7,12),makeMaterial(0xdfe4e9,.28,.35));rocket.position.y=1.60;g.add(rocket);
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(.23,.48,12),makeMaterial(0x7ab6c9,.28,.25,0x2bb6e9,.2));nose.position.y=3.18;g.add(nose);
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.3*growth,1.45*growth,.18,32),makeMaterial(0x586a78,.5,.24));pad.position.y=.28;g.add(pad);
+    const rocket=new THREE.Mesh(new THREE.CylinderGeometry(.25*growth,.38*growth,(2.7+.25*lv)*growth,14),makeMaterial(0xdfe4e9,.28,.38));rocket.position.y=1.60*growth;g.add(rocket);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.25*growth,.50*growth,14),makeMaterial(0x7ab6c9,.28,.25,0x2bb6e9,.25));nose.position.y=(3.20+.25*lv)*growth;g.add(nose);
   }else if(f.type==='habitat'){
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.05,.22,8,28),makeMaterial(0x7aaac0,.24,.65,0x38c8ff,.5));ring.rotation.x=Math.PI/2;ring.position.y=2.2;g.add(ring);
-    g.add(cyl(.15,3.2,makeMaterial(0x9dbdcc,.3,.55),0,1.60,0,10));
+    const rr=(1.05+.11*lv)*growth;
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(rr,.22*growth,10,36),makeMaterial(0x7aaac0,.24,.65,0x38c8ff,.6));ring.rotation.x=Math.PI/2;ring.position.y=(2.2+.18*lv)*growth;g.add(ring);
+    g.add(cyl(.15,3.2*growth,makeMaterial(0x9dbdcc,.3,.55),0,1.60*growth,0,10));
   }
+
+  /* 強化段階の表示：建物の周囲に設備リングを追加 */
+  if(lv>=2){
+    const ring=new THREE.Mesh(new THREE.RingGeometry(1.24*growth,1.29*growth,24),new THREE.MeshBasicMaterial({color:state.era>=6?0x68cce8:0xe4b960,transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;ring.position.y=.30;g.add(ring);
+  }
+  if(lv>=3){
+    addStreetLamp(g,1.18*growth,1.00*growth);
+    addStreetLamp(g,-1.18*growth,-1.00*growth);
+  }
+
   facilityGroup.add(g);facilityObjects.push(g);
 }
 
@@ -2283,6 +2764,7 @@ function rebuildMap(){
   cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
   districtObjects.clear();houseObjects.length=0;facilityObjects.length=0;smokePuffs.length=0;clearCitizens();
   while(effectGroup.children.length) effectGroup.remove(effectGroup.children[0]);
+  rebuildExpeditionVisuals();
   HOUSE_LOTS=makeHouseLots();
   const p=eraPalette();
   const sky=ERA_SKY[state.era]||ERA_SKY[0];
@@ -3414,6 +3896,7 @@ function selectDistrict(
 
 
   state.selected=id;
+  state.selectedFacility=null;
 
 
   renderSide();
@@ -3632,20 +4115,32 @@ function formatCost(cost){
 
 
 function facilityCost(def){
-  const mult=Math.pow(1.28,Math.max(0,totalFacilityLevel(def.id)-1));
-  const out={};for(const [k,v] of Object.entries(def.cost))out[k]=Math.ceil(v*mult);return out;
+  const owned=state.facilities.filter(x=>x.type===def.id).length;
+  const mult=Math.pow(1.28,owned);
+  const out={};
+  for(const [k,v] of Object.entries(def.cost))out[k]=Math.ceil(v*mult);
+  return out;
 }
 function canBuildFacility(def){
-  if(state.era<def.minEra) return false;
+  if(state.era<def.minEra)return false;
   return canAfford(facilityCost(def));
 }
 function startBuildFacility(id){
   const def=facilityById(id);if(!def)return;
   if(state.era<def.minEra){toast(`${ERA[def.minEra].name}で解禁`);return;}
+  if(def.requiresFacility && !state.facilities.some(f=>f.type===def.requiresFacility)){
+    const req=facilityById(def.requiresFacility);
+    toast(`${req?.icon||'🔒'} ${req?.name||'前提施設'}を先に建設してください`);
+    return;
+  }
+  if(def.unique && state.facilities.some(f=>f.type===id)){
+    const f=state.facilities.find(f=>f.type===id);
+    selectFacility(f.id);toast(`${def.icon}${def.name}は既に建設済み。選択して強化できます`);return;
+  }
   const cost=facilityCost(def);
-  if(!canAfford(cost)){toast('建設資源が足りません');return;}
+  if(!canAfford(cost)){toast(`建設資源が足りません：${formatCost(cost)}`);return;}
   buildMode=id;
-  toast(`${def.icon} ${def.name}の建設場所をマップから選択`);
+  toast(`${def.icon}${def.name}：マップの「${placementLabel(def)}」をタップ`);
 }
 window.startBuildFacility=startBuildFacility;
 function cancelBuildMode(){buildMode=null;toast('建設モードを解除');}
@@ -3653,22 +4148,31 @@ window.cancelBuildMode=cancelBuildMode;
 function placeFacilityAt(x,z){
   const def=facilityById(buildMode);if(!def)return;
   const sx=Math.round(x),sz=Math.round(z);
-  if(Math.hypot(sx,sz)>state.mapRadius){toast('まだこの土地は領土外です。先に領土を拡張してください');return;}
-  const biome=worldBiomeAt(sx,sz);
-  if(biome==='sea'||biome==='river'||biome==='lake'){toast('水上にはこの設備を建設できません');return;}
+  if(Math.hypot(sx,sz)>state.mapRadius){toast('領土外です。先に領域拡大を行ってください');return;}
+  if(!facilityPlacementOk(def,sx,sz))return;
   if(Math.hypot(sx,sz)<5.0){toast('中央広場には建設できません');return;}
-  for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存施設に近すぎます');return;}}
+  for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存地区に近すぎます');return;}}
   for(const f of state.facilities){if(Math.hypot(sx-f.x,sz-f.z)<3.0){toast('他の設備に近すぎます');return;}}
   const cost=facilityCost(def);if(!canAfford(cost)){buildMode=null;toast('資源が足りなくなりました');return;}
   pay(cost);
   const id=`f_${Date.now()}_${Math.floor(Math.random()*100000)}`;
-  state.facilities.push({id,type:def.id,x:sx,z:sz,level:1});
+  const maxLevel=facilityMaxLevel(def);
+  state.facilities.push({id,type:def.id,x:sx,z:sz,level:1,maxLevel});
   state.housingBonus+=def.effects?.popMax||0;
   state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
   addLog(`${def.icon}${def.name}を建設しました。`);
+  state.selectedFacility=id;
+  state.selected=null;
   buildMode=null;
-  rebuildMap();renderAll();
+  rebuildMap();renderAll();highlightFacility(id);
 }
+
+function startTerritoryExpansion(){
+  dispatchMode='expand';
+  const el=document.getElementById('worldMode');if(el){el.style.display='block';el.classList.add('world-mode-pulse');el.textContent='🗺 領域拡大隊：マップ上の進出地点をタップ';}
+  toast('進出したい場所をマップでタップしてください');
+}
+window.startTerritoryExpansion=startTerritoryExpansion;
 
 function expandMap(){
   const factor=Math.pow(1.26,state.mapExpansion);
@@ -3699,76 +4203,148 @@ function publicWorks(){
 }
 window.publicWorks=publicWorks;
 
+function biomeLabel(type){
+  return ({
+    forest:'森林',
+    sea:'海域',
+    river:'川',
+    lake:'池',
+    hills:'丘陵',
+    plains:'平原'
+  })[type] || '未開地';
+}
+
+function snapToLand(x,z){
+  if(!['sea','river','lake'].includes(worldBiomeAt(x,z))) return {x,z};
+  const angles=16;
+  for(let r=2;r<=18;r+=2){
+    for(let i=0;i<angles;i++){
+      const a=i*Math.PI*2/angles;
+      const sx=x+Math.cos(a)*r;
+      const sz=z+Math.sin(a)*r;
+      if(!['sea','river','lake'].includes(worldBiomeAt(sx,sz))){
+        return {x:sx,z:sz};
+      }
+    }
+  }
+  return {x,z};
+}
+
+function findNearestWorldNode(type,x,z){
+  let best=null,bestD=Infinity;
+  for(const obj of worldNodeObjects){
+    const node=obj.userData?.worldNode;
+    if(!node || node.type!==type) continue;
+    const d=Math.hypot(node.x-x,node.z-z);
+    if(d<bestD){best=node;bestD=d;}
+  }
+  return best;
+}
+
+function smartDispatchAt(x,z){
+  const biome=worldBiomeAt(x,z);
+  if(biome==='forest') prepareMission('forest',x,z);
+  else if(biome==='sea') prepareMission('sea',x,z);
+  else prepareMission('hunt',x,z);
+}
+
+function pulseMapTarget(x,z,type='target'){
+  if(window.__mapTarget){effectGroup.remove(window.__mapTarget);window.__mapTarget=null;}
+  const color=type==='forest'?0x8bd36a:type==='sea'?0x58d5ed:type==='expand'?0xe8c36c:0xe2a34e;
+  const ring=new THREE.Mesh(
+    new THREE.RingGeometry(1.0,1.18,40),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false})
+  );
+  ring.rotation.x=-Math.PI/2;
+  ring.position.set(x,.46,z);
+  ring.userData.mapTarget=true;
+  effectGroup.add(ring);
+  window.__mapTarget=ring;
+  window.__mapTargetLife=0;
+}
+
+function animateMapTarget(dt){
+  if(!window.__mapTarget) return;
+  window.__mapTargetLife=(window.__mapTargetLife||0)+dt;
+  const a=1+Math.sin(window.__mapTargetLife*5)*.14;
+  window.__mapTarget.scale.set(a,a,a);
+  window.__mapTarget.material.opacity=.55+Math.sin(window.__mapTargetLife*5)*.25;
+}
+
+function beginTerritoryExpansion(x,z){
+  prepareMission('expand',x,z);
+}
+
+window.beginTerritoryExpansion=beginTerritoryExpansion;
+
 function startDispatch(type){
-  if(type!=='forest' && type!=='sea') return;
+  if(!['forest','sea','hunt'].includes(type))return;
   dispatchMode=type;
   const el=document.getElementById('worldMode');
-  if(el){el.style.display='block';el.textContent=type==='forest'?'🌲 伐採隊：森林のマークをタップ':'⚓ 海洋隊：海のマークをタップ';}
-  toast(type==='forest'?'森林をタップして伐採隊を派遣':'海をタップして航海隊を派遣');
+  if(el){el.style.display='block';el.textContent=type==='forest'?'🌲 伐採隊：目的地をマップでタップ':type==='sea'?'⚓ 海洋隊：海域をマップでタップ':'🛡 討伐隊：討伐地点をマップでタップ';}
+  toast(type==='forest'?'森林の目的地を選択':type==='sea'?'海域の目的地を選択':'討伐したい地点を選択');
 }
 window.startDispatch=startDispatch;
-
-function cancelDispatch(){
-  dispatchMode=null;
-  const el=document.getElementById('worldMode');if(el)el.style.display='none';
-}
+function cancelDispatch(){dispatchMode=null;const el=document.getElementById('worldMode');if(el){el.style.display='none';el.classList.remove('world-mode-pulse');}}
 window.cancelDispatch=cancelDispatch;
 
-function makeExpeditionVisual(e){
-  const g=new THREE.Group();
-  if(e.type==='sea'){
-    const hull=box(.9,.18,.32,makeMaterial(0x4c514d,.72,.18),0,.66,0);
-    const mast=cyl(.025,.95,makeMaterial(0x705438,.85),0,.55,0,6);
-    const geo=new THREE.BufferGeometry();
-    geo.setAttribute('position',new THREE.Float32BufferAttribute([0,.95,0,0,.08,0,.56,.08,0],3));
-    geo.computeVertexNormals();
-    const sail=new THREE.Mesh(geo,makeMaterial(0xe5e4d9,.9));
-    g.add(hull,mast,sail);
-  }else{
-    const d=makeDigger().group;d.scale.setScalar(.78);g.add(d);
-  }
-  g.position.set(e.x,.42,e.z);
-  return g;
-}
-
-function beginDispatch(type,x,z,nodeId){
-  if(type==='forest' && isForestCleared(nodeId)){toast('この森林区画はすでに開発済みです');cancelDispatch();return;}
-  const cost=type==='forest'?{food:55,gold:15}:{food:120,gold:50};
-  if(!canAfford(cost)){toast('派遣に必要な資源が足りません');cancelDispatch();return;}
-  pay(cost);
-  const workers=Math.max(1,Math.min(10,Math.floor(state.pop/5)));
-  const duration=type==='forest'?24:40;
-  state.expeditions.push({id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type,x,z,nodeId,workers,duration,remaining:duration});
-  addLog(type==='forest'?`🌲 ${workers}人の伐採隊を派遣しました。`:`⚓ ${workers}人の航海隊を派遣しました。`);
-  cancelDispatch();rebuildMap();renderAll();
-  toast(type==='forest'?'伐採隊が出発しました':'航海隊が出港しました');
+function beginDispatch(type,x,z,nodeId=null){
+  prepareMission(type,x,z,nodeId);
 }
 
 function completeDispatch(e){
+  state.trainedPersonnel=Math.min(personnelSystem().personnelCap,Math.max(0,state.trainedPersonnel||0)+(e.workers||0));
   if(e.type==='forest'){
     const wood=Math.round(e.workers*(40+state.era*9));
     state.resources.wood=(state.resources.wood||0)+wood;
-    if(e.nodeId && !state.forestClears.includes(e.nodeId)) state.forestClears.push(e.nodeId);
+    const id=e.nodeId||`forest_${Math.floor(e.x/WORLD_CHUNK)}_${Math.floor(e.z/WORLD_CHUNK)}`;
+    if(!state.forestClears.includes(id))state.forestClears.push(id);
     addLog(`🌲 伐採隊が帰還。木材+${wood}`);
     showBanner('FOREST OPERATION','森林開発完了',`伐採隊${e.workers}人が木材${wood}を持ち帰りました。`,1500);
-  }else{
-    const gold=Math.round(90+e.workers*25+state.era*25);
-    const power=e.workers*2+state.era+1;
-    state.oceanPower+=power;
-    state.seaClaims++;
+  }else if(e.type==='sea'){
+    const gold=Math.round(90+e.workers*25+state.era*25+(state.oceanPower||0)*2);
+    const power=e.workers*2+state.era+1+Math.floor(totalFacilityLevel('harbor')*.8);
+    state.oceanPower+=power;state.seaClaims++;
     state.resources.gold=(state.resources.gold||0)+gold;
-    state.mapRadius=Math.min(100000,state.mapRadius+28);
+    if(!state.territorySites)state.territorySites=[];
+    state.territorySites.push({x:e.x,z:e.z,type:'sea'});
+    state.mapRadius=Math.min(100000,Math.max(state.mapRadius,Math.hypot(e.x,e.z)+28));
     addLog(`⚓ 海域を制圧。新航路を確保し金+${gold}`);
     showBanner('OCEAN CLAIM','海域制圧',`新しい航路を確保。金 +${gold}　制海力 +${power}`,1700);
+  }else if(e.type==='expand'){
+    const old=state.mapRadius;
+    const claimRadius=e.claimRadius||6;
+    if(territoryClaimAt(e.x,e.z,.05)){
+      state.trainedPersonnel=Math.min(personnelSystem().personnelCap,Math.max(0,state.trainedPersonnel||0)+(e.workers||0));
+      addLog('🗺 開拓隊が到着しましたが、その地点はすでに開放済みでした。人員は帰還。');
+      showBanner('EXPANSION SKIPPED','開放済み地点',`既存領域と重なったため、新しい領域は追加されませんでした。`,1500);
+      return;
+    }
+    state.mapRadius=Math.min(100000,Math.max(state.mapRadius,Math.hypot(e.x,e.z)+claimRadius+4));
+    state.mapExpansion++;
+    state.cityReach=Math.min(260,state.cityReach+10);
+    if(!state.territorySites)state.territorySites=[];
+    if(!state.territoryClaims)state.territoryClaims=[];
+    state.territorySites.push({x:e.x,z:e.z,type:'land'});
+    state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius});
+    addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}を開放しました。`);
+    showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)} の円形領域を開放しました。`,1700);
+  }else if(e.type==='hunt'){
+    const gold=Math.round(50+e.workers*13+state.era*16);
+    const food=Math.round(75+e.workers*20);
+    state.resources.gold+=gold;state.resources.food+=food;
+    state.happiness=Math.min(100,state.happiness+1.5);
+    state.huntClaims.push({x:e.x,z:e.z});
+    addLog(`🛡 討伐隊が帰還。食料+${food} 金+${gold}`);
+    showBanner('HUNT COMPLETE','討伐成功',`討伐隊が帰還。食料 +${food}　金 +${gold}`,1500);
   }
-  state.expeditions=state.expeditions.filter(x=>x.id!==e.id);
-  rebuildMap();renderAll();
+  state.expeditions=state.expeditions.filter(x=>x.id!==e.id);rebuildMap();renderAll();
 }
 
 function simulateExpeditions(sec){
   for(const e of [...state.expeditions]){
     e.remaining-=sec;
-    if(e.remaining<=0) completeDispatch(e);
+    if(e.remaining<=0)completeDispatch(e);
   }
 }
 
@@ -3865,6 +4441,7 @@ function startEraTransition(oldEra,newEra){
 
 function upgradeSelected(){
 
+  state.selectedFacility=null;
   const d=
     DISTRICTS.find(
       x=>x.id===state.selected
@@ -4119,7 +4696,7 @@ function rates(){
     const lv=f.level||1;
     const mul=1+Math.max(0,lv-1)*.15;
     for(const [k,v] of Object.entries(def.effects||{})){
-      if(['happiness','popMax','migration','storage','production'].includes(k)) continue;
+      if(['happiness','popMax','migration','storage','production','trainingRate','trainingCap','personnelCap','garrisonSlots','rangeBonus'].includes(k)) continue;
       out[k]=(out[k]||0)+v*mul;
     }
   }
@@ -4162,6 +4739,79 @@ function rates(){
 
 }
 
+
+/* =========================================================
+   PERSONNEL / TRAINING SYSTEM
+========================================================= */
+
+function personnelSystem(){
+  const out={trainingRate:0,trainingCap:0,personnelCap:0,garrisonSlots:0,rangeBonus:0,trainingGroundLv:0,academyLv:0,garrisonLv:0};
+  for(const f of state.facilities){
+    const def=facilityById(f.type);if(!def)continue;
+    const lv=f.level||1;
+    out.trainingRate+=(def.effects?.trainingRate||0)*lv;
+    out.trainingCap+=(def.effects?.trainingCap||0)*lv;
+    out.personnelCap+=(def.effects?.personnelCap||0)*lv;
+    out.garrisonSlots+=(def.effects?.garrisonSlots||0)*lv;
+    out.rangeBonus+=(def.effects?.rangeBonus||0)*lv;
+    if(f.type==='trainingGround')out.trainingGroundLv+=lv;
+    if(f.type==='academy')out.academyLv+=lv;
+    if(f.type==='garrison')out.garrisonLv+=lv;
+  }
+  out.personnelCap=Math.max(0,out.personnelCap);
+  return out;
+}
+
+function availablePersonnel(){
+  return Math.max(0,Number(state.trainedPersonnel)||0);
+}
+
+function activeGarrisonSlots(){
+  return Math.max(0,personnelSystem().garrisonSlots||0);
+}
+
+function deployedPersonnelCount(){
+  return state.expeditions.reduce((sum,e)=>sum+(Number(e.workers)||0),0);
+}
+
+function findNearestGarrison(x,z){
+  let best=null,bestD=Infinity;
+  for(const f of state.facilities){
+    if(f.type!=='garrison')continue;
+    const d=Math.hypot(x-f.x,z-f.z);
+    if(d<bestD){best=f;bestD=d;}
+  }
+  return best?{facility:best,distance:bestD}:null;
+}
+
+function missionBaseInfo(type){
+  return ({
+    forest:{baseRange:8,rangePerPerson:.55,maxRange:34,cost:{food:24,gold:7},speed:1.0},
+    sea:{baseRange:10,rangePerPerson:.70,maxRange:46,cost:{food:34,gold:14},speed:.88},
+    hunt:{baseRange:9,rangePerPerson:.60,maxRange:38,cost:{food:28,gold:10},speed:1.0},
+    expand:{baseRange:5.5,rangePerPerson:.48,maxRange:24,cost:{food:20,wood:24,stone:20,gold:9},speed:.82}
+  })[type]||null;
+}
+
+function getMissionStats(type,workers,x,z){
+  const info=missionBaseInfo(type);if(!info)return null;
+  const sys=personnelSystem();
+  const origin=findNearestGarrison(x,z);
+  if(!origin)return null;
+  const w=Math.max(1,Number(workers)||1);
+  const range=Math.min(info.maxRange,info.baseRange+w*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2);
+  const distance=origin.distance;
+  const ratio=Math.max(.7,1+Math.max(0,distance-range)*.045);
+  const personnelLoad=1+w*.115;
+  const cost={};
+  for(const [k,v] of Object.entries(info.cost))cost[k]=Math.ceil(v*personnelLoad*ratio*(1+state.era*.018));
+  const duration=Math.max(12,18+distance*(1.4/info.speed)-Math.min(12,w*.15)-sys.garrisonLv*1.1);
+  /* 領域開放の円は「行動範囲」より小さめ。人数が増えるほど少し広がる。 */
+  const claimRadius=type==='expand'
+    ? Math.min(12,3.8+w*.30+sys.academyLv*.22+sys.garrisonLv*.35)
+    : 0;
+  return {origin:origin.facility,distance,range,cost,duration,workers:w,claimRadius};
+}
 
 /* =========================================================
    SIMULATION
@@ -4240,6 +4890,28 @@ function simulate(sec){
   state.migration += sec*facilityMigration*.08;
   state.storage=Math.max(5000,state.storage+sec*facilityStorage*.00025);
   state.productionTotal += sec*facilityProduction*.2;
+
+  /* 派遣人員の養成：養成所→教育施設の順に設備を増やすほど速度と上限が伸びる */
+  const ps=personnelSystem();
+  if(ps.personnelCap>0 && ps.trainingRate>0 && ps.trainingCap>0){
+    const deployed=deployedPersonnelCount();
+    const untrainedAvailable=Math.max(0,idlePop()-(state.trainedPersonnel||0)-deployed-(state.trainingQueue||0));
+    state.trainingQueue=Math.min(ps.trainingCap,Math.max(0,state.trainingQueue||0),Math.max(0,idlePop()-(state.trainedPersonnel||0)-deployed));
+    const freeCitizenForTraining=Math.max(0,idlePop()-(state.trainedPersonnel||0)-deployed-state.trainingQueue);
+    if(state.trainingQueue<ps.trainingCap && freeCitizenForTraining>0 && state.trainedPersonnel+deployed+state.trainingQueue<ps.personnelCap){
+      const room=Math.min(ps.trainingCap-state.trainingQueue,ps.personnelCap-state.trainedPersonnel-deployed-state.trainingQueue);
+      state.trainingQueue+=Math.min(room,freeCitizenForTraining,untrainedAvailable);
+    }
+    const trainable=Math.min(state.trainingQueue,ps.trainingRate*sec);
+    if(trainable>0){
+      state.trainingQueue-=trainable;
+      state.trainedPersonnel=Math.min(ps.personnelCap,state.trainedPersonnel+trainable);
+      state.trainingProgress=(state.trainingProgress||0)+trainable;
+    }
+  }else{
+    state.trainingQueue=0;state.trainingProgress=0;
+    state.trainedPersonnel=0;
+  }
 
   /* Population */
 
@@ -4667,18 +5339,44 @@ window.eventChoice=
    SIDE PANEL
 ========================================================= */
 
+function renderFacilitySide(){
+  const f=state.facilities.find(x=>x.id===state.selectedFacility);
+  if(!f){state.selectedFacility=null;return false;}
+  const def=facilityById(f.type);if(!def)return false;
+  const max=f.maxLevel||facilityMaxLevel(def);
+  const canUpgrade=(f.level||1)<max;
+  const upCost=facilityUpgradeCost(f);
+  document.getElementById('districtTitle').textContent=`${def.icon} ${def.name}`;
+  document.getElementById('districtDesc').textContent=def.desc;
+  document.getElementById('sideBody').innerHTML=`
+    <div class="section">
+      <div class="level-row"><div><div class="muted" style="font-size:9px">設備レベル</div><div class="big-level">Lv.${f.level||1}</div></div><div style="text-align:right"><div class="muted" style="font-size:9px">分類</div><div class="big-level" style="font-size:16px">${def.category}</div></div></div>
+      <div class="muted" style="font-size:10px;margin-top:7px">配置条件：${placementLabel(def)}</div>
+    </div>
+    <div class="section"><div class="section-head"><div class="section-title">効果</div><div class="muted" style="font-size:9px">現在Lv.${f.level||1}</div></div>
+      <div class="prod">${Object.entries(def.effects||{}).filter(([k])=>!['happiness','popMax','migration','storage','production','ocean'].includes(k)).map(([k,v])=>`<div>${resourceIcon(k)} <b>+${fmt(v*(f.level||1))}</b>/秒</div>`).join('') || '<div>都市全体への基盤効果</div>'}</div>
+      <div class="muted" style="font-size:10px;margin-top:8px;line-height:1.6">${def.effects?.popMax?`人口容量 +${def.effects.popMax*(f.level||1)}`:''}${def.effects?.happiness?`<br>幸福度 +${def.effects.happiness*(f.level||1)}`:''}${def.effects?.migration?`<br>人口流入 +${def.effects.migration*(f.level||1)}`:''}${def.effects?.production?`<br>都市生産 +${Math.round(def.effects.production*(f.level||1)*100)}%`:''}${def.effects?.ocean?`<br>制海力効率 +${def.effects.ocean*(f.level||1)}`:''}${def.effects?.trainingRate?`<br>教育速度 +${(def.effects.trainingRate*(f.level||1)*60).toFixed(2)}人/分`:''}${def.effects?.trainingCap?`<br>同時養成 +${fmt(def.effects.trainingCap*(f.level||1))}人`:''}${def.effects?.personnelCap?`<br>訓練済み人員上限 +${fmt(def.effects.personnelCap*(f.level||1))}人`:''}${def.effects?.garrisonSlots?`<br>同時派遣枠 +${fmt(def.effects.garrisonSlots*(f.level||1))}隊`:''}${def.effects?.rangeBonus?`<br>派遣範囲 +${fmt(def.effects.rangeBonus*(f.level||1))}`:''}</div>
+    </div>
+    <div class="section">
+      <div class="section-head"><div class="section-title">大型設備を成長させる</div><div class="muted" style="font-size:9px">上限 Lv.${max}</div></div>
+      ${canUpgrade?`<div class="muted" style="font-size:10px;margin-bottom:8px">次Lvコスト：${formatCost(upCost)}</div><button class="primary" onclick="upgradeFacility('${f.id}')">⬆️ この設備を強化</button>`:`<div class="muted" style="font-size:11px;line-height:1.6">現在の時代ではここが上限です。<br>時代が進むと施設の外観と強化上限が変化します。</div>`}
+    </div>
+    <div class="section"><button class="secondary" onclick="clearFacilitySelection()">マップ選択へ戻る</button></div>
+  `;
+  return true;
+}
+function clearFacilitySelection(){state.selectedFacility=null;state.selected='capital';highlightFacility(null);renderSide();}
+window.clearFacilitySelection=clearFacilitySelection;
+
 function renderSide(){
+  if(state.selectedFacility && renderFacilitySide())return;
 
   const d=
     DISTRICTS.find(
       x=>x.id===state.selected
     );
 
-
-  if(!d)
-    return;
-
-
+  if(!d)return;
   const data=
     state.districts[d.id];
 
@@ -5039,22 +5737,27 @@ function renderSide(){
         建設を選んでからマップ上の空き地をタップ。道路・住居・地区の隙間へ実際に設備が増えます。
       </div>
       <div class="action-row">
-        ${FACILITIES.filter(f=>state.era>=f.minEra).slice(0,10).map(f=>{
+        ${FACILITIES.filter(f=>state.era>=f.minEra).map(f=>{
           const c=facilityCost(f),ok=canAfford(c);
           return `<button class="secondary" title="${formatCost(c)}" onclick="startBuildFacility('${f.id}')" ${ok?'':'disabled'}>${f.icon} ${f.name}<br><small style="opacity:.62">${formatCost(c)}</small></button>`;
         }).join('')}
       </div>
       <div class="action-row" style="margin-top:7px">
-        <button class="secondary" onclick="expandMap()">🗺 領土を拡張</button>
+        <button class="secondary" onclick="startTerritoryExpansion()">🗺 領域拡大隊</button>
         <button class="secondary" onclick="publicWorks()">🛠 公共事業</button>
       </div>
       <div class="action-row" style="margin-top:7px">
         <button class="secondary" onclick="cyclePolicy()">⚙️ 都市政策</button>
         <button class="secondary" onclick="holdFestival()">🎉 祭りを開催</button>
       </div>
+      ${(()=>{const ps=personnelSystem();const cap=ps.personnelCap;const trained=Math.min(cap,state.trainedPersonnel||0);const q=Math.max(0,state.trainingQueue||0);const pct=cap?Math.min(100,trained/cap*100):0;const slots=activeGarrisonSlots();return `<div class="personnel-card"><div class="pc-row"><div><div class="personnel-sub">🪖 訓練済み派遣人員</div><div class="personnel-big">${fmt(trained)} <span style="font-size:10px;color:#94a0ad">/ ${fmt(cap)}</span></div></div><div style="text-align:right"><div class="personnel-sub">養成中</div><div style="font-weight:1000">${fmt(q)}人</div></div></div><div class="personnel-bar"><i style="width:${pct}%"></i></div><div class="personnel-sub" style="margin-top:6px">駐屯地 ${fmt(slots)}枠　/　遠征中 ${state.expeditions.length}隊</div></div>`})()}
       <div class="action-row" style="margin-top:7px">
         <button class="secondary" onclick="startDispatch('forest')">🌲 伐採隊</button>
         <button class="secondary" onclick="startDispatch('sea')">⚓ 海洋隊</button>
+      </div>
+      <div class="action-row" style="margin-top:7px">
+        <button class="secondary" onclick="startDispatch('hunt')">🛡 討伐隊</button>
+        <button class="secondary" onclick="startTerritoryExpansion()">🧭 開拓隊</button>
       </div>
       ${dispatchMode ? `<button class="secondary" style="margin-top:7px" onclick="cancelDispatch()">✕ 派遣モード解除</button>` : ''}
       ${buildMode ? `<button class="secondary" style="margin-top:7px" onclick="cancelBuildMode()">✕ 建設モード解除（${facilityById(buildMode)?.name||''}）</button>` : ''}
@@ -5252,7 +5955,9 @@ function renderAll(){
   document.getElementById(
     'hudCity'
   ).textContent=
-    `${ERA[state.era].label}・領土Lv.${state.mapExpansion}・海${state.seaClaims||0}`;
+    `${ERA[state.era].label}・領土Lv.${state.mapExpansion}・海${state.seaClaims||0}・設備${state.facilities.length}`;
+
+  renderMissionTracker();
 
 }
 
@@ -5321,8 +6026,15 @@ function loadGame(){
     state.oceanPower=Math.max(0,Number(saved.oceanPower)||0);
     state.forestClears=Array.isArray(saved.forestClears)?saved.forestClears:[];
     state.expeditions=Array.isArray(saved.expeditions)?saved.expeditions:[];
+    state.trainedPersonnel=Math.max(0,Number(saved.trainedPersonnel)||0);
+    state.trainingQueue=Math.max(0,Number(saved.trainingQueue)||0);
+    state.trainingProgress=Math.max(0,Number(saved.trainingProgress)||0);
     state.roadsBuilt=Math.max(0,Number(saved.roadsBuilt)||0);
     state.wonders=Math.max(0,Number(saved.wonders)||0);
+    state.selectedFacility=null;
+    state.huntClaims=Array.isArray(saved.huntClaims)?saved.huntClaims:[];
+    state.territorySites=Array.isArray(saved.territorySites)?saved.territorySites:[];
+    state.territoryClaims=Array.isArray(saved.territoryClaims)?saved.territoryClaims:[];
 
     /* 過去セーブの科学値が表示値とズレていた場合を救済 */
     state.resources.science=Math.max(0,Number(state.resources.science)||0);
@@ -5443,147 +6155,96 @@ renderer.domElement
   .addEventListener(
     'pointerdown',
     e=>{
-
-      pointerDown={
-        x:e.clientX,
-        y:e.clientY,
-        t:performance.now()
-      };
-
-    }
+      pointerDown={x:e.clientX,y:e.clientY,t:performance.now()};
+    },
+    {passive:true}
   );
-
 
 renderer.domElement
   .addEventListener(
     'pointerup',
     e=>{
 
-      const dx=
-        e.clientX-
-        pointerDown.x;
+      const dx=e.clientX-pointerDown.x;
+      const dy=e.clientY-pointerDown.y;
+      const dt=performance.now()-pointerDown.t;
 
+      /* ドラッグと長押しだけ無視。普通のタップは必ず地図判定する。 */
+      if(Math.hypot(dx,dy)>14 || dt>800) return;
 
-      const dy=
-        e.clientY-
-        pointerDown.y;
+      const rect=renderer.domElement.getBoundingClientRect();
+      if(rect.width<=0 || rect.height<=0) return;
 
+      pointer.x=((e.clientX-rect.left)/rect.width)*2-1;
+      pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
+      raycaster.setFromCamera(pointer,camera);
 
-      const dt=
-        performance.now()-
-        pointerDown.t;
-
-
-      /*
-        過度なドラッグをクリック扱いしない
-      */
-
-      if(
-        Math.hypot(dx,dy)>8 ||
-        dt>500
-      )
-        return;
-
-
-      const rect=
-        renderer.domElement
-          .getBoundingClientRect();
-
-
-      pointer.x=
-        (
-          (
-            e.clientX-
-            rect.left
-          )/
-          rect.width
-        )*2-1;
-
-
-      pointer.y=
-        -(
-          (
-            e.clientY-
-            rect.top
-          )/
-          rect.height
-        )*2+1;
-
-
-      raycaster.setFromCamera(
-        pointer,
-        camera
+      const mapPoint=raycaster.ray.intersectPlane(
+        buildPlane,
+        new THREE.Vector3()
       );
 
+      if(!mapPoint){
+        toast('マップ位置を取得できませんでした');
+        return;
+      }
+
+      const mx=mapPoint.x;
+      const mz=mapPoint.z;
+
+      /* 派遣モード：クリック位置を必ず目的地として採用し、
+         地形に合わない場合だけ自動的に最寄りの適地へ補正する。 */
       if(dispatchMode){
-        const nodeHits=raycaster.intersectObjects(worldNodeObjects,true);
-        if(nodeHits.length){
-          let q=nodeHits[0].object;
-          while(q && !q.userData.worldNode) q=q.parent;
-          const node=q&&q.userData.worldNode;
-          if(node && ((dispatchMode==='forest'&&node.type==='forest')||(dispatchMode==='sea'&&node.type==='sea'))){
-            beginDispatch(dispatchMode,node.x,node.z,node.id);
-            return;
-          }
+        let tx=mx,tz=mz,nodeId=null;
+        let mode=dispatchMode;
+
+        if(mode==='expand'){
+          prepareMission('expand',tx,tz);
+        }else{
+          prepareMission(mode,tx,tz,nodeId);
         }
-        toast(dispatchMode==='forest'?'森林マークをタップしてください':'海のマークをタップしてください');
         return;
       }
 
+      /* 建設モード */
       if(buildMode){
-        const hit=raycaster.ray.intersectPlane(buildPlane,new THREE.Vector3());
-        if(hit){placeFacilityAt(hit.x,hit.z);return;}
-      }
-
-
-      const hits=
-        raycaster.intersectObjects(
-          Array.from(
-            districtObjects.values()
-          ),
-          true
-        );
-
-
-      if(!hits.length)
+        pulseMapTarget(mx,mz,'target');
+        placeFacilityAt(mx,mz);
         return;
-
-
-      let o=
-        hits[0].object;
-
-
-      let id=null;
-
-
-      while(o){
-
-        if(
-          o.userData &&
-          o.userData.districtId
-        ){
-
-          id=
-            o.userData.districtId;
-
-          break;
-
-        }
-
-
-        o=o.parent;
-
       }
 
+      /* 設備・地区は従来通り最優先で選択 */
+      const facilityHits=raycaster.intersectObjects(facilityObjects,true);
+      if(facilityHits.length){
+        let q=facilityHits[0].object;
+        while(q && !q.userData?.facilityId) q=q.parent;
+        if(q?.userData?.facilityId){
+          state.selectedFacility=q.userData.facilityId;
+          state.selected=null;
+          selectFacility(state.selectedFacility);
+          return;
+        }
+      }
 
-      if(id)
-        selectDistrict(
-          id
-        );
+      const districtHits=raycaster.intersectObjects(Array.from(districtObjects.values()),true);
+      if(districtHits.length){
+        let q=districtHits[0].object;
+        let id=null;
+        while(q){
+          if(q.userData?.districtId){id=q.userData.districtId;break;}
+          q=q.parent;
+        }
+        if(id){selectDistrict(id);return;}
+      }
 
-    }
+      /* 何もない場所も必ず反応。
+         森林→伐採隊、海→海洋隊、それ以外→討伐隊を自動選択して派遣。 */
+      pulseMapTarget(mx,mz,worldBiomeAt(mx,mz)==='forest'?'forest':worldBiomeAt(mx,mz)==='sea'?'sea':'target');
+      smartDispatchAt(mx,mz);
+
+    },
+    {passive:true}
   );
-
 
 /* =========================================================
    RESIZE
@@ -5607,6 +6268,7 @@ if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.obse
 
 resize();
 loadGame();
+state.selectedFacility=null;
 rebuildMap();
 rebuildWorldChunks(true);
 renderAll();
@@ -5617,36 +6279,265 @@ let last=performance.now();
 let saveTick=0;
 let renderTick=0;
 
+function missionTypeInfo(type){
+  return ({
+    forest:{title:'伐採隊',kicker:'FOREST EXPEDITION',color:0x83ca65},
+    sea:{title:'海洋隊',kicker:'OCEAN EXPEDITION',color:0x57d4ed},
+    hunt:{title:'討伐隊',kicker:'HUNT EXPEDITION',color:0xe4a75d},
+    expand:{title:'開拓隊',kicker:'TERRITORY EXPANSION',color:0xe5c26d}
+  })[type] || {title:'派遣隊',kicker:'EXPEDITION',color:0xe4b45f};
+}
+
+function removeMissionPreview(){
+  if(missionPreviewGroup){effectGroup.remove(missionPreviewGroup);missionPreviewGroup=null;}
+  const panel=document.getElementById('missionPanel');if(panel)panel.classList.remove('show');
+  pendingMission=null;
+}
+
+function updateMissionPreviewFromState(){
+  const m=pendingMission;if(!m)return;
+  const type=m.type;
+  const avail=Math.floor(availablePersonnel());
+  const minWorkers=type==='expand'?2:1;
+  const maxWorkers=Math.max(minWorkers,avail);
+  const workers=Math.max(minWorkers,Math.min(maxWorkers,Math.floor(pendingMissionWorkers||m.workers||minWorkers)));
+  const stats=getMissionStats(type,workers,m.x,m.z);
+  if(!stats){removeMissionPreview();toast('駐屯地を建てると派遣できます');return;}
+  m.workers=workers;m.distance=stats.distance;m.range=stats.range;m.claimRadius=stats.claimRadius;m.cost=stats.cost;m.duration=stats.duration;m.originId=stats.origin.id;m.originX=stats.origin.x;m.originZ=stats.origin.z;
+
+  const info=missionTypeInfo(type);
+  const targetRange=m.type==='expand'?m.claimRadius:Math.max(0,m.range);
+  const panel=document.getElementById('missionPanel');
+  if(!panel)return;
+  document.getElementById('missionKicker').textContent=info.kicker;
+  document.getElementById('missionTitle').textContent=info.title;
+  document.getElementById('missionCoord').textContent=`${Math.round(m.x)}, ${Math.round(m.z)}`;
+  document.getElementById('missionBiome').textContent=biomeLabel(m.biome);
+  document.getElementById('missionEta').textContent=`約 ${Math.ceil(m.duration)} 秒`;
+  const rangeLabel=document.getElementById('missionRangeLabel');
+  const range=document.getElementById('missionRange');
+  rangeLabel.textContent=m.type==='expand'?'開放範囲':'行動範囲';
+  range.textContent=`半径 ${targetRange.toFixed(1)}`;
+  const availableLabel=document.getElementById('missionAvailable');
+  if(availableLabel)availableLabel.textContent=`訓練済み ${fmt(avail)}人`;
+  const wc=document.getElementById('missionWorkers');if(wc)wc.textContent=`${workers} 人`;
+  const slider=document.getElementById('missionWorkerSlider');
+  if(slider){slider.min=String(minWorkers);slider.max=String(Math.max(minWorkers,avail));slider.value=String(workers);slider.disabled=avail<minWorkers;}
+  const note=document.getElementById('missionWorkerNote');
+  if(note)note.textContent=m.type==='expand'
+    ?`人員を増やすほど開放円が広がります。派遣人数 ${workers}人。コスト：${formatCost(m.cost)}`
+    :`人数を増やすほど行動範囲が広がり、コストも上がります。現在 ${workers}人。`;
+  document.getElementById('missionExtra').textContent=`${formatCost(m.cost)}　距離 ${Math.round(m.distance)}　/　駐屯地Lv.${stats.origin.level||1}`;
+  document.getElementById('missionRoute').textContent=`🏕 ${stats.origin.x>0?Math.round(stats.origin.x):Math.round(stats.origin.x)}, ${Math.round(stats.origin.z)} → ${biomeLabel(m.biome)} → (${Math.round(m.x)}, ${Math.round(m.z)})`;
+
+  if(missionPreviewGroup){
+    const g=missionPreviewGroup;
+    const arr=g.userData.routeArrow;
+    const dir=new THREE.Vector3(m.x-stats.origin.x,0,m.z-stats.origin.z);
+    const dlen=Math.max(.01,dir.length());dir.normalize();
+    if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(100,dlen),Math.min(2.5,1+dlen*.024),.7);}
+    const target=g.userData.targetRing;
+    if(target){
+      const visualRadius=m.type==='expand'?Math.max(1,m.claimRadius||m.range*.40):.95;
+      target.geometry.dispose?.();
+      target.geometry=new THREE.RingGeometry(m.type==='expand'?visualRadius*.92:visualRadius,m.type==='expand'?visualRadius:1.15,48);
+      target.position.set(m.x,.40,m.z);
+    }
+    const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
+    const startDot=g.userData.startDot;if(startDot)startDot.position.set(stats.origin.x,.48,stats.origin.z);
+  }
+  panel.classList.add('show');
+}
+
+function createMissionPreview(m){
+  removeMissionPreview();
+  pendingMission=m;
+  pendingMissionWorkers=Math.max(1,m.workers||1);
+  const info=missionTypeInfo(m.type);
+  const g=new THREE.Group();
+  const origin=new THREE.Vector3(m.originX||0,1.05,m.originZ||0);
+  const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));
+  const len=Math.max(1,dir.length());dir.normalize();
+  const arrow=new THREE.ArrowHelper(dir,origin,Math.min(90,len),info.color,Math.min(2.5,1+len*.025),.7);
+  arrow.line.material.transparent=true;arrow.line.material.opacity=.62;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.95;g.add(arrow);
+  const previewRadius=m.type==='expand'?Math.max(1,m.claimRadius||m.range*.40):1.0;
+  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.92:previewRadius,m.type==='expand'?previewRadius:1.15,48),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
+  target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
+  const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.45,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
+  const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.19,.10,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.35,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
+  g.userData.targetRing=target;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
+  effectGroup.add(g);missionPreviewGroup=g;
+  updateMissionPreviewFromState();
+}
+
+function setPendingWorkers(value){
+  if(!pendingMission)return;
+  pendingMissionWorkers=Math.max(1,Math.floor(Number(value)||1));
+  updateMissionPreviewFromState();
+}
+window.setPendingWorkers=setPendingWorkers;
+function changePendingWorkers(delta){
+  if(!pendingMission)return;
+  const max=Math.floor(availablePersonnel());
+  const min=pendingMission.type==='expand'?2:1;
+  pendingMissionWorkers=Math.max(min,Math.min(Math.max(min,max),Math.floor(pendingMissionWorkers||min)+delta));
+  updateMissionPreviewFromState();
+}
+window.changePendingWorkers=changePendingWorkers;
+
+
+function territoryClaimAt(x,z,padding=0){
+  for(const claim of (state.territoryClaims||[])){
+    const r=Math.max(0,Number(claim.radius)||0)-padding;
+    if(Math.hypot(x-(Number(claim.x)||0),z-(Number(claim.z)||0))<r){
+      return claim;
+    }
+  }
+  return null;
+}
+
+function missionTargetAllowed(x,z){
+  const hit=territoryClaimAt(x,z,.15);
+  if(hit){
+    toast(`この場所は開放済みです。円の外側を選んでください（半径 ${Number(hit.radius||0).toFixed(1)}）`);
+    return false;
+  }
+  return true;
+}
+
+function prepareMission(type,x,z,nodeId=null){
+  /* 派遣先は必ず既存の開放円の外側 */
+  if(!missionTargetAllowed(x,z)) return;
+  let tx=x,tz=z,id=nodeId||null;
+  let biome=worldBiomeAt(tx,tz);
+  if(type==='forest' && biome!=='forest'){const node=findNearestWorldNode('forest',tx,tz);if(node){tx=node.x;tz=node.z;id=node.id;biome='forest';}}
+  else if(type==='sea' && biome!=='sea'){const node=findNearestWorldNode('sea',tx,tz);if(node){tx=node.x;tz=node.z;id=node.id;biome='sea';}}
+  else if(type==='hunt' && ['sea','river','lake'].includes(biome)){const land=snapToLand(tx,tz);tx=land.x;tz=land.z;biome=worldBiomeAt(tx,tz);}
+  if(type==='forest' && biome!=='forest'){toast('この周辺に森林がありません');return;}
+  if(type==='sea' && biome!=='sea'){toast('この周辺に海域がありません');return;}
+  /* 適地への自動補正後も、開放済み円の中には置かない */
+  if(!missionTargetAllowed(tx,tz)) return;
+  if(type==='hunt' && ['sea','river','lake'].includes(biome)){toast('討伐隊は陸地へ派遣してください');return;}
+  const ps=personnelSystem();
+  if(ps.garrisonSlots<=0){toast('派遣するにはまず「駐屯地」を建設してください');return;}
+  if(state.expeditions.length>=ps.garrisonSlots){toast(`駐屯地の派遣枠が満杯です（${Math.floor(ps.garrisonSlots)}隊）`);return;}
+  const minWorkers=type==='expand'?2:1;
+  const avail=Math.floor(availablePersonnel());
+  if(avail<minWorkers){toast(`訓練済み人員が足りません。まず養成所と教育施設で人員を育成してください（必要 ${minWorkers}人）`);return;}
+  if(type==='expand'){
+    let dist=Math.hypot(tx,tz);
+    const maxDist=state.mapRadius+WORLD_CHUNK*3;
+    if(dist<3){const a=Math.atan2(tz,tx)||0;tx=Math.cos(a)*Math.max(7,state.mapRadius*.22);tz=Math.sin(a)*Math.max(7,state.mapRadius*.22);dist=Math.hypot(tx,tz);}
+    if(dist>maxDist){const a=Math.atan2(tz,tx);tx=Math.cos(a)*maxDist;tz=Math.sin(a)*maxDist;dist=maxDist;}
+  }
+  let requiredWorkers=minWorkers, requiredStats=null;
+  for(let w=minWorkers;w<=avail;w++){
+    const st=getMissionStats(type,w,tx,tz);
+    if(!st)continue;
+    requiredStats=st;
+    if(st.distance<=st.range+0.1){requiredWorkers=w;break;}
+    requiredWorkers=w+1;
+  }
+  const maxStats=getMissionStats(type,avail,tx,tz);
+  if(!maxStats){return;}
+  if(maxStats.distance>maxStats.range+0.1){toast(`この地点は駐屯地の行動範囲外です。人員上限 ${avail}人でも最大半径 ${maxStats.range.toFixed(1)}。駐屯地を強化・増設してください`);return;}
+  const defaultWorkers=Math.max(minWorkers,Math.min(avail,requiredWorkers));
+  const stats=getMissionStats(type,defaultWorkers,tx,tz);
+  if(!stats)return;
+  pendingMissionWorkers=defaultWorkers;
+  if(!canAfford(stats.cost)){toast(`派遣に必要な資源が足りません：${formatCost(stats.cost)}`);return;}
+  createMissionPreview({type,x:tx,z:tz,nodeId:id,biome,distance:stats.distance,workers:defaultWorkers,cost:stats.cost,duration:stats.duration,range:stats.range,claimRadius:stats.claimRadius,originId:stats.origin.id,originX:stats.origin.x,originZ:stats.origin.z});
+}
+
+function confirmPendingMission(){
+  const m=pendingMission;if(!m)return;
+  const ps=personnelSystem();
+  const avail=Math.floor(availablePersonnel());
+  if(state.expeditions.length>=ps.garrisonSlots){toast('駐屯地の派遣枠が埋まっています');return;}
+  if(avail<m.workers){toast('訓練済み人員が足りなくなりました');removeMissionPreview();return;}
+  const fresh=getMissionStats(m.type,m.workers,m.x,m.z);
+  if(!fresh || fresh.distance>fresh.range+0.1){toast('現在の施設条件ではこの地点へ届きません');return;}
+  m.cost=fresh.cost;m.duration=fresh.duration;m.range=fresh.range;
+  if(!canAfford(m.cost)){toast(`資源が足りなくなりました：${formatCost(m.cost)}`);removeMissionPreview();return;}
+  pay(m.cost);
+  state.trainedPersonnel=Math.max(0,state.trainedPersonnel-m.workers);
+  const e={id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type:m.type,x:m.x,z:m.z,nodeId:m.nodeId,workers:m.workers,duration:m.duration,remaining:m.duration,claimRadius:m.type==='expand'?(fresh.claimRadius||m.claimRadius||5):0,originId:fresh.origin.id,originX:fresh.origin.x,originZ:fresh.origin.z};
+  state.expeditions.push(e);
+  if(m.type==='expand') addLog(`🗺 ${m.workers}人の開拓隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から(${Math.round(m.x)},${Math.round(m.z)})へ派遣しました。`);
+  else if(m.type==='forest') addLog(`🌲 ${m.workers}人の伐採隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
+  else if(m.type==='sea') addLog(`⚓ ${m.workers}人の海洋隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
+  else addLog(`🛡 ${m.workers}人の討伐隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
+  const panel=document.getElementById('missionPanel');if(panel)panel.classList.remove('show');
+  pendingMission=null;pendingMissionWorkers=1;
+  if(missionPreviewGroup){effectGroup.remove(missionPreviewGroup);missionPreviewGroup=null;}
+  renderAll();toast(`${missionTypeInfo(m.type).title}が駐屯地から出発しました`);
+}
+window.confirmPendingMission=confirmPendingMission;
+function cancelPendingMission(){removeMissionPreview();toast('派遣をキャンセルしました');}
+window.cancelPendingMission=cancelPendingMission;
+
+function makeExpeditionVisual(e){
+  const info=missionTypeInfo(e.type);
+  const root=new THREE.Group();
+  const ox=Number(e.originX)||0, oz=Number(e.originZ)||0;
+  const dir=new THREE.Vector3(e.x-ox,0.0,e.z-oz);const distance=Math.max(1,dir.length());dir.normalize();
+  const arrow=new THREE.ArrowHelper(dir,new THREE.Vector3(ox,1.02,oz),Math.max(1,Math.min(95,distance)),info.color,Math.min(2.4,1+distance*.022),.65);
+  arrow.line.material.transparent=true;arrow.line.material.opacity=.28;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.65;root.add(arrow);
+  const targetRing=new THREE.Mesh(new THREE.RingGeometry(e.type==='expand'?e.claimRadius*.92:.82,e.type==='expand'?e.claimRadius:1.02,40),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.34,side:THREE.DoubleSide,depthWrite:false}));
+  targetRing.rotation.x=-Math.PI/2;targetRing.position.set(e.x,.36,e.z);root.add(targetRing);
+  let unit;
+  if(e.type==='sea'){
+    unit=new THREE.Group();
+    const hull=box(.95,.18,.34,makeMaterial(0x4c514d,.72,.18),0,.66,0);unit.add(hull);
+    unit.add(cyl(.025,.92,makeMaterial(0x705438,.85),0,.55,0,6));
+    const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute([0,.95,0,0,.10,0,.56,.10,0],3));geo.computeVertexNormals();unit.add(new THREE.Mesh(geo,makeMaterial(0xe4e2d6,.9)));
+  }else{
+    unit=makeDigger().group;unit.scale.setScalar(e.type==='expand'?.72:.78);
+    if(e.type==='hunt') unit.children.forEach(c=>{if(c.material?.color)c.material.color.setHex(0x9b6440);});
+  }
+  root.add(unit);
+  root.userData={expeditionId:e.id,unit,targetRing,origin:new THREE.Vector3(ox,.52,oz)};
+  return root;
+}
+
+function rebuildExpeditionVisuals(){
+  /* rebuildMapでeffectGroupが消えても、進行中の隊はここで再生成する */
+  for(const g of expeditionObjects){if(g.parent)g.parent.remove(g);} expeditionObjects.length=0;
+}
+
 function animateExpeditions(dt,t){
-  while(expeditionObjects.length<state.expeditions.length){
-    const e=state.expeditions[expeditionObjects.length];
-    const g=makeExpeditionVisual(e);
-    g.userData.expeditionId=e.id;
-    effectGroup.add(g);expeditionObjects.push(g);
+  for(const e of state.expeditions){
+    let g=expeditionObjects.find(x=>x.userData?.expeditionId===e.id);
+    if(!g || !g.parent){
+      g=makeExpeditionVisual(e);effectGroup.add(g);expeditionObjects.push(g);
+    }
+    const progress=Math.max(0,Math.min(1,1-e.remaining/e.duration));
+    const outbound=progress<.5;const k=outbound?progress*2:(1-progress)*2;
+    const start=new THREE.Vector3(Number(e.originX)||0,.52,Number(e.originZ)||0),end=new THREE.Vector3(e.x,.52,e.z);
+    const pos=new THREE.Vector3().lerpVectors(start,end,outbound?k:1-k);
+    g.userData.unit.position.set(pos.x,pos.y,pos.z);
+    g.userData.unit.rotation.y=Math.atan2(e.z,e.x);
+    const ring=g.userData.targetRing;
+    if(ring){ring.scale.setScalar(1+Math.sin(t*.005+progress*5)*.12);ring.material.opacity=.25+Math.sin(t*.005+progress*5)*.10;}
   }
   for(let i=expeditionObjects.length-1;i>=0;i--){
     const g=expeditionObjects[i];
-    if(!state.expeditions.some(e=>e.id===g.userData.expeditionId)){
-      effectGroup.remove(g);expeditionObjects.splice(i,1);
-      continue;
+    if(!state.expeditions.some(e=>e.id===g.userData?.expeditionId)){
+      if(g.parent)g.parent.remove(g);expeditionObjects.splice(i,1);
     }
-    const e=state.expeditions.find(x=>x.id===g.userData.expeditionId);
-    if(!e)continue;
-    const progress=Math.max(0,Math.min(1,1-e.remaining/e.duration));
-    const outbound=progress<.5;
-    const k=outbound?progress*2:(1-progress)*2;
-    const start=new THREE.Vector3(0,.42,0);
-    /* 出発地点は都心付近。遠征先へ移動して戻る。 */
-    const sx=0,sz=0;
-    const ex=e.x,ez=e.z;
-    g.position.set(
-      THREE.MathUtils.lerp(sx,ex,outbound?k:1-k),
-      .46+Math.sin(t*.006+i)*.025,
-      THREE.MathUtils.lerp(sz,ez,outbound?k:1-k)
-    );
-    if(e.type==='sea') g.rotation.y=Math.atan2(ez-sz,ex-sx);
-    else g.rotation.y=Math.atan2(ez-sz,ex-sx);
   }
+}
+
+function renderMissionTracker(){
+  let el=document.getElementById('missionTracker');
+  if(!el)return;
+  if(!state.expeditions.length){el.innerHTML='';el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML=state.expeditions.map(e=>{
+    const info=missionTypeInfo(e.type);
+    const secs=Math.max(0,Math.ceil(e.remaining));
+    return `<div style="margin-top:6px;padding:7px 8px;border-radius:9px;background:rgba(8,13,19,.76);border:1px solid rgba(255,255,255,.08);font-size:9px"><b style="color:#e9ce89">${info.title}</b> · ${e.workers||0}人 · ${secs}s<br><span style="color:#9ea8b5">🏕 (${Math.round(e.originX||0)},${Math.round(e.originZ||0)}) → (${Math.round(e.x)},${Math.round(e.z)})</span></div>`;
+  }).join('');
 }
 
 function updateWorldMood(dt,t){
@@ -5671,6 +6562,7 @@ function updateWorldMood(dt,t){
   animateCitizens(dt,t);
   animateDiscovery(dt);
   animateExpeditions(dt,t);
+  animateMapTarget(dt);
 
   /* 水面の反射感をゆっくり変える */
   cityPulse+=dt;

@@ -1308,10 +1308,10 @@ const DISTRICTS = [
 
   {
     id:'forest',
-    name:'森林産業区',
-    icon:'🌲',
+    name:'木材加工区',
+    icon:'🪵',
     desc:
-      '木材を生産し、都市建設を支えます。',
+      '都市内の木材加工・保管を担う地区。森林資源は都市圏の外から伐採隊が運びます。',
     x:10,
     z:5,
     type:'wood',
@@ -1325,10 +1325,10 @@ const DISTRICTS = [
 
   {
     id:'quarry',
-    name:'石材採掘区',
+    name:'石材加工区',
     icon:'🪨',
     desc:
-      '石材を採掘する地区。高レベルになるほど巨大化します。',
+      '都市内で石材を加工・集積する地区。採石場そのものは都市圏の外側にあります。',
     x:-10,
     z:-7,
     type:'stone',
@@ -1343,10 +1343,10 @@ const DISTRICTS = [
 
   {
     id:'mine',
-    name:'鉄鉱山',
+    name:'鉄資源加工区',
     icon:'⛓',
     desc:
-      '鉄を生産する鉱山地区。青銅時代に解禁され、序盤の露頭鉄より大幅に効率が上がります。',
+      '外部の鉄資源を加工・集積する工業地区。鉱山は都市圏の外側に配置されます。',
     x:10,
     z:-7,
     type:'iron',
@@ -2026,6 +2026,99 @@ function hash2(x,z){
   return (n>>>0)/4294967296;
 }
 
+
+function getTerritoryRadius(){
+  return Math.max(16, Number(state.mapRadius)||44);
+}
+function getUrbanRadius(){
+  const territory=getTerritoryRadius();
+  const growth=16 + Math.sqrt(Math.max(0,state.pop))*0.72 + (Number(state.mapExpansion)||0)*4;
+  return Math.min(Math.max(18, growth), Math.max(18, territory-4));
+}
+function isInsideCityTerritory(x,z,padding=0){
+  return Math.hypot(Number(x)||0,Number(z)||0) <= Math.max(0,getTerritoryRadius()-padding);
+}
+function renderChunkType(cx,cz){
+  const x=cx*WORLD_CHUNK+32, z=cz*WORLD_CHUNK+32;
+  // 都市領地内は自然資源地帯を描画せず、開発済み平地として扱う。
+  if(Math.hypot(x,z) <= getTerritoryRadius()+WORLD_CHUNK*.58) return 'plains';
+  return chunkType(cx,cz);
+}
+function findExternalLandPoint(angle,dist){
+  const base=Math.max(getTerritoryRadius()+12,dist||getTerritoryRadius()+20);
+  for(let ri=0;ri<5;ri++){
+    const rr=base+ri*8;
+    for(let ai=0;ai<12;ai++){
+      const a=angle+(ai-5)*0.10;
+      const x=Math.cos(a)*rr, z=Math.sin(a)*rr;
+      if(isInsideCityTerritory(x,z,6)) continue;
+      const b=worldBiomeAt(x,z);
+      if(!['sea','river','lake'].includes(b)) return {x,z,biome:b};
+    }
+  }
+  const x=Math.cos(angle)*base,z=Math.sin(angle)*base;
+  return {x,z,biome:'plains'};
+}
+
+function addExternalForestGrove(x,z,keyIndex=0){
+  if(isInsideCityTerritory(x,z,4)) return;
+  const id=`external_forest_${Math.round(x)}_${Math.round(z)}`;
+  addWorldNode('forest',id,x,z,5.2);
+  if(isForestCleared(id)) return;
+  const count=58+keyIndex*7;
+  for(let i=0;i<count;i++){
+    const a=i*2.399963+hash2(Math.round(x)+i*3,Math.round(z)-i*5)*.9;
+    const rr=2.0+(i%11)*.58;
+    addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.72+(i%5)*.12,i%3);
+  }
+  const edgeMat=makeMaterial(0x55734d,.93);
+  for(let i=0;i<7;i++){
+    const a=hash2(Math.round(x)+i*13,Math.round(z)-i*7)*Math.PI*2;
+    const rr=5.5+hash2(i*17,i*23)*3.0;
+    const patch=new THREE.Mesh(new THREE.CircleGeometry(1,18),new THREE.MeshBasicMaterial({color:0x5c7d4f,transparent:true,opacity:.24,depthWrite:false,side:THREE.DoubleSide}));
+    patch.rotation.x=-Math.PI/2;patch.scale.set(1.8,.8,1);patch.position.set(x+Math.cos(a)*rr,.018,z+Math.sin(a)*rr);worldGroup.add(patch);
+  }
+}
+function addExternalQuarry(x,z){
+  if(isInsideCityTerritory(x,z,4)) return;
+  const id=`external_quarry_${Math.round(x)}_${Math.round(z)}`;
+  addWorldNode('quarry',id,x,z,4.4);
+  const rock=makeMaterial(0x858a87,.96);
+  for(let i=0;i<11;i++){
+    const a=hash2(Math.round(x)+i*7,Math.round(z)-i*3)*Math.PI*2;
+    const rr=2+hash2(i*5,i*9)*4.2;
+    const m=new THREE.Mesh(new THREE.DodecahedronGeometry(.35+(i%3)*.11,1),rock);
+    m.position.set(x+Math.cos(a)*rr,.35+(i%2)*.12,z+Math.sin(a)*rr);
+    m.scale.set(1.2,1.0+(i%3)*.12,.9);worldGroup.add(m);
+  }
+}
+function addExternalMine(x,z){
+  if(isInsideCityTerritory(x,z,4)) return;
+  const id=`external_mine_${Math.round(x)}_${Math.round(z)}`;
+  addWorldNode('mine',id,x,z,4.0);
+  const rock=makeMaterial(0x555c61,.88,.15);
+  for(const p of [[-1.0,.1],[0,.5],[1.0,-.2]]){
+    const m=new THREE.Mesh(new THREE.DodecahedronGeometry(.62,1),rock);m.position.set(x+p[0],.55,z+p[1]);m.scale.set(1.2,1.4,.9);worldGroup.add(m);
+  }
+  const gate=makeMaterial(0x4a4038,.88);
+  worldGroup.add(box(.12,1.2,.12,gate,x-.78,.60,z-.75),box(.12,1.2,.12,gate,x+.78,.60,z-.75),box(1.8,.10,.10,gate,x,.98,z-.75));
+}
+function addExternalResourceBelt(){
+  const r=getTerritoryRadius();
+  const defs=[
+    {a:-1.05,type:'forest',d:r+18},
+    {a:0.55,type:'forest',d:r+23},
+    {a:2.35,type:'quarry',d:r+18},
+    {a:-2.55,type:'mine',d:r+22}
+  ];
+  defs.forEach((q,i)=>{
+    const pt=findExternalLandPoint(q.a,q.d);
+    if(q.type==='forest') addExternalForestGrove(pt.x,pt.z,i);
+    else if(q.type==='quarry') addExternalQuarry(pt.x,pt.z);
+    else addExternalMine(pt.x,pt.z);
+  });
+}
+
 function chunkType(cx,cz){
   if(Math.abs(cx)<=1 && Math.abs(cz)<=1) return 'plains';
   const h=hash2(cx*17+3,cz*31-7);
@@ -2145,7 +2238,7 @@ function addWorldLandmark(cx,cz,biome){
 }
 
 function addBiomeBoundaryDetail(cx,cz){
-  const biome=chunkType(cx,cz);const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  const biome=renderChunkType(cx,cz);const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
   for(const [dx,dz] of dirs){
     if(chunkType(cx+dx,cz+dz)===biome)continue;
     const x=cx*WORLD_CHUNK+32+dx*27,z=cz*WORLD_CHUNK+32+dz*27;
@@ -2156,7 +2249,7 @@ function addBiomeBoundaryDetail(cx,cz){
 }
 
 function addWorldNode(type,id,x,z,radius){
-  const color=type==='forest'?0x8dbb63:type==='sea'?0x67d2ec:type==='lake'?0x69d5e3:0xe0bb62;
+  const color=type==='forest'?0x8dbb63:type==='sea'?0x67d2ec:type==='lake'?0x69d5e3:type==='quarry'?0xc4b18d:type==='mine'?0xaeb8bf:0xe0bb62;
   const ring=new THREE.Mesh(
     new THREE.RingGeometry(radius*.80,radius,24),
     new THREE.MeshBasicMaterial({color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false})
@@ -2252,6 +2345,7 @@ function addForestPatch(cx,cz){
   const id=`forest_${cx}_${cz}`;
   const x=cx*WORLD_CHUNK+20+hash2(cx+4,cz-5)*24;
   const z=cz*WORLD_CHUNK+20+hash2(cx-8,cz+7)*24;
+  if(isInsideCityTerritory(x,z,4)) return;
   addWorldNode('forest',id,x,z,4.1);
   if(isForestCleared(id)) return;
 
@@ -2369,108 +2463,32 @@ function addTerritorySite(site){
 ========================================================= */
 
 function buildTerritoryUnionVisual(){
-  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
   const group=new THREE.Group();
-  if(!claims.length) return group;
+  const r=getTerritoryRadius();
+  const eraColor=state.era>=6?0x5fcbe0:0xd8ad59;
 
-  const visited=new Array(claims.length).fill(false);
-  const clusters=[];
+  // 数値上の領地半径そのものを、そのまま見た目にする。
+  const fill=new THREE.Mesh(
+    new THREE.CircleGeometry(r,96),
+    new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.075,side:THREE.DoubleSide,depthWrite:false})
+  );
+  fill.rotation.x=-Math.PI/2;fill.position.set(0,.33,0);fill.renderOrder=3;group.add(fill);
 
-  for(let i=0;i<claims.length;i++){
-    if(visited[i]) continue;
-    const queue=[i];
-    visited[i]=true;
-    const ids=[];
-    while(queue.length){
-      const a=queue.shift();
-      ids.push(a);
-      const ca=claims[a];
-      const ra=Math.max(3,Number(ca.radius)||10);
-      for(let b=0;b<claims.length;b++){
-        if(visited[b]) continue;
-        const cb=claims[b];
-        const rb=Math.max(3,Number(cb.radius)||10);
-        const d=Math.hypot((ca.x||0)-(cb.x||0),(ca.z||0)-(cb.z||0));
-        if(d<=ra+rb+.15){
-          visited[b]=true;
-          queue.push(b);
-        }
-      }
-    }
-    clusters.push(ids);
-  }
+  const outer=new THREE.Mesh(
+    new THREE.RingGeometry(Math.max(0,r-.22),r,128),
+    new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.72,side:THREE.DoubleSide,depthWrite:false})
+  );
+  outer.rotation.x=-Math.PI/2;outer.position.set(0,.36,0);outer.renderOrder=5;group.add(outer);
 
-  const MAX=96;
-  for(const ids of clusters){
-    for(let start=0;start<ids.length;start+=MAX){
-      const slice=ids.slice(start,start+MAX);
-      let minX=Infinity,minZ=Infinity,maxX=-Infinity,maxZ=-Infinity;
-      const centers=[],radii=[];
-      for(const idx of slice){
-        const c=claims[idx];
-        const x=Number(c.x)||0,z=Number(c.z)||0,r=Math.max(3,Number(c.radius)||10);
-        centers.push(new THREE.Vector2(x,z));
-        radii.push(r);
-        minX=Math.min(minX,x-r);maxX=Math.max(maxX,x+r);
-        minZ=Math.min(minZ,z-r);maxZ=Math.max(maxZ,z+r);
-      }
-      const pad=1.3;
-      minX-=pad;maxX+=pad;minZ-=pad;maxZ+=pad;
-      const w=Math.max(2,maxX-minX),h=Math.max(2,maxZ-minZ);
-      const geom=new THREE.PlaneGeometry(w,h,1,1);
-      geom.rotateX(-Math.PI/2);
-      geom.translate((minX+maxX)/2,.335,(minZ+maxZ)/2);
-
-      const eraColor=state.era>=6?0x5fcbe0:0xd8ad59;
-      const uniforms={
-        uCenters:{value:centers},
-        uRadii:{value:radii},
-        uCount:{value:slice.length},
-        uColor:{value:new THREE.Color(eraColor)},
-        uTime:{value:0}
-      };
-      const mat=new THREE.ShaderMaterial({
-        uniforms,
-        transparent:true,
-        depthWrite:false,
-        side:THREE.DoubleSide,
-        vertexShader:`
-          varying vec2 vWorldXZ;
-          void main(){
-            vec4 wp=modelMatrix*vec4(position,1.0);
-            vWorldXZ=wp.xz;
-            gl_Position=projectionMatrix*viewMatrix*wp;
-          }
-        `,
-        fragmentShader:`
-          #define MAX_CLAIMS 96
-          varying vec2 vWorldXZ;
-          uniform vec2 uCenters[MAX_CLAIMS];
-          uniform float uRadii[MAX_CLAIMS];
-          uniform int uCount;
-          uniform vec3 uColor;
-          uniform float uTime;
-          void main(){
-            float sdf=100000.0;
-            for(int i=0;i<MAX_CLAIMS;i++){
-              if(i>=uCount) break;
-              sdf=min(sdf,distance(vWorldXZ,uCenters[i])-uRadii[i]);
-            }
-            float aa=max(.025,fwidth(sdf)*1.7);
-            float fill=1.0-smoothstep(-aa,aa,sdf);
-            float edge=1.0-smoothstep(.02,.34,abs(sdf));
-            /* 内側に円の線を描かず、塗りはごく薄く、最外周だけを見せる。 */
-            float alpha=fill*.028 + edge*.34;
-            if(alpha<.012) discard;
-            gl_FragColor=vec4(uColor,alpha);
-          }
-        `
-      });
-      const mesh=new THREE.Mesh(geom,mat);
-      mesh.renderOrder=4;
-      mesh.userData.territoryUnion=true;
-      group.add(mesh);
-    }
+  // 外側へ伸びた開拓拠点は、都市本体の領地とは別の小さな輪として見せる。
+  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
+  for(const c of claims){
+    const x=Number(c.x)||0,z=Number(c.z)||0,cr=Math.max(3,Number(c.radius)||3);
+    if(Math.hypot(x,z) <= r+.5) continue;
+    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.5,cr-.16),cr,56),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;ring.position.set(x,.37,z);ring.renderOrder=5;group.add(ring);
+    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,56),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.06,side:THREE.DoubleSide,depthWrite:false}));
+    disk.rotation.x=-Math.PI/2;disk.position.set(x,.335,z);disk.renderOrder=3;group.add(disk);
   }
   return group;
 }
@@ -2478,7 +2496,7 @@ function buildTerritoryUnionVisual(){
 function rebuildWorldChunks(force=false){
   const tx=Math.floor(controls.target.x/WORLD_CHUNK);
   const tz=Math.floor(controls.target.z/WORLD_CHUNK);
-  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
+  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
   while(worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
@@ -2516,35 +2534,39 @@ function rebuildWorldChunks(force=false){
       addWorldLandmark(cx,cz,biome);
     }
   }
+  addExternalResourceBelt();
+
   /* 都市圏の道路網：中央→放射＋環状＋地区接続。住居ロットは道路を避ける。 */
   const roadMat=new THREE.MeshStandardMaterial({color:ERA_ROAD[state.era]||ERA_ROAD[0],roughness:state.era<5?.88:.62,metalness:state.era>=6?.12:0});
-  const curbMat=new THREE.MeshStandardMaterial({color:state.era>=5?0x555d64:0x6e665a,roughness:.92});
+  const sidewalkMat=new THREE.MeshStandardMaterial({color:state.era>=6?0x68747a:0x8a8173,roughness:.94});
+  const lineMat=new THREE.MeshBasicMaterial({color:state.era>=6?0xd9e7e9:0xe0c77d,transparent:true,opacity:.68});
   const addRoadSegment=(x1,z1,x2,z2,w=1.55)=>{
     const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz); if(len<1)return;
-    const rr=box(len,.105,w,roadMat,(x1+x2)/2,.12,(z1+z2)/2); rr.rotation.y=Math.atan2(dz,dx); worldGroup.add(rr);
+    const angle=Math.atan2(dz,dx),midX=(x1+x2)/2,midZ=(z1+z2)/2;
+    const rr=box(len,.11,w,roadMat,midX,.12,midZ); rr.rotation.y=angle; worldGroup.add(rr);
+    const px=-Math.sin(angle),pz=Math.cos(angle);
+    const sw=.16,off=w*.5+.13;
+    const s1=box(len,.055,sw,sidewalkMat,midX+px*off,.15,midZ+pz*off);s1.rotation.y=angle;worldGroup.add(s1);
+    const s2=box(len,.055,sw,sidewalkMat,midX-px*off,.15,midZ-pz*off);s2.rotation.y=angle;worldGroup.add(s2);
+    if(w>=1.65 && len>10){
+      const lm=box(len*.78,.018,.045,lineMat,midX,.182,midZ);lm.rotation.y=angle;worldGroup.add(lm);
+    }
   };
   for(const [x1,z1,x2,z2] of getCityRoadSegments()){
     const d=Math.hypot(x2-x1,z2-z1);
     addRoadSegment(x1,z1,x2,z2,d>8?1.72:1.28);
   }
-  if(state.era>=3){
-    const limit=Math.min(120,Math.max(22,state.cityReach));
+  if(state.era>=2){
+    const limit=Math.min(160,Math.max(22,getUrbanRadius()));
     const ringR=Math.max(11,Math.min(limit*.60,limit-5));
-    for(let i=0;i<32;i+=2){
-      const a=i/32*Math.PI*2;
+    for(let i=0;i<16;i+=2){
+      const a=i/16*Math.PI*2;
       const x=Math.cos(a)*ringR,z=Math.sin(a)*ringR;
-      worldGroup.add(box(.075,.06,1.7,curbMat,x,.19,z));
+      addStreetLamp(worldGroup,x,z,a+.5,0.7);
     }
   }
 
-  /* 領域境界 */
-  if(state.mapRadius<900){
-    const border=new THREE.Mesh(new THREE.RingGeometry(Math.max(12,state.mapRadius-.35),state.mapRadius,96),new THREE.MeshBasicMaterial({color:state.era>=6?0x74d5ec:0xe7bc63,transparent:true,opacity:.25,side:THREE.DoubleSide,depthWrite:false}));
-    border.rotation.x=-Math.PI/2;border.position.y=.32;worldGroup.add(border);
-  }
-
-  /* 新しく開放した小さな円形領域。
-     重なる円はシェーダー上で1つの領域として描画し、重複部分を濃くしない。 */
+  /* 領地の見た目はbuildTerritoryUnionVisualが数値半径を直接描画する。 */
   const territoryUnion=buildTerritoryUnionVisual();
   worldGroup.add(territoryUnion);
 
@@ -2554,6 +2576,7 @@ function rebuildWorldChunks(force=false){
 }
 
 function worldBiomeAt(x,z){
+  if(isInsideCityTerritory(x,z,0)) return 'plains';
   const cx=Math.floor(x/WORLD_CHUNK),cz=Math.floor(z/WORLD_CHUNK);
   const type=chunkType(cx,cz);
   if(type==='sea') return 'sea';
@@ -2571,31 +2594,82 @@ function buildTerrainMap(){
 }
 
 
+function addRoadPolylineToList(list,pts){
+  for(let i=0;i<pts.length-1;i++) list.push([pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1]]);
+}
 function getCityRoadSegments(){
-  const limit=Math.min(120,Math.max(22,state.cityReach));
-  const ringR=Math.max(11,Math.min(limit*.60,limit-5));
+  const limit=Math.min(160,Math.max(22,getUrbanRadius()));
   const segs=[];
-  const add=(x1,z1,x2,z2)=>segs.push([x1,z1,x2,z2]);
-  const n=32;
+  const add=(x1,z1,x2,z2)=>{ if(Math.hypot(x2-x1,z2-z1)>=1)segs.push([x1,z1,x2,z2]); };
+  const half=Math.max(10,limit*.62);
+  const inner=Math.max(6,limit*.34);
+
+  // 角の丸い外周幹線。完全な円ではなく、街区を生む都市リング。
+  const rounded=[];
+  const cr=half*.23;
+  const centers=[[half-cr,half-cr],[-half+cr,half-cr],[-half+cr,-half+cr],[half-cr,-half+cr]];
+  const cornerN=5;
+  for(let q=0;q<4;q++){
+    const [cx,cz]=centers[q];
+    const start=-Math.PI/2+q*Math.PI/2;
+    for(let i=0;i<=cornerN;i++){
+      const a=start+i*(Math.PI/2/cornerN);
+      rounded.push([cx+Math.cos(a)*cr,cz+Math.sin(a)*cr]);
+    }
+  }
+  for(let i=0;i<rounded.length;i++){
+    const a=rounded[i],b=rounded[(i+1)%rounded.length];add(a[0],a[1],b[0],b[1]);
+  }
+
+  // 中央の2本の幹線＋内周ループ。
+  add(-half,0,half,0); add(0,-half,0,half);
+  const n=24;
+  const innerRing=[];
   for(let i=0;i<n;i++){
-    const a0=i/n*Math.PI*2,a1=(i+1)/n*Math.PI*2;
-    add(Math.cos(a0)*ringR,Math.sin(a0)*ringR,Math.cos(a1)*ringR,Math.sin(a1)*ringR);
+    const a=i/n*Math.PI*2;
+    innerRing.push([Math.cos(a)*inner,Math.sin(a)*inner]);
   }
-  const spokes=8;
-  for(let i=0;i<spokes;i++){
-    const a=i/spokes*Math.PI*2;
-    const inner=4.4, outer=ringR-2.2;
-    add(Math.cos(a)*inner,Math.sin(a)*inner,Math.cos(a)*outer,Math.sin(a)*outer);
+  for(let i=0;i<n;i++){
+    const a=innerRing[i],b=innerRing[(i+1)%n];add(a[0],a[1],b[0],b[1]);
   }
+
+  // 地区への接続道路。中心から直線ではなく、最寄りの幹線へ折れて入る。
   for(const d of DISTRICTS){
-    if(d.id==='capital')continue;
-    const dist=Math.hypot(d.x,d.z);
-    if(dist<6 || dist>ringR-1)continue;
-    const end=Math.max(5.2,dist-3.8);
-    add(0,0,d.x/dist*end,d.z/dist*end);
+    if(d.id==='capital' || state.era<d.unlock || state.districts[d.id].level<=0) continue;
+    const dx=d.x,dz=d.z;
+    if(Math.hypot(dx,dz)>limit-3) continue;
+    const useX=Math.abs(dx)>=Math.abs(dz);
+    if(useX){
+      const anchorX=Math.sign(dx||1)*Math.min(Math.max(inner+1,Math.abs(dx)),half);
+      add(d.x,d.z,anchorX,d.z);
+      add(anchorX,d.z,anchorX,0);
+    }else{
+      const anchorZ=Math.sign(dz||1)*Math.min(Math.max(inner+1,Math.abs(dz)),half);
+      add(d.x,d.z,d.x,anchorZ);
+      add(d.x,anchorZ,0,anchorZ);
+    }
+  }
+
+  // 住宅街の短いループを4象限に配置。端点を幹線に接続する。
+  const loops=[
+    {cx:-inner*.72,cz:inner*.62,w:inner*.58,h:inner*.42},
+    {cx:inner*.72,cz:inner*.62,w:inner*.58,h:inner*.42},
+    {cx:-inner*.72,cz:-inner*.62,w:inner*.58,h:inner*.42},
+    {cx:inner*.72,cz:-inner*.62,w:inner*.58,h:inner*.42}
+  ];
+  for(const q of loops){
+    const x1=q.cx-q.w/2,x2=q.cx+q.w/2,z1=q.cz-q.h/2,z2=q.cz+q.h/2;
+    add(x1,z1,x2,z1);add(x2,z1,x2,z2);add(x2,z2,x1,z2);add(x1,z2,x1,z1);
+    // ループ1辺を幹線へ接続
+    const sx=Math.abs(q.cx)>Math.abs(q.cz)?0:q.cx;
+    const sz=Math.abs(q.cx)>Math.abs(q.cz)?q.cz:0;
+    const ex=Math.abs(q.cx)>Math.abs(q.cz)?q.cx:0;
+    const ez=Math.abs(q.cx)>Math.abs(q.cz)?0:q.cz;
+    add(ex,ez,sx,sz);
   }
   return segs;
 }
+
 function pointToSegmentDistance2D(px,pz,x1,z1,x2,z2){
   const dx=x2-x1,dz=z2-z1; const l2=dx*dx+dz*dz;
   if(l2<=1e-6)return Math.hypot(px-x1,pz-z1);
@@ -2606,6 +2680,17 @@ function cityRoadDistance(x,z){
   let best=Infinity;
   for(const [x1,z1,x2,z2] of getCityRoadSegments())best=Math.min(best,pointToSegmentDistance2D(x,z,x1,z1,x2,z2));
   return best;
+}
+function nearestRoadAngle(x,z){
+  let best=Infinity,angle=0;
+  for(const [x1,z1,x2,z2] of getCityRoadSegments()){
+    const dx=x2-x1,dz=z2-z1,l2=dx*dx+dz*dz;
+    if(l2<=1e-6)continue;
+    const t=Math.max(0,Math.min(1,((x-x1)*dx+(z-z1)*dz)/l2));
+    const qx=x1+t*dx,qz=z1+t*dz,d=Math.hypot(x-qx,z-qz);
+    if(d<best){best=d;angle=Math.atan2(dz,dx);}
+  }
+  return angle;
 }
 function cityPlacementClear(x,z,r=2.2){
   if(cityRoadDistance(x,z)<r)return false;
@@ -2618,19 +2703,20 @@ function cityPlacementClear(x,z,r=2.2){
 
 function makeHouseLots(){
   const lots=[];
-  const r=Math.min(150,Math.max(38,state.cityReach+10));
-  const spacing=5.6;
+  const r=Math.min(150,Math.max(24,getUrbanRadius()-2));
+  const spacing=5.8;
   let id=0;
   for(let gx=-Math.ceil(r/spacing);gx<=Math.ceil(r/spacing);gx++){
     for(let gz=-Math.ceil(r/spacing);gz<=Math.ceil(r/spacing);gz++){
       const x=gx*spacing,z=gz*spacing;
-      if(Math.hypot(x,z)<6.2 || Math.hypot(x,z)>r-2.5)continue;
-      if(Math.abs(z-r*.62)<5.0)continue;
-      if(cityRoadDistance(x,z)<2.25)continue;
+      if(Math.hypot(x,z)<6.2 || Math.hypot(x,z)>r)continue;
+      if(cityRoadDistance(x,z)<2.15)continue;
       let bad=false;
-      for(const d of DISTRICTS){if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?6.2:4.5)){bad=true;break;}}
+      for(const d of DISTRICTS){
+        if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?6.5:4.55)){bad=true;break;}
+      }
       if(bad)continue;
-      for(const f of state.facilities||[]){if(Math.hypot(x-f.x,z-f.z)<3.1){bad=true;break;}}
+      for(const f of state.facilities||[]){if(Math.hypot(x-f.x,z-f.z)<3.2){bad=true;break;}}
       if(bad)continue;
       for(const q of state.constructionQueue||[]){if(Math.hypot(x-q.x,z-q.z)<3.3){bad=true;break;}}
       if(bad)continue;
@@ -2659,6 +2745,7 @@ function drawHouseVisual(lot,occupied,p){
   const era=state.era;
   const g=new THREE.Group();
   g.position.set(lot.x,0,lot.z);
+  g.rotation.y=nearestRoadAngle(lot.x,lot.z)+Math.PI/2;
   g.userData.houseId=lot.id;
 
   const wallColor=[0xb68f66,0xc49b6d,0xbca77c,0x9e9991,0x978f88,0x7a7d80,0x6f7b82,0x728b9b,0x7898aa,0x81a1b3][era];
@@ -4587,6 +4674,7 @@ function cancelDispatch(){
 }
 window.cancelDispatch=cancelDispatch;
 function smartDispatchAt(x,z){
+  if(isInsideCityTerritory(x,z,0.2)){toast('都市領地内です。森林・鉱山などの資源は領地の外側にあります。');return;}
   const raw=worldBiomeAt(x,z);
   let type='hunt',tx=x,tz=z,nodeId=null,biome=raw;
   if(raw==='forest'){
@@ -4639,7 +4727,7 @@ function completeDispatch(e){
     showBanner('OCEAN CLAIM','海域制圧',`新しい航路を確保。金 +${gold}　制海力 +${power}`,1700);
   }else if(e.type==='expand'){
     const old=state.mapRadius;
-    const claimRadius=e.claimRadius||6;
+    const claimRadius=Math.max(4,Number(e.claimRadius)||Math.max(4,(e.workers||1)*4));
     if(territoryClaimAt(e.x,e.z,.05)){
       ensurePersonnelState();
       state.personnelByType[e.type]=Math.min(personnelSystem().personnelCap,Math.max(0,state.personnelByType[e.type]||0)+(e.workers||0));
@@ -4647,9 +4735,9 @@ function completeDispatch(e){
       addLog('🗺 開拓隊が到着しましたが、その地点はすでに開放済みでした。人員は帰還。');
       showBanner('EXPANSION SKIPPED','開放済み地点',`既存領域と重なったため、新しい領域は追加されませんでした。人員は帰還しました。`,1500);
     }
-    state.mapRadius=Math.min(100000,Math.max(state.mapRadius,Math.hypot(e.x,e.z)+claimRadius+4));
+    state.mapRadius=Math.min(100000,Math.max(getTerritoryRadius(),Math.hypot(e.x,e.z)+claimRadius));
     state.mapExpansion++;
-    state.cityReach=Math.min(260,state.cityReach+10);
+    state.cityReach=Math.min(260,Math.max(state.cityReach,Math.min(state.mapRadius-4,18+Math.sqrt(Math.max(0,state.pop))*0.72+state.mapExpansion*4)));
     if(!state.territorySites)state.territorySites=[];
     if(!state.territoryClaims)state.territoryClaims=[];
     state.territorySites.push({x:e.x,z:e.z,type:'land'});
@@ -5150,7 +5238,7 @@ function findNearestGarrison(x,z){
 }
 
 function missionBaseInfo(type){
-  /* 人数を増やせば増やすほど、上限なしで行動半径が伸びる。 */
+  // 全隊種共通で「基礎4m + 1人につき4m」。人数を増やすほど確実に届く距離が伸びる。
   return ({
     forest:{baseRange:4,rangePerPerson:4,cost:{food:24,gold:7},speed:1.0},
     sea:{baseRange:4,rangePerPerson:4,cost:{food:34,gold:14},speed:.88},
@@ -5174,7 +5262,7 @@ function getMissionStats(type,workers,x,z){
   const duration=Math.max(12,18+distance*(1.4/info.speed)-Math.min(12,w*.15)-sys.garrisonLv*1.1);
   /* 領域開放の円は「行動範囲」より小さめ。人数が増えるほど少し広がる。 */
   const claimRadius=type==='expand'
-    ? Math.max(4.5,5.8+w*.48+sys.academyLv*.34+sys.garrisonLv*.52)
+    ? Math.max(4,4*w)
     : 0;
   return {origin:origin.facility,distance,range,cost,duration,workers:w,claimRadius};
 }
@@ -6505,7 +6593,7 @@ function loadGame(){
         saved.districts||{}
       );
 
-    state.mapRadius=Math.max(36,Math.min(100000,Number(saved.mapRadius)||44));
+    state.mapRadius=Math.max(18,Math.min(100000,Number(saved.mapRadius)||44));
     state.mapExpansion=Math.max(0,Number(saved.mapExpansion)||0);
     state.cityReach=Math.max(12,Number(saved.cityReach)||16);
     state.facilities=Array.isArray(saved.facilities)?saved.facilities:[];
@@ -6990,10 +7078,17 @@ function updateMissionPreviewFromState(){
       if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(110,dlen),Math.min(3.0,1+dlen*.024),.7);}
       const target=g.userData.targetRing;
       if(target){
-        const visualRadius=type==='expand'?Math.max(1,stats.claimRadius||previewRange*.4):.95;
+        const visualRadius=type==='expand'?Math.max(1,stats.claimRadius||previewRange):.95;
         target.geometry.dispose?.();
-        target.geometry=new THREE.RingGeometry(type==='expand'?visualRadius*.92:visualRadius,type==='expand'?visualRadius:1.15,48);
+        target.geometry=new THREE.RingGeometry(type==='expand'?visualRadius*.96:visualRadius,type==='expand'?visualRadius:1.15,64);
         target.position.set(m.x,.40,m.z);
+      }
+      const rangeRing=g.userData.rangeRing;
+      if(rangeRing){
+        const rr=Math.max(0.5,stats.range);
+        rangeRing.geometry.dispose?.();
+        rangeRing.geometry=new THREE.RingGeometry(Math.max(0.1,rr-.10),rr,96);
+        rangeRing.position.set(stats.origin.x,.365,stats.origin.z);
       }
       const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
       const startDot=g.userData.startDot;if(startDot)startDot.position.set(stats.origin.x,.48,stats.origin.z);
@@ -7031,11 +7126,13 @@ function createMissionPreview(m){
   const arrow=new THREE.ArrowHelper(dir,origin,Math.min(90,len),info.color,Math.min(2.5,1+len*.025),.7);
   arrow.line.material.transparent=true;arrow.line.material.opacity=.62;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.95;g.add(arrow);
   const previewRadius=m.type==='expand'?Math.max(1,m.claimRadius||m.range*.40):1.0;
-  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.92:previewRadius,m.type==='expand'?previewRadius:1.15,48),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
+  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.96:previewRadius,m.type==='expand'?previewRadius:1.15,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
   target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
+  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(Math.max(.1,(m.range||previewRadius*.4)-.10),Math.max(.2,m.range||previewRadius*.4),96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
+  rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);g.add(rangeRing);
   const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.45,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
   const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.19,.10,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.35,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
-  g.userData.targetRing=target;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
+  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
   effectGroup.add(g);missionPreviewGroup=g;
   updateMissionPreviewFromState();
 }
@@ -7057,9 +7154,13 @@ window.changePendingWorkers=changePendingWorkers;
 
 
 function territoryClaimAt(x,z,padding=0){
+  const r=Math.max(0,getTerritoryRadius()-padding);
+  if(Math.hypot(x,z)<=r){
+    return {x:0,z:0,radius:getTerritoryRadius(),type:'city'};
+  }
   for(const claim of (state.territoryClaims||[])){
-    const r=Math.max(0,Number(claim.radius)||0)-padding;
-    if(Math.hypot(x-(Number(claim.x)||0),z-(Number(claim.z)||0))<r){
+    const cr=Math.max(0,Number(claim.radius)||0)-padding;
+    if(Math.hypot(x-(Number(claim.x)||0),z-(Number(claim.z)||0))<cr){
       return claim;
     }
   }

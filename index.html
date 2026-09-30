@@ -721,6 +721,29 @@ button{
 .training-role-actions button:hover{filter:brightness(1.12)}
 .training-queue-note{font-size:8px;color:#909baa;line-height:1.45;margin-top:7px}
 
+
+/* ===== CITY OVERVIEW / BUILD UI ===== */
+.top-actions{display:flex;align-items:center;gap:6px}
+.top-action{border:1px solid rgba(255,255,255,.10);border-radius:10px;background:#141a24;color:#e8edf3;padding:7px 9px;font-size:10px;font-weight:1000;cursor:pointer}
+.top-action:hover{filter:brightness(1.12)}
+.overview-overlay{position:fixed;inset:0;z-index:165;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(3,6,10,.78);backdrop-filter:blur(14px)}
+.overview-overlay.show{display:flex}
+.overview-modal{width:min(760px,96vw);height:min(760px,92vh);border:1px solid rgba(255,255,255,.11);border-radius:22px;background:#0f151e;box-shadow:0 35px 120px rgba(0,0,0,.62);display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}
+.overview-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.overview-title{font-size:20px;font-weight:1000}.overview-sub{font-size:10px;color:#9ca7b5;margin-top:3px}
+.overview-close{border:1px solid var(--line);background:#141a23;color:#dfe5ec;border-radius:10px;width:35px;height:35px;cursor:pointer;font-size:18px}
+.overview-tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);overflow:auto}
+.overview-tab{border:1px solid var(--line);border-radius:10px;background:#131923;color:#bbc3ce;padding:8px 10px;font-size:10px;font-weight:1000;white-space:nowrap;cursor:pointer}
+.overview-tab.active{background:linear-gradient(135deg,#e8c26d,#ad7536);color:#1a1308;border-color:transparent}
+.overview-body{overflow:auto;padding:13px}
+.overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.overview-card{padding:11px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}
+.overview-card h3{margin:0;font-size:12px}.overview-card p{margin:5px 0 0;font-size:9px;color:#9da7b4;line-height:1.55}.overview-big{font-size:20px;font-weight:1000;margin-top:4px}
+.overview-list{display:grid;gap:7px}.overview-row{padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px;background:rgba(255,255,255,.022);display:flex;align-items:center;justify-content:space-between;gap:10px}.overview-row-main{min-width:0}.overview-row-title{font-size:10px;font-weight:1000}.overview-row-sub{font-size:8px;color:#8c97a5;margin-top:2px;line-height:1.45}.overview-badge{font-size:9px;font-weight:1000;color:#e6c779;white-space:nowrap}.overview-empty{padding:24px 12px;text-align:center;color:#7f8997;font-size:10px}
+.build-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.build-card{border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025);padding:10px}.build-card-top{display:flex;align-items:center;gap:8px}.build-icon{font-size:20px}.build-name{font-size:11px;font-weight:1000}.build-meta{font-size:8px;color:#8994a1;margin-top:2px}.build-card p{font-size:8px;color:#8f9aa8;line-height:1.5;margin:7px 0}.build-btn{width:100%;border:0;border-radius:9px;padding:8px;background:#e7c06b;color:#171107;font-size:9px;font-weight:1000;cursor:pointer}.build-btn:disabled{opacity:.35;cursor:not-allowed}
+.milestone-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.milestone{padding:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.022)}.milestone.done{border-color:rgba(228,193,104,.38);background:rgba(228,193,104,.055)}.milestone-top{display:flex;justify-content:space-between;gap:8px}.milestone-title{font-size:10px;font-weight:1000}.milestone-state{font-size:8px;font-weight:1000;color:#84909f}.milestone.done .milestone-state{color:#ebc86c}.milestone-desc{font-size:8px;color:#7f8b98;line-height:1.45;margin-top:4px}.construction-card{padding:10px;border:1px solid rgba(228,193,104,.18);border-radius:12px;background:rgba(228,193,104,.035);margin-bottom:8px}.construction-bar{height:6px;margin-top:7px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}.construction-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fb5ef,#e7c56b)}
+@media(max-width:620px){.top-action{padding:7px 8px;font-size:9px}.overview-grid,.build-grid,.milestone-grid{grid-template-columns:1fr}.overview-modal{height:min(820px,94vh)}}
+
 </style>
 </head>
 
@@ -762,6 +785,11 @@ button{
       <div class="era-pill"
            id="eraPill">
         原始時代
+      </div>
+
+      <div class="top-actions">
+        <button class="top-action" type="button" onclick="openOverview('summary')">📋 一覧</button>
+        <button class="top-action" type="button" onclick="openOverview('build')">🏗 建築</button>
       </div>
 
     </div>
@@ -1058,6 +1086,24 @@ button{
 
 </div>
 
+
+<div class="overview-overlay" id="overviewOverlay" onclick="if(event.target===this)closeOverview()">
+  <div class="overview-modal">
+    <div class="overview-head">
+      <div><div class="overview-title">文明ダッシュボード</div><div class="overview-sub" id="overviewSub">都市の進行状況をまとめて確認</div></div>
+      <button class="overview-close" type="button" onclick="closeOverview()">×</button>
+    </div>
+    <div class="overview-tabs">
+      <button class="overview-tab active" data-tab="summary" onclick="openOverview('summary')">概要</button>
+      <button class="overview-tab" data-tab="districts" onclick="openOverview('districts')">地区一覧</button>
+      <button class="overview-tab" data-tab="facilities" onclick="openOverview('facilities')">設備一覧</button>
+      <button class="overview-tab" data-tab="build" onclick="openOverview('build')">🏗 建築</button>
+      <button class="overview-tab" data-tab="milestones" onclick="openOverview('milestones')">🏅 やり込み</button>
+    </div>
+    <div class="overview-body" id="overviewBody"></div>
+    <div style="padding:10px 13px;border-top:1px solid var(--line);font-size:8px;color:#7f8a98">資材上限：∞　／　建築は即時完成ではなく、建設時間を経て完成します。</div>
+  </div>
+</div>
 
 <div class="toast"
      id="toast">
@@ -1437,7 +1483,7 @@ const ERA_ROAD = [
 
 const state = {
 
-  version:10,
+  version:11,
 
   last:Date.now(),
 
@@ -1451,7 +1497,7 @@ const state = {
 
   happiness:82,
 
-  storage:5000,
+  storage:Number.MAX_SAFE_INTEGER,
 
   scienceTotal:0,
 
@@ -1520,7 +1566,10 @@ const state = {
   selectedFacility:null,
   huntClaims:[],
   territorySites:[],
-  territoryClaims:[]
+  territoryClaims:[],
+  constructionQueue:[],
+  stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:28,totalConstructionTime:0},
+  unlockedMilestones:[]
 };
 
 
@@ -1674,11 +1723,12 @@ scene.add(cityGroup);
 
 const residentialGroup=new THREE.Group();
 const facilityGroup=new THREE.Group();
+const constructionGroup=new THREE.Group();
 const citizenGroup=new THREE.Group();
 const effectGroup=new THREE.Group();
 const worldGroup=new THREE.Group();
 scene.add(worldGroup);
-cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
+cityGroup.add(residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup);
 
 const worldNodeObjects=[];
 let worldStreamKey='';
@@ -2466,41 +2516,24 @@ function rebuildWorldChunks(force=false){
       addWorldLandmark(cx,cz,biome);
     }
   }
-  /* 都市圏の道路網。十字の格子ではなく、中央広場から外へ流れる幹線＋環状道路にする。 */
-  const roadLimit=Math.min(120,Math.max(20,state.cityReach));
-  const roadMat=new THREE.MeshStandardMaterial({color:ERA_ROAD[state.era]||ERA_ROAD[0],roughness:state.era<5?.88:.64,metalness:state.era>=6?.12:0});
+  /* 都市圏の道路網：中央→放射＋環状＋地区接続。住居ロットは道路を避ける。 */
+  const roadMat=new THREE.MeshStandardMaterial({color:ERA_ROAD[state.era]||ERA_ROAD[0],roughness:state.era<5?.88:.62,metalness:state.era>=6?.12:0});
   const curbMat=new THREE.MeshStandardMaterial({color:state.era>=5?0x555d64:0x6e665a,roughness:.92});
-  const addRoadSegment=(x1,z1,x2,z2,w=1.8)=>{
+  const addRoadSegment=(x1,z1,x2,z2,w=1.55)=>{
     const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz); if(len<1)return;
-    const r=box(len,.11,w,roadMat,(x1+x2)/2,.12,(z1+z2)/2);r.rotation.y=Math.atan2(dz,dx);worldGroup.add(r);
+    const rr=box(len,.105,w,roadMat,(x1+x2)/2,.12,(z1+z2)/2); rr.rotation.y=Math.atan2(dz,dx); worldGroup.add(rr);
   };
-  const ringR=Math.max(12,Math.min(roadLimit*.62,roadLimit-4));
-  const ringN=28;
-  for(let i=0;i<ringN;i++){
-    const a0=i/ringN*Math.PI*2,a1=(i+1)/ringN*Math.PI*2;
-    addRoadSegment(Math.cos(a0)*ringR,Math.sin(a0)*ringR,Math.cos(a1)*ringR,Math.sin(a1)*ringR,1.7);
-  }
-  const spokeCount=6;
-  for(let i=0;i<spokeCount;i++){
-    const a=i/spokeCount*Math.PI*2+.12;
-    let px=0,pz=0;
-    const steps=9;
-    for(let j=0;j<steps;j++){
-      const r0=(ringR/steps)*j,r1=(ringR/steps)*(j+1);
-      const bend=Math.sin(j*.72+i*1.7)*.9;
-      addRoadSegment(Math.cos(a)*r0+(-Math.sin(a))*bend,Math.sin(a)*r0+Math.cos(a)*bend,
-                     Math.cos(a)*r1+(-Math.sin(a))*bend,Math.sin(a)*r1+Math.cos(a)*bend,1.85);
-    }
-  }
-  /* 短い住宅路を少数追加。 */
-  for(let i=0;i<10;i++){
-    const a=i/10*Math.PI*2+.25, r0=5+((i%3)*2.5), r1=Math.min(ringR-2,r0+6);
-    addRoadSegment(Math.cos(a)*r0,Math.sin(a)*r0,Math.cos(a)*r1,Math.sin(a)*r1,1.25);
+  for(const [x1,z1,x2,z2] of getCityRoadSegments()){
+    const d=Math.hypot(x2-x1,z2-z1);
+    addRoadSegment(x1,z1,x2,z2,d>8?1.72:1.28);
   }
   if(state.era>=3){
-    for(let i=0;i<ringN;i+=2){
-      const a=i/ringN*Math.PI*2;const x=Math.cos(a)*ringR,z=Math.sin(a)*ringR;
-      worldGroup.add(box(0.08,.07,2.0,curbMat,x,.19,z));
+    const limit=Math.min(120,Math.max(22,state.cityReach));
+    const ringR=Math.max(11,Math.min(limit*.60,limit-5));
+    for(let i=0;i<32;i+=2){
+      const a=i/32*Math.PI*2;
+      const x=Math.cos(a)*ringR,z=Math.sin(a)*ringR;
+      worldGroup.add(box(.075,.06,1.7,curbMat,x,.19,z));
     }
   }
 
@@ -2537,31 +2570,74 @@ function buildTerrainMap(){
   rebuildWorldChunks(true);
 }
 
+
+function getCityRoadSegments(){
+  const limit=Math.min(120,Math.max(22,state.cityReach));
+  const ringR=Math.max(11,Math.min(limit*.60,limit-5));
+  const segs=[];
+  const add=(x1,z1,x2,z2)=>segs.push([x1,z1,x2,z2]);
+  const n=32;
+  for(let i=0;i<n;i++){
+    const a0=i/n*Math.PI*2,a1=(i+1)/n*Math.PI*2;
+    add(Math.cos(a0)*ringR,Math.sin(a0)*ringR,Math.cos(a1)*ringR,Math.sin(a1)*ringR);
+  }
+  const spokes=8;
+  for(let i=0;i<spokes;i++){
+    const a=i/spokes*Math.PI*2;
+    const inner=4.4, outer=ringR-2.2;
+    add(Math.cos(a)*inner,Math.sin(a)*inner,Math.cos(a)*outer,Math.sin(a)*outer);
+  }
+  for(const d of DISTRICTS){
+    if(d.id==='capital')continue;
+    const dist=Math.hypot(d.x,d.z);
+    if(dist<6 || dist>ringR-1)continue;
+    const end=Math.max(5.2,dist-3.8);
+    add(0,0,d.x/dist*end,d.z/dist*end);
+  }
+  return segs;
+}
+function pointToSegmentDistance2D(px,pz,x1,z1,x2,z2){
+  const dx=x2-x1,dz=z2-z1; const l2=dx*dx+dz*dz;
+  if(l2<=1e-6)return Math.hypot(px-x1,pz-z1);
+  const t=Math.max(0,Math.min(1,((px-x1)*dx+(pz-z1)*dz)/l2));
+  return Math.hypot(px-(x1+t*dx),pz-(z1+t*dz));
+}
+function cityRoadDistance(x,z){
+  let best=Infinity;
+  for(const [x1,z1,x2,z2] of getCityRoadSegments())best=Math.min(best,pointToSegmentDistance2D(x,z,x1,z1,x2,z2));
+  return best;
+}
+function cityPlacementClear(x,z,r=2.2){
+  if(cityRoadDistance(x,z)<r)return false;
+  for(const g of houseObjects){
+    if(g?.position && Math.hypot(x-g.position.x,z-g.position.z)<r+1.15)return false;
+  }
+  for(const q of (state.constructionQueue||[])) if(Math.hypot(x-q.x,z-q.z)<r+2.0)return false;
+  return true;
+}
+
 function makeHouseLots(){
   const lots=[];
-  const r=Math.min(150,Math.max(36,state.cityReach+12));
-  const spacing=8;
+  const r=Math.min(150,Math.max(38,state.cityReach+10));
+  const spacing=5.6;
   let id=0;
-  for(let gx=-Math.floor(r/spacing);gx<=Math.floor(r/spacing);gx++){
-    for(let gz=-Math.floor(r/spacing);gz<=Math.floor(r/spacing);gz++){
-      const cx=gx*spacing,cz=gz*spacing;
-      for(const ox of [-2.5,0,2.5]){
-        for(const oz of [-2.0,0,2.0]){
-          const x=cx+ox,z=cz+oz;
-          if(x<-r+3||x>r-3||z<-r+3||z>r-3) continue;
-          if(Math.abs(z-r*.62)<4.8) continue;
-          if(Math.hypot(x,z)<6.0) continue;
-          let bad=false;
-          for(const d of DISTRICTS){
-            if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?5.7:4.3)){bad=true;break;}
-          }
-          if(bad) continue;
-          lots.push({id:id++,x,z,dist:Math.hypot(x,z)});
-        }
-      }
+  for(let gx=-Math.ceil(r/spacing);gx<=Math.ceil(r/spacing);gx++){
+    for(let gz=-Math.ceil(r/spacing);gz<=Math.ceil(r/spacing);gz++){
+      const x=gx*spacing,z=gz*spacing;
+      if(Math.hypot(x,z)<6.2 || Math.hypot(x,z)>r-2.5)continue;
+      if(Math.abs(z-r*.62)<5.0)continue;
+      if(cityRoadDistance(x,z)<2.25)continue;
+      let bad=false;
+      for(const d of DISTRICTS){if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?6.2:4.5)){bad=true;break;}}
+      if(bad)continue;
+      for(const f of state.facilities||[]){if(Math.hypot(x-f.x,z-f.z)<3.1){bad=true;break;}}
+      if(bad)continue;
+      for(const q of state.constructionQueue||[]){if(Math.hypot(x-q.x,z-q.z)<3.3){bad=true;break;}}
+      if(bad)continue;
+      lots.push({id:id++,x,z,dist:Math.hypot(x,z),angle:Math.atan2(z,x)});
     }
   }
-  lots.sort((a,b)=>a.dist-b.dist||a.z-b.z||a.x-b.x);
+  lots.sort((a,b)=>a.dist-b.dist||a.angle-b.angle||a.z-b.z||a.x-b.x);
   return lots;
 }
 
@@ -2723,6 +2799,57 @@ function animateCitizens(dt,t){
     d.normalize();g.position.addScaledVector(d,(g.userData.speed||.6)*dt);g.rotation.y=Math.atan2(d.x,d.z);
     g.position.y=.55+Math.sin(t*.006+g.userData.phase)*.014;
   }
+}
+
+
+function isFacilityQueued(type){ return state.constructionQueue.some(c=>c.type===type); }
+function constructionDuration(def){
+  const costScore=Object.values(def.cost||{}).reduce((a,v)=>a+(Number(v)||0),0);
+  return Math.round(Math.min(420,Math.max(12,18+costScore*.035+def.minEra*7)));
+}
+function buildConstructionVisual(c,p){
+  const def=facilityById(c.type); if(!def)return;
+  const g=new THREE.Group();
+  g.position.set(c.x,0,c.z); g.userData.constructionId=c.id;
+  const w=2.8,h=1.05,d=2.35;
+  const base=makeMaterial(0x7a6751,.95);
+  const frame=makeMaterial(0xd4b168,.68,.15);
+  const ghost=makeMaterial(0x8d9aaa,.56,.25);
+  g.add(box(w,.16,d,base,0,.08,0));
+  g.add(box(.12,h,.12,frame,-w*.34,h/2,.0),box(.12,h,.12,frame,w*.34,h/2,.0));
+  g.add(box(w*.7,.08,.08,frame,0,h*.72,0));
+  g.add(box(w*.44,h*.42,d*.44,ghost,0,.42,0));
+  const pct=1-Math.max(0,c.remaining)/Math.max(1,c.duration);
+  g.scale.y=.86+pct*.14;
+  constructionGroup.add(g);
+}
+function rebuildConstructionVisuals(p){
+  while(constructionGroup.children.length) constructionGroup.remove(constructionGroup.children[0]);
+  for(const c of state.constructionQueue) buildConstructionVisual(c,p);
+}
+function completeConstruction(c){
+  const def=facilityById(c.type); if(!def)return;
+  const maxLevel=facilityMaxLevel(def);
+  const f={id:c.id,type:def.id,x:c.x,z:c.z,level:c.level||1,maxLevel};
+  state.facilities.push(f);
+  state.housingBonus+=def.effects?.popMax||0;
+  state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
+  state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
+  state.stats.buildingsCompleted=(state.stats.buildingsCompleted||0)+1;
+  state.stats.totalConstructionTime=(state.stats.totalConstructionTime||0)+(c.duration||0);
+  addLog(`${def.icon}${def.name}の建設が完了しました。`);
+  showBanner('CONSTRUCTION COMPLETE','建設完了',`${def.name}が完成しました。Lv.${f.level}`,1500);
+  state.selectedFacility=f.id; state.selected=null;
+  state.constructionQueue=state.constructionQueue.filter(x=>x.id!==c.id);
+  rebuildMap(); renderAll(); highlightFacility(f.id);
+}
+function simulateConstruction(sec){
+  if(!Array.isArray(state.constructionQueue))state.constructionQueue=[];
+  const done=[];
+  for(const c of state.constructionQueue){c.remaining=Math.max(0,(Number(c.remaining)||0)-sec); if(c.remaining<=0)done.push(c);}
+  for(const c of done) completeConstruction(c);
+  if(done.length) return;
+  const p=eraPalette(); rebuildConstructionVisuals(p);
 }
 
 function facilityById(id){ return FACILITIES.find(x=>x.id===id); }
@@ -3030,12 +3157,13 @@ function buildFacilities(p){
 
 function rebuildMap(){
   /* ルートGroupを丸ごと外さず、描画対象だけを差し替える。外縁施設の最大Lv強化時に全建物が消える事故を防ぐ。 */
-  const coreGroups=new Set([residentialGroup,facilityGroup,citizenGroup,effectGroup]);
+  const coreGroups=new Set([residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup]);
   for(const child of [...cityGroup.children]) if(!coreGroups.has(child)) cityGroup.remove(child);
   selectedFacilityRing=null;
   worldStreamKey='';
   cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
   districtObjects.clear();houseObjects.length=0;facilityObjects.length=0;smokePuffs.length=0;clearCitizens();
+  while(constructionGroup.children.length) constructionGroup.remove(constructionGroup.children[0]);
   while(effectGroup.children.length) effectGroup.remove(effectGroup.children[0]);
   rebuildExpeditionVisuals();
   HOUSE_LOTS=makeHouseLots();
@@ -3045,6 +3173,7 @@ function rebuildMap(){
   buildTerrainMap(p);
   buildResidentialCity(p);
   buildFacilities(p);
+  rebuildConstructionVisuals(p);
   for(const d of DISTRICTS){
     const ds=state.districts[d.id];
     if(state.era<d.unlock && ds.level===0) continue;
@@ -4403,19 +4532,20 @@ function startBuildFacility(id){
   removeMissionPreview();
   const def=facilityById(id);if(!def)return;
   if(state.era<def.minEra){toast(`${ERA[def.minEra].name}で解禁`);return;}
-  if(def.requiresFacility && !state.facilities.some(f=>f.type===def.requiresFacility)){
+  if(def.requiresFacility && !state.facilities.some(f=>f.type===def.requiresFacility) && !isFacilityQueued(def.requiresFacility)){
     const req=facilityById(def.requiresFacility);
     toast(`${req?.icon||'🔒'} ${req?.name||'前提施設'}を先に建設してください`);
     return;
   }
-  if(def.unique && state.facilities.some(f=>f.type===id)){
+  if(def.unique && (state.facilities.some(f=>f.type===id)||isFacilityQueued(id))){
     const f=state.facilities.find(f=>f.type===id);
-    selectFacility(f.id);toast(`${def.icon}${def.name}は既に建設済み。選択して強化できます`);return;
+    if(f){selectFacility(f.id);toast(`${def.icon}${def.name}は既に建設済み。選択して強化できます`);}else toast(`${def.icon}${def.name}は建設中です`);
+    return;
   }
   const cost=facilityCost(def);
   if(!canAfford(cost)){toast(`建設資源が足りません：${formatCost(cost)}`);return;}
   buildMode=id;
-  toast(`${def.icon}${def.name}：マップの「${placementLabel(def)}」をタップ`);
+  toast(`${def.icon}${def.name}：空き地をタップして建設開始（${constructionDuration(def)}秒）`);
 }
 window.startBuildFacility=startBuildFacility;
 function cancelBuildMode(){buildMode=null;toast('建設モードを解除');}
@@ -4427,19 +4557,19 @@ function placeFacilityAt(x,z){
   if(!facilityPlacementOk(def,sx,sz))return;
   if(Math.hypot(sx,sz)<5.0){toast('中央広場には建設できません');return;}
   for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存地区に近すぎます');return;}}
-  for(const f of state.facilities){if(Math.hypot(sx-f.x,sz-f.z)<3.0){toast('他の設備に近すぎます');return;}}
+  for(const f of state.facilities){if(Math.hypot(sx-f.x,sz-f.z)<3.2){toast('他の設備に近すぎます');return;}}
+  if(!cityPlacementClear(sx,sz,2.2)){toast('道路・住宅・工事区画と重なるため建設できません。空き地を選んでください');return;}
+  if((state.constructionQueue||[]).some(q=>Math.hypot(sx-q.x,sz-q.z)<3.4)){toast('その場所は別の建築予定と重なっています');return;}
   const cost=facilityCost(def);if(!canAfford(cost)){buildMode=null;toast('資源が足りなくなりました');return;}
   pay(cost);
   const id=`f_${Date.now()}_${Math.floor(Math.random()*100000)}`;
-  const maxLevel=facilityMaxLevel(def);
-  state.facilities.push({id,type:def.id,x:sx,z:sz,level:1,maxLevel});
-  state.housingBonus+=def.effects?.popMax||0;
-  state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
-  addLog(`${def.icon}${def.name}を建設しました。`);
-  state.selectedFacility=id;
-  state.selected=null;
+  const duration=constructionDuration(def);
+  state.constructionQueue.push({id,type:def.id,x:sx,z:sz,level:1,maxLevel:facilityMaxLevel(def),duration,remaining:duration});
+  addLog(`${def.icon}${def.name}の建設を開始しました（${duration}秒）。`);
   buildMode=null;
-  rebuildMap();renderAll();highlightFacility(id);
+  state.selectedFacility=null;
+  rebuildConstructionVisuals(eraPalette());renderAll();
+  toast(`${def.icon}${def.name} 建設開始：完成まで約${duration}秒`);
 }
 
 function startTerritoryExpansion(){
@@ -4535,7 +4665,11 @@ function completeDispatch(e){
     addLog(`🛡 討伐隊が帰還。食料+${food} 金+${gold}`);
     showBanner('HUNT COMPLETE','討伐成功',`討伐隊が帰還。食料 +${food}　金 +${gold}`,1500);
   }
-  state.expeditions=state.expeditions.filter(x=>x.id!==e.id);rebuildMap();renderAll();
+  state.expeditions=state.expeditions.filter(x=>x.id!==e.id);
+  state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:0,totalConstructionTime:0};
+  state.stats.expeditionsCompleted=(state.stats.expeditionsCompleted||0)+1;
+  updateMilestones();
+  rebuildMap();renderAll();
 }
 
 function simulateExpeditions(sec){
@@ -5018,10 +5152,10 @@ function findNearestGarrison(x,z){
 function missionBaseInfo(type){
   /* 人数を増やせば増やすほど、上限なしで行動半径が伸びる。 */
   return ({
-    forest:{baseRange:16,rangePerPerson:0.90,cost:{food:24,gold:7},speed:1.0},
-    sea:{baseRange:18,rangePerPerson:1.05,cost:{food:34,gold:14},speed:.88},
-    hunt:{baseRange:17,rangePerPerson:0.95,cost:{food:28,gold:10},speed:1.0},
-    expand:{baseRange:15,rangePerPerson:0.78,cost:{food:20,wood:24,stone:20,gold:9},speed:.82}
+    forest:{baseRange:4,rangePerPerson:4,cost:{food:24,gold:7},speed:1.0},
+    sea:{baseRange:4,rangePerPerson:4,cost:{food:34,gold:14},speed:.88},
+    hunt:{baseRange:4,rangePerPerson:4,cost:{food:28,gold:10},speed:1.0},
+    expand:{baseRange:4,rangePerPerson:4,cost:{food:20,wood:24,stone:20,gold:9},speed:.82}
   })[type]||null;
 }
 
@@ -5031,7 +5165,7 @@ function getMissionStats(type,workers,x,z){
   const origin=findNearestGarrison(x,z);
   if(!origin)return null;
   const w=Math.max(1,Number(workers)||1);
-  const range=info.baseRange+w*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  const range=info.baseRange+Math.max(0,w-1)*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
   const distance=origin.distance;
   const ratio=Math.max(.7,1+Math.max(0,distance-range)*.045);
   const personnelLoad=1+w*.115;
@@ -5051,6 +5185,7 @@ function getMissionStats(type,workers,x,z){
 
 function simulate(sec){
 
+  simulateConstruction(sec);
   const r=
     rates();
 
@@ -5231,6 +5366,9 @@ function simulate(sec){
       100
     );
 
+  state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:0,totalConstructionTime:0};
+  state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
+  updateMilestones();
 
   state.year +=
     sec/7;
@@ -5247,23 +5385,9 @@ function simulate(sec){
     sec;
 
 
-  /* Capacity */
-
-  for(
-    const k of Object.keys(
-      state.resources
-    )
-  ){
-
-    state.resources[k]=
-      Math.max(
-        0,
-        Math.min(
-          state.storage,
-          state.resources[k]
-        )
-      );
-
+  /* 資材上限は撤廃。負数だけ防止する。 */
+  for(const k of Object.keys(state.resources)){
+    state.resources[k]=Math.max(0,Number(state.resources[k])||0);
   }
 
 
@@ -5679,6 +5803,75 @@ function renderFacilitySide(){
 function clearFacilitySelection(){removeMissionPreview();state.selectedFacility=null;state.selected='capital';highlightFacility(null);renderSide();}
 window.clearFacilitySelection=clearFacilitySelection;
 
+
+const MILESTONES=[
+  {id:'pop100',icon:'👥',title:'百人都市',desc:'人口100人に到達',check:()=>state.pop>=100},
+  {id:'pop500',icon:'🏙',title:'大都市',desc:'人口500人に到達',check:()=>state.pop>=500},
+  {id:'era3',icon:'⚒️',title:'鉄の文明',desc:'鉄器時代へ到達',check:()=>state.era>=3},
+  {id:'era5',icon:'🏭',title:'工業国家',desc:'産業時代へ到達',check:()=>state.era>=5},
+  {id:'era8',icon:'🚀',title:'宇宙都市',desc:'宇宙時代へ到達',check:()=>state.era>=8},
+  {id:'build10',icon:'🏗',title:'建設ラッシュ',desc:'施設を10件完成',check:()=>state.facilities.length>=10},
+  {id:'build30',icon:'🏗️',title:'巨大建設計画',desc:'施設を30件完成',check:()=>state.facilities.length>=30},
+  {id:'exp10',icon:'🧭',title:'遠征隊長',desc:'遠征を10回完了',check:()=>((state.stats?.expeditionsCompleted)||0)>=10},
+  {id:'territory10',icon:'🗺',title:'領域拡張',desc:'領土Lv.10に到達',check:()=>state.mapExpansion>=10},
+  {id:'sea5',icon:'⚓',title:'制海者',desc:'5海域を制圧',check:()=>state.seaClaims>=5},
+  {id:'festival10',icon:'🎉',title:'祝祭都市',desc:'祭りを10回開催',check:()=>state.festivals>=10},
+  {id:'district5',icon:'📍',title:'都市計画',desc:'いずれかの地区をLv.5へ',check:()=>DISTRICTS.some(d=>(state.districts[d.id]?.level||0)>=5)},
+  {id:'allDistrict2',icon:'🧱',title:'均整都市',desc:'解禁済み全地区をLv.2以上に',check:()=>DISTRICTS.filter(d=>state.era>=d.unlock).every(d=>(state.districts[d.id]?.level||0)>=2)},
+  {id:'pop1000',icon:'🌆',title:'メガシティ',desc:'人口1,000人に到達',check:()=>state.pop>=1000},
+  {id:'build100',icon:'🏛',title:'百施設都市',desc:'施設を100件完成',check:()=>state.facilities.length>=100},
+  {id:'wonder',icon:'✨',title:'文明の象徴',desc:'驚異を1回達成',check:()=>state.wonders>=1}
+];
+function updateMilestones(){
+  if(!Array.isArray(state.unlockedMilestones))state.unlockedMilestones=[];
+  for(const m of MILESTONES){
+    if(state.unlockedMilestones.includes(m.id))continue;
+    let ok=false;try{ok=!!m.check();}catch(e){}
+    if(ok){state.unlockedMilestones.push(m.id);addLog(`🏅 やり込み達成：「${m.title}」`);showBanner('MILESTONE','やり込み達成',`${m.icon} ${m.title}\n${m.desc}`,1700);}
+  }
+}
+function overviewStats(){
+  const done=state.unlockedMilestones?.length||0;
+  return `<div class="overview-grid">
+    <div class="overview-card"><h3>人口</h3><div class="overview-big">${fmt(state.pop)} / ${fmt(state.popMax)}</div><p>過去最高 ${fmt(state.stats?.largestPopulation||state.pop)}</p></div>
+    <div class="overview-card"><h3>幸福度</h3><div class="overview-big">${Math.floor(state.happiness)}%</div><p>時代 ${ERA[state.era].name}</p></div>
+    <div class="overview-card"><h3>都市</h3><div class="overview-big">${fmt(state.facilities.length)}施設</div><p>建設完了 ${fmt(state.stats?.buildingsCompleted||0)}件　建設中 ${fmt(state.constructionQueue.length)}件</p></div>
+    <div class="overview-card"><h3>遠征</h3><div class="overview-big">${fmt(state.expeditions.length)}隊</div><p>累計完了 ${fmt(state.stats?.expeditionsCompleted||0)}回</p></div>
+    <div class="overview-card"><h3>領域</h3><div class="overview-big">Lv.${fmt(state.mapExpansion)}</div><p>海域 ${fmt(state.seaClaims||0)}　制海力 ${fmt(state.oceanPower||0)}</p></div>
+    <div class="overview-card"><h3>やり込み</h3><div class="overview-big">${done} / ${MILESTONES.length}</div><p>達成項目は🏅タブから確認できます。</p></div>
+  </div>
+  <div class="section" style="margin-top:10px"><div class="section-head"><div class="section-title">資材</div><div class="muted" style="font-size:8px">上限 ∞</div></div><div class="prod">${['food','wood','stone','iron','gold','science','culture'].map(k=>`<div>${resourceIcon(k)} <b>${fmt(state.resources[k]||0)}</b></div>`).join('')}</div></div>
+  <div class="section"><div class="section-head"><div class="section-title">建設中</div><div class="muted" style="font-size:8px">${state.constructionQueue.length}件</div></div>${state.constructionQueue.length?state.constructionQueue.map(c=>{const d=facilityById(c.type);const pct=Math.max(0,Math.min(100,(1-c.remaining/Math.max(1,c.duration))*100));return `<div class="construction-card"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:10px">${d?.icon||'🏗'} ${d?.name||c.type}</b><span style="font-size:9px;color:#a6b0bd">${Math.ceil(c.remaining)}秒</span></div><div class="construction-bar"><i style="width:${pct}%"></i></div></div>`}).join(''):'<div class="overview-empty">建設中の施設はありません。</div>'}</div>`;
+}
+function renderOverviewTab(tab){
+  const body=document.getElementById('overviewBody');if(!body)return;
+  document.querySelectorAll('.overview-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  const sub=document.getElementById('overviewSub');
+  if(tab==='summary'){sub.textContent='都市・資材・建設・遠征を一画面で確認';body.innerHTML=overviewStats();return;}
+  if(tab==='districts'){
+    sub.textContent='全地区のレベルと担当人口';
+    body.innerHTML=`<div class="overview-list">${DISTRICTS.map(d=>{const ds=state.districts[d.id]||{level:0};const locked=state.era<d.unlock&&ds.level===0;return `<div class="overview-row"><div class="overview-row-main"><div class="overview-row-title">${d.icon} ${d.name}</div><div class="overview-row-sub">${locked?'未解禁':d.desc}</div></div><div class="overview-badge">${locked?'🔒':'Lv.'+ds.level+'　'+(state.workers[d.id]||0)+'人'}</div></div>`}).join('')}</div>`;return;
+  }
+  if(tab==='facilities'){
+    sub.textContent='完成済み施設と建設待ち';
+    const built=state.facilities.map(f=>{const d=facilityById(f.type);return `<div class="overview-row"><div class="overview-row-main"><div class="overview-row-title">${d?.icon||'🏗'} ${d?.name||f.type}</div><div class="overview-row-sub">(${Math.round(f.x)}, ${Math.round(f.z)})　${d?.category||''}</div></div><div class="overview-badge">Lv.${f.level||1}</div></div>`}).join('');
+    const queue=state.constructionQueue.map(c=>{const d=facilityById(c.type);return `<div class="overview-row"><div class="overview-row-main"><div class="overview-row-title">🚧 ${d?.name||c.type}</div><div class="overview-row-sub">建設中・残り約${Math.ceil(c.remaining)}秒</div></div><div class="overview-badge">${Math.floor((1-c.remaining/Math.max(1,c.duration))*100)}%</div></div>`}).join('');
+    body.innerHTML=`${built?`<div class="overview-list">${built}</div>`:'<div class="overview-empty">完成済み施設はありません。</div>'}<div class="section" style="margin-top:10px"><div class="section-head"><div class="section-title">建設中</div></div>${queue?`<div class="overview-list">${queue}</div>`:'<div class="overview-empty">なし</div>'}</div>`;return;
+  }
+  if(tab==='build'){
+    sub.textContent='建物を選んでからマップの空き地をタップ';
+    body.innerHTML=`<div class="build-grid">${FACILITIES.map(def=>{const unlocked=state.era>=def.minEra;const cost=facilityCost(def);const ok=unlocked&&canAfford(cost)&&!(def.unique&&(state.facilities.some(f=>f.type===def.id)||isFacilityQueued(def.id)));return `<div class="build-card"><div class="build-card-top"><div class="build-icon">${def.icon}</div><div><div class="build-name">${def.name}</div><div class="build-meta">${unlocked?'解禁済み':'🔒 '+ERA[def.minEra].name}</div></div></div><p>${def.desc}<br>建設時間：約${constructionDuration(def)}秒</p><div class="build-meta" style="margin-bottom:6px">${formatCost(cost)}</div><button class="build-btn" onclick="startBuildFacility('${def.id}');closeOverview()" ${ok?'':'disabled'}>${state.constructionQueue.some(c=>c.type===def.id)?'建設中':(def.unique&&state.facilities.some(f=>f.type===def.id)?'建設済み':'建築モード')}</button></div>`}).join('')}</div>`;return;
+  }
+  if(tab==='milestones'){
+    sub.textContent='長期プレイ向けの達成項目';
+    updateMilestones();
+    body.innerHTML=`<div class="milestone-grid">${MILESTONES.map(m=>{const done=state.unlockedMilestones.includes(m.id);return `<div class="milestone ${done?'done':''}"><div class="milestone-top"><div class="milestone-title">${m.icon} ${m.title}</div><div class="milestone-state">${done?'達成':'未達成'}</div></div><div class="milestone-desc">${m.desc}</div></div>`}).join('')}</div>`;
+  }
+}
+function openOverview(tab='summary'){const o=document.getElementById('overviewOverlay');if(!o)return;o.classList.add('show');o.dataset.tab=tab;renderOverviewTab(tab);}
+function closeOverview(){document.getElementById('overviewOverlay')?.classList.remove('show');}
+window.openOverview=openOverview;window.closeOverview=closeOverview;
+
 function renderSide(){
   if(state.selectedFacility && renderFacilitySide())return;
 
@@ -6050,7 +6243,7 @@ function renderSide(){
       <div class="action-row">
         ${FACILITIES.filter(f=>state.era>=f.minEra).map(f=>{
           const c=facilityCost(f),ok=canAfford(c);
-          return `<button class="secondary" title="${formatCost(c)}" onclick="startBuildFacility('${f.id}')" ${ok?'':'disabled'}>${f.icon} ${f.name}<br><small style="opacity:.62">${formatCost(c)}</small></button>`;
+          return `<button class="secondary" title="${formatCost(c)} / 約${constructionDuration(f)}秒" onclick="startBuildFacility('${f.id}')" ${ok?'':'disabled'}>${f.icon} ${f.name}<br><small style="opacity:.62">${formatCost(c)} ・ 約${constructionDuration(f)}秒</small></button>`;
         }).join('')}
       </div>
       <div class="action-row" style="margin-top:7px">
@@ -6258,6 +6451,8 @@ function renderAll(){
     `${ERA[state.era].label}・領土Lv.${state.mapExpansion}・海${state.seaClaims||0}・設備${state.facilities.length}`;
 
   renderMissionTracker();
+  const oo=document.getElementById('overviewOverlay');
+  if(oo?.classList.contains('show'))renderOverviewTab(oo.dataset.tab||'summary');
 
 }
 
@@ -6340,6 +6535,13 @@ function loadGame(){
     state.huntClaims=Array.isArray(saved.huntClaims)?saved.huntClaims:[];
     state.territorySites=Array.isArray(saved.territorySites)?saved.territorySites:[];
     state.territoryClaims=Array.isArray(saved.territoryClaims)?saved.territoryClaims:[];
+    state.constructionQueue=Array.isArray(saved.constructionQueue)?saved.constructionQueue:[];
+    state.stats=(saved.stats&&typeof saved.stats==='object')?saved.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
+    state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
+    state.unlockedMilestones=Array.isArray(saved.unlockedMilestones)?saved.unlockedMilestones:[];
+    state.storage=Number.MAX_SAFE_INTEGER;
+    if(!Array.isArray(state.constructionQueue))state.constructionQueue=[];
+    if(!state.stats||typeof state.stats!=='object')state.stats={buildingsCompleted:state.facilities.length,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
 
     /* 過去セーブの科学値が表示値とズレていた場合を救済 */
     state.resources.science=Math.max(0,Number(state.resources.science)||0);
@@ -6564,6 +6766,7 @@ state.selectedFacility=null;
 rebuildMap();
 rebuildWorldChunks(true);
 renderAll();
+updateMilestones();
 resize();
 renderer.clear();renderer.render(scene,camera);
 
@@ -6696,7 +6899,7 @@ function missionRangeOnly(type,workers){
   if(!info)return 0;
   const sys=personnelSystem();
   const w=Math.max(1,Number(workers)||1);
-  return info.baseRange+w*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  return info.baseRange+Math.max(0,w-1)*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
 }
 
 function updateMissionPreviewFromState(){
@@ -7081,6 +7284,7 @@ function updateWorldMood(dt,t){
   animateDiscovery(dt);
   animateExpeditions(dt,t);
   animateMapTarget(dt);
+  for(const g of constructionGroup.children){const id=g.userData?.constructionId;const c=state.constructionQueue.find(x=>x.id===id);if(c){const pct=1-c.remaining/Math.max(1,c.duration);g.position.y=.02+Math.sin(t*.004+(c.x+c.z))*.02;g.scale.y=.86+pct*.14;}}
 
   /* 水面の反射感をゆっくり変える */
   cityPulse+=dt;
@@ -7105,7 +7309,12 @@ function loop(t){
   }
   if(renderTick>.35){
     const hc=getHousingState().houses;
-    if(window.__lastHouseCount!==hc){buildResidentialCity(eraPalette());rebuildCitizenAgents();window.__lastHouseCount=hc;}
+    const cq=state.constructionQueue.length;
+    const fc=state.facilities.length;
+    if(window.__lastHouseCount!==hc || window.__lastConstructionCount!==cq || window.__lastFacilityCount!==fc){
+      rebuildMap();
+      window.__lastHouseCount=hc;window.__lastConstructionCount=cq;window.__lastFacilityCount=fc;
+    }
     renderAll();renderTick=0;
   }
 

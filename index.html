@@ -2077,6 +2077,29 @@ function getUrbanRadius(){
   const growth=16 + Math.sqrt(Math.max(0,state.pop))*0.72 + (Number(state.mapExpansion)||0)*4;
   return Math.min(Math.max(18, growth), Math.max(18, territory-4));
 }
+
+/*
+  ワールド描画範囲は「現在選択中の派遣範囲」ではなく、
+  実際に存在する都市・開拓領地・派遣中の部隊の位置から決める。
+  これにより「ここへ派遣」を押した瞬間に pendingMission が消えて
+  ワールドが128m相当へ戻り、外側の地形だけ消えてしまう症状を防ぐ。
+*/
+function getWorldExtentRadius(){
+  let extent=Math.max(getTerritoryRadius(),getUrbanRadius(),64);
+  for(const claim of (state.territoryClaims||[])){
+    const x=Number(claim.x)||0,z=Number(claim.z)||0,r=Math.max(0,Number(claim.radius)||0);
+    extent=Math.max(extent,Math.hypot(x,z)+r+24);
+  }
+  for(const e of (state.expeditions||[])){
+    extent=Math.max(extent,Math.hypot(Number(e.x)||0,Number(e.z)||0)+32);
+    extent=Math.max(extent,Math.hypot(Number(e.originX)||0,Number(e.originZ)||0)+24);
+  }
+  if(pendingMission){
+    extent=Math.max(extent,Math.hypot(Number(pendingMission.x)||0,Number(pendingMission.z)||0)+24);
+  }
+  return extent;
+}
+
 function isInsideCityTerritory(x,z,padding=0){
   const xx=Number(x)||0, zz=Number(z)||0;
   if(Math.hypot(xx,zz) <= Math.max(0,getTerritoryRadius()-padding)) return true;
@@ -2515,7 +2538,7 @@ function buildTerritoryUnionVisual(){
   const r=getTerritoryRadius();
   const eraColor=state.era>=6?0x5fcbe0:0xd8ad59;
 
-  // 数値上の領地半径そのものを、そのまま見た目にする。
+  // 基礎都市領地。これはカメラや派遣範囲とは無関係な常設領地。
   const fill=new THREE.Mesh(
     new THREE.CircleGeometry(r,96),
     new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.075,side:THREE.DoubleSide,depthWrite:false})
@@ -2533,18 +2556,20 @@ function buildTerritoryUnionVisual(){
     guide.rotation.x=-Math.PI/2;guide.position.set(0,.35,0);guide.renderOrder=4;group.add(guide);
   }
 
-  // 外側へ伸びた開拓拠点は、都市本体の領地とは別の小さな輪として見せる。
+  // 開拓完了後の領地は、基礎領地の内側にあっても必ず描画する。
+  // 以前は「基礎領地の内側ならcontinue」で消していたため、制圧後に
+  // 見た目が変わらない原因になっていた。
   const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
   for(const c of claims){
-    const x=Number(c.x)||0,z=Number(c.z)||0,cr=Math.max(3,Number(c.radius)||3);
-    if(Math.hypot(x,z) <= r+.5) continue;
-    // 完成後だけ、実際の領地として見える境界を常設。
-    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,64),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false}));
-    disk.rotation.x=-Math.PI/2;disk.position.set(x,.335,z);disk.renderOrder=3;group.add(disk);
-    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr-.22),cr,96),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));
-    ring.rotation.x=-Math.PI/2;ring.position.set(x,.38,z);ring.renderOrder=6;group.add(ring);
-    const inner=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr*.72-.06),Math.max(.01,cr*.72),64),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.28,side:THREE.DoubleSide,depthWrite:false}));
-    inner.rotation.x=-Math.PI/2;inner.position.set(x,.37,z);inner.renderOrder=5;group.add(inner);
+    const x=Number(c.x)||0,z=Number(c.z)||0,cr=Math.max(.2,Number(c.radius)||.2);
+    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,64),new THREE.MeshBasicMaterial({color:0xe6c36b,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
+    disk.rotation.x=-Math.PI/2;disk.position.set(x,.37,z);disk.renderOrder=7;group.add(disk);
+
+    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr-.10),cr,96),new THREE.MeshBasicMaterial({color:0xf0c66d,transparent:true,opacity:.98,side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;ring.position.set(x,.43,z);ring.renderOrder=9;group.add(ring);
+
+    const inner=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr*.72-.05),Math.max(.01,cr*.72),64),new THREE.MeshBasicMaterial({color:0xf5d88a,transparent:true,opacity:.36,side:THREE.DoubleSide,depthWrite:false}));
+    inner.rotation.x=-Math.PI/2;inner.position.set(x,.42,z);inner.renderOrder=8;group.add(inner);
   }
   return group;
 }
@@ -2552,9 +2577,12 @@ function buildTerritoryUnionVisual(){
 function rebuildWorldChunks(force=false){
   const tx=Math.floor(controls.target.x/WORLD_CHUNK);
   const tz=Math.floor(controls.target.z/WORLD_CHUNK);
-  const activeRange=(pendingMission&&Number(pendingMission.range))||0;
-  const streamRadius=Math.min(4,Math.max(WORLD_STREAM_RADIUS,Math.ceil((Math.max(getTerritoryRadius(),activeRange)+WORLD_CHUNK*.5)/WORLD_CHUNK)));
-  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${Math.round(activeRange)},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
+  const extent=getWorldExtentRadius();
+  // 派遣確認中でも派遣開始後でも、同じ必要範囲を維持する。
+  // pendingMissionだけに依存しないので「ここへ派遣」を押した瞬間に
+  // 外側の地形が消えて固定範囲へ縮むことがない。
+  const streamRadius=Math.min(8,Math.max(WORLD_STREAM_RADIUS,Math.ceil((extent+WORLD_CHUNK*.5)/WORLD_CHUNK)));
+  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${Math.round(extent)},${state.forestClears.length},${(state.territoryClaims||[]).length},${(state.expeditions||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
   clearGroupContents(worldGroup);
@@ -3496,7 +3524,7 @@ function rebuildMap(){
   HOUSE_LOTS=makeHouseLots();
   const p=eraPalette();
   const sky=ERA_SKY[state.era]||ERA_SKY[0];
-  const viewFar=Math.max(1200,Math.min(6000,Math.max(state.mapRadius,state.cityReach+80)*4.5));
+  const viewFar=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
   renderer.setClearColor(sky,1);scene.background=new THREE.Color(sky);if(scene.fog){scene.fog.color.setHex(sky);scene.fog.near=Math.max(220,Math.min(900,viewFar*.28));scene.fog.far=viewFar;}
   camera.far=Math.max(1200,viewFar*1.15);camera.updateProjectionMatrix();
   try{ buildTerrainMap(p); }catch(err){
@@ -4979,24 +5007,25 @@ function completeDispatch(e){
     addLog(`⚓ 海域を制圧。新航路を確保し金+${gold}`);
     showBanner('OCEAN CLAIM','海域制圧',`新しい航路を確保。金 +${gold}　制海力 +${power}`,1700);
   }else if(e.type==='expand'){
-    const old=state.mapRadius;
     const claimRadius=1 + Math.max(1,Number(e.workers)||1)*.20;
-    if(territoryClaimAt(e.x,e.z,.05)){
+    const alreadyClaimed=!!territoryClaimAt(e.x,e.z,.05);
+    if(alreadyClaimed){
       ensurePersonnelState();
       state.personnelByType[e.type]=Math.min(personnelSystem().personnelCap,Math.max(0,state.personnelByType[e.type]||0)+(e.workers||0));
       state.trainedPersonnel=state.unassignedPersonnel;
       addLog('🗺 開拓隊が到着しましたが、その地点はすでに開放済みでした。人員は帰還。');
-      showBanner('EXPANSION SKIPPED','開放済み地点',`既存領域と重なったため、新しい領域は追加されませんでした。人員は帰還しました。`,1500);
+      showBanner('EXPANSION SKIPPED','開放済み地点',`既存領域と重なったため、新しい領域は追加されませんでした。`,1500);
+    }else{
+      if(!state.territorySites)state.territorySites=[];
+      if(!state.territoryClaims)state.territoryClaims=[];
+      // 基礎都市領地(state.mapRadius)は変えず、開拓地点そのものだけを新領地化する。
+      // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
+      state.territorySites.push({x:e.x,z:e.z,type:'land'});
+      state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,type:'land',buildable:true});
+      state.mapExpansion++;
+      addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
+      showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)}m の領地を開放しました。`,1700);
     }
-    state.mapRadius=Math.min(100000,Math.max(getTerritoryRadius(),Math.hypot(e.x,e.z)+claimRadius));
-    state.mapExpansion++;
-    state.cityReach=Math.min(260,Math.max(state.cityReach,Math.min(state.mapRadius-4,18+Math.sqrt(Math.max(0,state.pop))*0.72+state.mapExpansion*4)));
-    if(!state.territorySites)state.territorySites=[];
-    if(!state.territoryClaims)state.territoryClaims=[];
-    state.territorySites.push({x:e.x,z:e.z,type:'land'});
-    state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,type:'land',buildable:true});
-    addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
-    showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)} の円形領域を開放しました。`,1700);
   }else if(e.type==='hunt'){
     const gold=Math.round(50+e.workers*13+state.era*16);
     const food=Math.round(75+e.workers*20);
@@ -7105,7 +7134,7 @@ function resize(){
   const aspect=w/Math.max(1,h),viewH=52,viewW=viewH*aspect;
   camera.left=-viewW/2;camera.right=viewW/2;camera.top=viewH/2;camera.bottom=-viewH/2;
   camera.near=.1;
-  const far=Math.max(1200,Math.min(6000,(Math.max(state.mapRadius||44,state.cityReach||16)+180)*4.5));
+  const far=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
   camera.far=far;camera.updateProjectionMatrix();
   renderer.setSize(w,h,false);
 }

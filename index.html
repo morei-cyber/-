@@ -5598,7 +5598,7 @@ function missionBaseInfo(type){
    - camera / controls / object scale / saved claim / expedition の差分を追跡
    - 同一派遣について表示半径を固定し、再計算による縮小を防止
 ========================================================= */
-const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V3-CAMERA-SCALE-LOCK';
+const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V4-DISPATCH-CAMERA-LOCK';
 const TERRITORY_DIAG_LIMIT=240;
 const territoryDiag={
   enabled:true,
@@ -7623,6 +7623,40 @@ function hideMissionPanel(){
 window.hideMissionPanel=hideMissionPanel;
 
 let missionViewState=null;
+let dispatchCameraLock=null;
+function captureMissionCameraState(){
+  return {
+    position:camera.position.clone(),
+    target:controls.target.clone(),
+    zoom:Number(camera.zoom)||1,
+    left:Number(camera.left)||-34,
+    right:Number(camera.right)||34,
+    top:Number(camera.top)||26,
+    bottom:Number(camera.bottom)||-26
+  };
+}
+function restoreMissionCameraState(st){
+  if(!st)return;
+  camera.position.copy(st.position);
+  controls.target.copy(st.target);
+  camera.zoom=st.zoom;
+  camera.left=st.left;camera.right=st.right;camera.top=st.top;camera.bottom=st.bottom;
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+function lockDispatchCamera(reason='dispatch'){
+  dispatchCameraLock=captureMissionCameraState();
+  controls.enabled=false;
+  controls.enableDamping=false;
+  if(window.__territoryDiag) territoryDiagPush('DISPATCH_CAMERA_LOCK',{reason,camera:territoryDiagCameraState()});
+}
+function unlockDispatchCamera(){
+  if(dispatchCameraLock) restoreMissionCameraState(dispatchCameraLock);
+  controls.enabled=true;
+  controls.enableDamping=true;
+  if(window.__territoryDiag) territoryDiagPush('DISPATCH_CAMERA_UNLOCK',{reason:'dispatch-complete',camera:territoryDiagCameraState()});
+  dispatchCameraLock=null;
+}
 // 派遣範囲を表示するためにカメラを勝手に縮小しない。
 // 範囲円はワールド座標そのものの大きさで描画し、プレイヤーの視点を維持する。
 function fitCameraToMission(){
@@ -7630,6 +7664,7 @@ function fitCameraToMission(){
   // 「円が広がらず、マップだけが縮小する」現象を起こしていた。
 }
 function restoreMissionCamera(){
+  if(missionViewState) restoreMissionCameraState(missionViewState);
   missionViewState=null;
 }
 function removeMissionPreview(){
@@ -7798,6 +7833,7 @@ function makeRangeLabel(text,color){
 }
 
 function createMissionPreview(m){
+  if(!missionViewState) missionViewState=captureMissionCameraState();
   removeMissionPreview();pendingMission=m;pendingMissionWorkers=Math.max(1,m.workers||1);
   const info=missionTypeInfo(m.type);const g=new THREE.Group();
   const origin=new THREE.Vector3(m.originX||0,1.05,m.originZ||0);
@@ -7902,6 +7938,8 @@ function prepareMission(type,x,z,nodeId=null,options=null){
 }
 
 function confirmPendingMission(){
+  const beforeDispatchCamera=captureMissionCameraState();
+  if(window.__territoryDiag) territoryDiagPush('DISPATCH_CLICKED',{reason:'confirmPendingMission-enter',pending:territoryDiagPreview(),camera:territoryDiagCameraState()});
   const btn=document.getElementById('missionConfirmBtn');
   if(btn?.disabled){toast(btn.textContent||'派遣できません');return;}
   const m=pendingMission;if(!m)return;
@@ -7923,7 +7961,7 @@ function confirmPendingMission(){
   if(m.type==='expand'){
     e.claimRadius=expansionClaimRadius(m.workers);
     e.visualRadius=frozenVisualRadius;
-    territoryDiagPush('DISPATCH_CONFIRM_BEFORE_REMOVE',{reason:'freeze-visual-radius',workers:m.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,pending:territoryDiagPreview()});
+    territoryDiagPush('DISPATCH_CONFIRM_BEFORE_REMOVE',{reason:'freeze-visual-radius',workers:m.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,pending:territoryDiagPreview(),cameraBefore:territoryDiagCameraState()});
   }
   state.expeditions.push(e);
   if(m.type==='expand') addLog(`🗺 ${m.workers}人の開拓隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から(${Math.round(m.x)},${Math.round(m.z)})へ派遣しました。`);
@@ -7931,20 +7969,31 @@ function confirmPendingMission(){
   else if(m.type==='sea') addLog(`⚓ ${m.workers}人の海洋隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
   else addLog(`🛡 ${m.workers}人の討伐隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
 
-  // ここでプレビューを消しても、開拓隊の「完成予定領地」は同じ大きさで残す。
+  // 派遣確定の瞬間からカメラを完全固定。UI閉鎖・Resize・OrbitControlsの減衰で
+  // 「派遣した瞬間だけ円が小さく見える」ことを防ぐ。
+  lockDispatchCamera('confirm-start');
+  if(window.__territoryDiag) territoryDiagPush('DISPATCH_PRE_REMOVE_CAMERA_LOCKED',{reason:'camera-lock-before-preview-remove',camera:territoryDiagCameraState()});
   removeMissionPreview();
   if(m.type==='expand') {
     const active=makeExpeditionVisual(e);
     effectGroup.add(active);
     expeditionObjects.push(active);
-    territoryDiagPush('DISPATCH_AFTER_ACTIVE_VISUAL',{reason:'preview-removed-active-created',expeditionId:e.id,workers:e.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,activeRingRadius:active.userData?.claimRadius});
+    territoryDiagPush('DISPATCH_AFTER_ACTIVE_VISUAL',{reason:'preview-removed-active-created',expeditionId:e.id,workers:e.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,activeRingRadius:active.userData?.claimRadius,cameraAfter:territoryDiagCameraState()});
   }
+  restoreMissionCameraState(beforeDispatchCamera);
   renderAll();
+  renderer.render(scene,camera);
+  requestAnimationFrame(()=>{
+    if(m.type==='expand') territoryDiagPush('DISPATCH_POST_FRAME',{reason:'one-frame-after-dispatch',camera:territoryDiagCameraState()});
+    unlockDispatchCamera();
+  });
   toast(`${missionTypeInfo(m.type).title}が駐屯地から出発しました`);
 }
 window.confirmPendingMission=confirmPendingMission;
 function cancelPendingMission(){
+  const wasPreview=!!pendingMission;
   removeMissionPreview();
+  if(wasPreview) restoreMissionCamera();
   dispatchMode=null;
   const mode=document.getElementById('worldMode');
   if(mode){mode.style.display='none';mode.classList.remove('world-mode-pulse');}

@@ -2542,8 +2542,10 @@ function rebuildPersistentExpansionClaims(){
   for(const c of claims){
     const x=Number(c.x)||0;
     const z=Number(c.z)||0;
-    // 完成後の領地サイズはこの1か所だけで決定する。
-    const cr=expansionVisualRadius(getExpansionClaimWorkers(c));
+    // 完成後も派遣時に確定した visualRadius を優先する。
+    // workers から再計算して別サイズになる経路をここで遮断する。
+    const workers=getExpansionClaimWorkers(c);
+    const cr=territoryDiagFixedVisualRadius(c.visualRadius,workers);
     if(cr<=0)continue;
     const fill=new THREE.Mesh(
       new THREE.CircleGeometry(cr,96),
@@ -2552,6 +2554,7 @@ function rebuildPersistentExpansionClaims(){
     fill.rotation.x=-Math.PI/2;
     fill.position.set(x,.58,z);
     fill.renderOrder=80;
+    fill.userData.territoryDiag={phase:'PERSISTENT_FILL',x,z,radius:cr,workers};
     territoryClaimGroup.add(fill);
     const ring=new THREE.Mesh(
       new THREE.RingGeometry(Math.max(.001,cr-.12),cr,128),
@@ -2560,6 +2563,7 @@ function rebuildPersistentExpansionClaims(){
     ring.rotation.x=-Math.PI/2;
     ring.position.set(x,.64,z);
     ring.renderOrder=82;
+    ring.userData.territoryDiag={phase:'PERSISTENT_RING',x,z,radius:cr,workers};
     territoryClaimGroup.add(ring);
     const inner=new THREE.Mesh(
       new THREE.RingGeometry(Math.max(.001,cr*.72-.055),Math.max(.001,cr*.72),96),
@@ -2574,6 +2578,7 @@ function rebuildPersistentExpansionClaims(){
     label.renderOrder=90;
     territoryClaimGroup.add(label);
   }
+  territoryDiagPush('PERSISTENT_REBUILD',{reason:'rebuildPersistentExpansionClaims',claims:claims.length});
 }
 
 function buildTerritoryUnionVisual(){
@@ -5052,11 +5057,13 @@ function completeDispatch(e){
       // 基礎都市領地(state.mapRadius)は変えず、開拓地点そのものだけを新領地化する。
       // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
       state.territorySites.push({x:e.x,z:e.z,type:'land'});
-      const claimWorkers=Math.max(1,Number(e.workers)||1);
-      const syncedRadius=expansionClaimRadius(claimWorkers);
-      state.territoryClaims.push({x:e.x,z:e.z,radius:syncedRadius,workers:claimWorkers,visualRadius:syncedRadius,type:'land',buildable:true});
+      const claimWorkers=Math.max(0,Number(e.workers)||0);
+      const frozenVisualRadius=territoryDiagFixedVisualRadius(e.visualRadius,claimWorkers);
+      state.territoryClaims.push({x:e.x,z:e.z,radius:1+claimWorkers*.2,workers:claimWorkers,visualRadius:frozenVisualRadius,type:'land',buildable:true});
+      territoryDiagPush('COMPLETE_BEFORE_REBUILD',{reason:'claim-created',claimWorkers,logicalRadius:expansionClaimRadius(claimWorkers),visualRadius:frozenVisualRadius});
       state.mapExpansion++;
       rebuildPersistentExpansionClaims();
+      territoryDiagPush('COMPLETE_AFTER_REBUILD',{reason:'persistent-claim-rebuilt',claimWorkers,visualRadius:frozenVisualRadius});
       addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
       showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)}m の領地を開放しました。`,1700);
     }
@@ -5581,20 +5588,243 @@ function missionBaseInfo(type){
   })[type]||null;
 }
 
-/*
-  TERRITORY EXPANSION HARD-SYNC PATCH
-  ------------------------------------------------------------
-  原因になっていた「派遣前は大きい円、派遣開始後に別半径へ切り替わる」
-  経路をなくすため、開拓領地の半径を派遣行動半径と完全同期する。
-  このゲームの開拓隊の行動半径は 4m × 人数。
-  したがってプレビュー / 派遣中 / 制圧後 / セーブ後をすべて同じ値にする。
-*/
-const EXPANSION_HARD_SYNC_TO_DISPATCH_RANGE = true;
+
+/* =========================================================
+   TERRITORY ROOT-CAUSE DIAGNOSTIC PATCH
+   build: 2026-10-01-TERRITORY-ROOTCAUSE-V2
+   目的:
+   - 「派遣画面→派遣後→制圧後」で何の値が縮んだのかを可視化
+   - 3Dワールド寸法と実際の画面ピクセル寸法を同時記録
+   - camera / controls / object scale / saved claim / expedition の差分を追跡
+   - 同一派遣について表示半径を固定し、再計算による縮小を防止
+========================================================= */
+const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V2';
+const TERRITORY_DIAG_LIMIT=240;
+const territoryDiag={
+  enabled:true,
+  events:[],
+  lastSnapshot:null,
+  missionVisualRadius:null,
+  phase:'BOOT',
+  lastReason:'',
+  lastWarning:'',
+  watchdog:0,
+  sampleAccumulator:0,
+  diagnosis:'まだ比較対象なし',
+};
+window.__territoryDiag=territoryDiag;
+
+function territoryDiagNum(v,d=0){
+  const n=Number(v);
+  return Number.isFinite(n)?n:d;
+}
+function territoryDiagCameraState(){
+  return {
+    zoom:territoryDiagNum(camera?.zoom,1),
+    pos:[territoryDiagNum(camera?.position?.x),territoryDiagNum(camera?.position?.y),territoryDiagNum(camera?.position?.z)],
+    target:[territoryDiagNum(controls?.target?.x),territoryDiagNum(controls?.target?.y),territoryDiagNum(controls?.target?.z)],
+    projection:[territoryDiagNum(camera?.left),territoryDiagNum(camera?.right),territoryDiagNum(camera?.top),territoryDiagNum(camera?.bottom)]
+  };
+}
+function territoryDiagProject(x,z){
+  try{
+    const rect=canvas.getBoundingClientRect();
+    const c=new THREE.Vector3(x,.64,z).project(camera);
+    const px=(c.x*.5+.5)*rect.width;
+    const py=(-c.y*.5+.5)*rect.height;
+    return {x:px,y:py,ndcX:c.x,ndcY:c.y};
+  }catch(_){return null;}
+}
+function territoryDiagScreenDiameter(x,z,r){
+  const a=territoryDiagProject(x,z);
+  const b=territoryDiagProject(x+r,z);
+  const c=territoryDiagProject(x-r,z);
+  if(!a||!b||!c)return null;
+  const d1=Math.hypot(b.x-c.x,b.y-c.y);
+  return Number.isFinite(d1)?d1:null;
+}
+function territoryDiagListClaims(){
+  return (Array.isArray(state?.territoryClaims)?state.territoryClaims:[]).map((c,i)=>({
+    i,x:territoryDiagNum(c.x),z:territoryDiagNum(c.z),
+    workers:territoryDiagNum(c.workers),
+    radius:territoryDiagNum(c.radius),
+    visualRadius:territoryDiagNum(c.visualRadius),
+    calcRadius:getExpansionClaimRadius(c),
+    calcVisualRadius:expansionVisualRadius(getExpansionClaimWorkers(c))
+  }));
+}
+function territoryDiagActiveExpand(){
+  const e=(state.expeditions||[]).find(x=>x?.type==='expand');
+  if(!e)return null;
+  const visualRadius=territoryDiagNum(e.visualRadius)||expansionVisualRadius(e.workers);
+  return {
+    id:e.id,x:territoryDiagNum(e.x),z:territoryDiagNum(e.z),workers:territoryDiagNum(e.workers),
+    claimRadius:territoryDiagNum(e.claimRadius),
+    visualRadius,
+    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(e.x),territoryDiagNum(e.z),visualRadius),
+    remaining:territoryDiagNum(e.remaining),duration:territoryDiagNum(e.duration)
+  };
+}
+function territoryDiagPreview(){
+  const m=pendingMission;
+  if(!m || m.type!=='expand')return null;
+  const g=missionPreviewGroup;
+  const ring=g?.userData?.targetRing;
+  const workers=territoryDiagNum(m.workers);
+  const base=.99; // RingGeometry(.92,1) midpoint is approximately .96; use edge + scale below.
+  return {
+    x:territoryDiagNum(m.x),z:territoryDiagNum(m.z),workers,
+    logicalRadius:expansionClaimRadius(workers),
+    visualRadius:territoryDiagNum(m.__diagVisualRadius || expansionVisualRadius(workers)),
+    objectScale:territoryDiagNum(ring?.scale?.x,1),
+    ringOuterWorld:territoryDiagNum(ring?.userData?.diagOuterRadius,base)*territoryDiagNum(ring?.scale?.x,1),
+    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(m.x),territoryDiagNum(m.z),territoryDiagNum(m.__diagVisualRadius || expansionVisualRadius(workers)))
+  };
+}
+function territoryDiagSceneClaims(){
+  const out=[];
+  if(!territoryClaimGroup)return out;
+  territoryClaimGroup.traverse?.(o=>{
+    if(o?.userData?.territoryDiag){
+      const d=o.userData.territoryDiag;
+      out.push({...d,worldScale:territoryDiagNum(o.scale?.x,1),screenDiameterPx:territoryDiagScreenDiameter(d.x,d.z,d.radius)});
+    }
+  });
+  return out;
+}
+function territoryDiagSnapshot(stage,extra={}){
+  const snap={
+    t:new Date().toISOString(),stage,
+    build:TERRITORY_DIAG_BUILD,
+    pending:territoryDiagPreview(),
+    active:territoryDiagActiveExpand(),
+    claims:territoryDiagListClaims(),
+    sceneClaims:territoryDiagSceneClaims(),
+    camera:territoryDiagCameraState(),
+    cameraFovOrView:{left:territoryDiagNum(camera?.left),right:territoryDiagNum(camera?.right),top:territoryDiagNum(camera?.top),bottom:territoryDiagNum(camera?.bottom)},
+    worldStreamKey:String(worldStreamKey||''),
+    pendingMissionWorkers:territoryDiagNum(pendingMissionWorkers),
+    missionPreviewExists:!!missionPreviewGroup,
+    territoryClaimChildren:territoryClaimGroup?.children?.length||0,
+    worldChildren:worldGroup?.children?.length||0,
+    extra
+  };
+  return snap;
+}
+function territoryDiagPush(stage,extra={}){
+  if(!territoryDiag.enabled)return;
+  const snap=territoryDiagSnapshot(stage,extra);
+  const prev=territoryDiag.lastSnapshot;
+  const warnings=[];
+  if(prev){
+    const oldActive=prev.active?.visualRadius;
+    const newActive=snap.active?.visualRadius;
+    if(Number.isFinite(oldActive)&&Number.isFinite(newActive)&&Math.abs(oldActive-newActive)>.001){
+      warnings.push(`ACTIVE_VISUAL_RADIUS_CHANGED ${oldActive.toFixed(3)} -> ${newActive.toFixed(3)}`);
+    }
+    const oldZoom=prev.camera?.zoom,newZoom=snap.camera?.zoom;
+    if(Number.isFinite(oldZoom)&&Number.isFinite(newZoom)&&Math.abs(oldZoom-newZoom)>.0001){
+      warnings.push(`CAMERA_ZOOM_CHANGED ${oldZoom.toFixed(4)} -> ${newZoom.toFixed(4)}`);
+    }
+    const oldPos=prev.camera?.pos||[],newPos=snap.camera?.pos||[];
+    if(oldPos.length===3&&newPos.length===3){
+      const d=Math.hypot(newPos[0]-oldPos[0],newPos[1]-oldPos[1],newPos[2]-oldPos[2]);
+      if(d>.02)warnings.push(`CAMERA_POSITION_CHANGED ${d.toFixed(3)}m`);
+    }
+    const oldTarget=prev.camera?.target||[],newTarget=snap.camera?.target||[];
+    if(oldTarget.length===3&&newTarget.length===3){
+      const d=Math.hypot(newTarget[0]-oldTarget[0],newTarget[1]-oldTarget[1],newTarget[2]-oldTarget[2]);
+      if(d>.02)warnings.push(`CONTROLS_TARGET_CHANGED ${d.toFixed(3)}m`);
+    }
+    const oldPreviewPx=prev.pending?.screenDiameterPx,newActivePx=snap.active?.visualRadius;
+    if(Number.isFinite(oldPreviewPx)&&Number.isFinite(newActivePx)){
+      // 比較は別途 active の画面pxを計算できるので、ここでは警告条件を snapshot helper に任せる。
+    }
+  }
+  const event={...snap,warnings};
+  territoryDiag.events.push(event);
+  if(territoryDiag.events.length>TERRITORY_DIAG_LIMIT)territoryDiag.events.splice(0,territoryDiag.events.length-TERRITORY_DIAG_LIMIT);
+  territoryDiag.lastSnapshot=snap;
+  territoryDiag.phase=stage;
+  territoryDiag.lastReason=extra?.reason||'';
+  if(warnings.length){territoryDiag.lastWarning=warnings.join(' | ');console.warn('[TerritoryDiag]',stage,...warnings);}
+  else console.log('[TerritoryDiag]',stage,extra,snap);
+
+  const previous=territoryDiag.events.length>1?territoryDiag.events[territoryDiag.events.length-2]:null;
+  if(stage==='DISPATCH_AFTER_ACTIVE_VISUAL' && previous?.stage==='PREVIEW_REMOVING'){
+    const pv=previous.pending, av=snap.active;
+    if(pv&&av){
+      const wr=Math.abs((pv.visualRadius||0)-(av.visualRadius||0));
+      const wp=Math.abs((pv.screenDiameterPx||0)-(av.screenDiameterPx||0));
+      const zoom=Math.abs((previous.camera?.zoom||0)-(snap.camera?.zoom||0));
+      if(wr>.01)territoryDiag.diagnosis=`原因候補A: ワールド半径が派遣確定時に変更。${pv.visualRadius?.toFixed?.(3)}m → ${av.visualRadius?.toFixed?.(3)}m`;
+      else if(wp>4 && zoom>.001)territoryDiag.diagnosis=`原因候補B: 円のワールド半径は同じだがカメラが変化。screen ${pv.screenDiameterPx?.toFixed?.(1)}px → ${av.screenDiameterPx?.toFixed?.(1)}px / zoom Δ${zoom.toFixed(4)}`;
+      else if(wp>4)territoryDiag.diagnosis=`原因候補C: 半径は同じなのに画面上の直径だけ変化。別オブジェクト/CSS/描画レイヤーの可能性`;
+      else territoryDiag.diagnosis='派遣前→派遣中は同一半径・ほぼ同一画面サイズ。縮小原因はこの遷移ではない';
+    }
+  }else if(stage==='COMPLETE_AFTER_REBUILD' && previous?.stage==='COMPLETE_BEFORE_REBUILD'){
+    const before=previous.claims?.[previous.claims.length-1], after=snap.claims?.[snap.claims.length-1];
+    if(before&&after&&Math.abs((before.visualRadius||0)-(after.visualRadius||0))>.01)territoryDiag.diagnosis=`原因候補D: 制圧後の保存/再構築でvisualRadiusが変更`;
+    else territoryDiag.diagnosis='制圧後の保存値→領地再構築でも表示半径は維持';
+  }
+  territoryDiagRender();
+}
+function territoryDiagComparePrevious(stage,extra={}){territoryDiagPush(stage,extra);}
+function territoryDiagExportText(){
+  const body=JSON.stringify({build:TERRITORY_DIAG_BUILD,createdAt:new Date().toISOString(),events:territoryDiag.events},null,2);
+  const blob=new Blob([body],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='territory-diagnostic-'+Date.now()+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+function territoryDiagCopy(){
+  const body=JSON.stringify({build:TERRITORY_DIAG_BUILD,events:territoryDiag.events.slice(-40)},null,2);
+  if(navigator.clipboard?.writeText){navigator.clipboard.writeText(body).then(()=>toast('領地診断ログをコピーしました')).catch(()=>territoryDiagExportText());}
+  else territoryDiagExportText();
+}
+function territoryDiagClear(){territoryDiag.events.length=0;territoryDiag.lastSnapshot=null;territoryDiag.lastWarning='';territoryDiagRender();}
+function territoryDiagRender(){
+  const el=document.getElementById('territoryDiagPanel');
+  if(!el)return;
+  const last=territoryDiag.events[territoryDiag.events.length-1];
+  const active=territoryDiagActiveExpand();
+  const pending=territoryDiagPreview();
+  const claims=territoryDiagListClaims();
+  const main=active||pending;
+  el.querySelector('[data-k="phase"]').textContent=territoryDiag.phase;
+  el.querySelector('[data-k="build"]').textContent=TERRITORY_DIAG_BUILD;
+  el.querySelector('[data-k="workers"]').textContent=main?String(main.workers):'-';
+  el.querySelector('[data-k="logical"]').textContent=main?expansionClaimRadius(main.workers).toFixed(2)+'m':'-';
+  el.querySelector('[data-k="visual"]').textContent=main?(Number(main.visualRadius)||0).toFixed(2)+'m':'-';
+  el.querySelector('[data-k="camera"]').textContent=Number(camera?.zoom||0).toFixed(4);
+  el.querySelector('[data-k="claims"]').textContent=String(claims.length);
+  el.querySelector('[data-k="events"]').textContent=String(territoryDiag.events.length);
+  const d=territoryDiag.diagnosis||'まだ比較対象なし';el.querySelector('[data-k="diag"]').textContent=d;
+  const w=territoryDiag.lastWarning||'なし';el.querySelector('[data-k="warn"]').textContent=w;
+  el.querySelector('[data-k="last"]').textContent=last?`${last.stage} / ${last.t}`:'-';
+}
+function territoryDiagInstallUI(){
+  if(document.getElementById('territoryDiagPanel'))return;
+  const style=document.createElement('style');
+  style.textContent=`#territoryDiagPanel{position:fixed;right:10px;bottom:10px;z-index:100000;width:355px;max-width:calc(100vw - 20px);background:rgba(7,12,18,.94);color:#eef3f7;border:1px solid rgba(255,214,111,.55);border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 10px 35px rgba(0,0,0,.36);backdrop-filter:blur(8px)}#territoryDiagPanel b{color:#ffd66f}#territoryDiagPanel .tdg-grid{display:grid;grid-template-columns:92px 1fr;gap:2px 8px;margin:7px 0}#territoryDiagPanel .tdg-warn{color:#ff9a9a;white-space:pre-wrap;word-break:break-word}#territoryDiagPanel button{margin:4px 4px 0 0;padding:5px 8px;border-radius:7px;border:1px solid #59636f;background:#17212b;color:#fff;cursor:pointer}#territoryDiagPanel .tdg-head{display:flex;justify-content:space-between;gap:8px;align-items:center}#territoryDiagPanel .tdg-build{font-size:9px;color:#9fb0c0;word-break:break-all}`;
+  document.head.appendChild(style);
+  const panel=document.createElement('div');panel.id='territoryDiagPanel';
+  panel.innerHTML=`<div class="tdg-head"><b>領地縮小・根本原因診断</b><span>ON</span></div><div class="tdg-build">BUILD: ${TERRITORY_DIAG_BUILD}</div><div class="tdg-grid"><div>phase</div><div data-k="phase">BOOT</div><div>workers</div><div data-k="workers">-</div><div>論理半径</div><div data-k="logical">-</div><div>表示半径</div><div data-k="visual">-</div><div>camera.zoom</div><div data-k="camera">-</div><div>claims</div><div data-k="claims">0</div><div>events</div><div data-k="events">0</div><div>last</div><div data-k="last">-</div></div><div>diagnosis</div><div class="tdg-warn" data-k="diag">まだ比較対象なし</div><div>warn</div><div class="tdg-warn" data-k="warn">なし</div><button onclick="window.__territoryDiagExport()">ログTXT</button><button onclick="window.__territoryDiagCopy()">ログコピー</button><button onclick="window.__territoryDiagClear()">クリア</button>`;
+  document.body.appendChild(panel);
+  territoryDiagRender();
+}
+window.__territoryDiagExport=territoryDiagExportText;
+window.__territoryDiagCopy=territoryDiagCopy;
+window.__territoryDiagClear=territoryDiagClear;
+setTimeout(territoryDiagInstallUI,0);
+
+function territoryDiagFixedVisualRadius(value,fallback){
+  const n=Number(value);
+  return Number.isFinite(n)&&n>0?n:expansionVisualRadius(fallback);
+}
 
 function expansionClaimRadius(workers){
-  const w=Math.max(1,Number(workers)||1);
-  if(EXPANSION_HARD_SYNC_TO_DISPATCH_RANGE) return 4*w;
-  return 1 + Math.max(0,w)*.20;
+  // 完成後の領地サイズの唯一の基準値。
+  // 基礎1m + 1人につき0.2m。派遣行動範囲(4m/人)とは別物。
+  return 1 + Math.max(0,Number(workers)||0)*.20;
 }
 
 // 保存データ・描画・建築判定・道路生成で同じ領地半径を使うための共通関数。
@@ -5614,8 +5844,9 @@ function getExpansionClaimRadius(claim){
 // 派遣前→派遣中→制圧後で「見た目の円」が縮まらないよう、
 // 表示半径もこの1か所だけで決める。論理上の領地半径は expansionClaimRadius のまま。
 function expansionVisualRadius(workers){
-  // 論理領地半径と表示半径を同一値にする。
-  return expansionClaimRadius(workers);
+  const logical=expansionClaimRadius(workers);
+  // 派遣前/派遣中/制圧後の『同じ派遣』では同じ見た目サイズを維持する。
+  return Math.max(2,logical);
 }
 
 function getMissionStats(type,workers,x,z){
@@ -6912,7 +7143,7 @@ function saveGameSilent(){
   if(Array.isArray(state.territoryClaims)){
     state.territoryClaims=state.territoryClaims.map(c=>{
       const workers=getExpansionClaimWorkers(c);
-      return {...c,workers,radius:expansionClaimRadius(workers),visualRadius:expansionVisualRadius(workers)};
+      return {...c,workers,radius:expansionClaimRadius(workers),visualRadius:territoryDiagFixedVisualRadius(c.visualRadius,workers)};
     });
   }
   state.last=Date.now();
@@ -6998,11 +7229,12 @@ function loadGame(){
         z:Number(c.z)||0,
         workers,
         radius:1+workers*.2,
-        visualRadius:expansionVisualRadius(workers),
+        visualRadius:territoryDiagFixedVisualRadius(c.visualRadius,workers),
         type:c.type||'land',
         buildable:c.buildable!==false
       };
     });
+    territoryDiagPush('LOAD_NORMALIZED',{reason:'save-loaded',claims:state.territoryClaims.length});
     state.constructionQueue=Array.isArray(saved.constructionQueue)?saved.constructionQueue:[];
     state.stats=(saved.stats&&typeof saved.stats==='object')?saved.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
     state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
@@ -7221,6 +7453,7 @@ function resize(){
   const far=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
   camera.far=far;camera.updateProjectionMatrix();
   renderer.setSize(w,h,false);
+  if(window.__territoryDiag) territoryDiagPush('RESIZE',{reason:'resize',width:w,height:h});
 }
 window.addEventListener('resize',resize,{passive:true});
 if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.observe(mapEl);}
@@ -7230,6 +7463,7 @@ if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.obse
 ========================================================= */
 
 resize();
+territoryDiagPush('START_BEFORE_LOAD',{reason:'diagnostic-build-start'});
 loadGame();
 ensurePersonnelState();
 state.selectedFacility=null;
@@ -7238,6 +7472,8 @@ rebuildWorldChunks(true);
 renderAll();
 updateMilestones();
 resize();
+rebuildPersistentExpansionClaims();
+territoryDiagPush('START_AFTER_RENDER',{reason:'initial-render-complete'});
 renderer.clear();renderer.render(scene,camera);
 
 let last=performance.now();
@@ -7361,6 +7597,7 @@ function restoreMissionCamera(){
   missionViewState=null;
 }
 function removeMissionPreview(){
+  if(pendingMission?.type==='expand') territoryDiagPush('PREVIEW_REMOVING',{reason:'removeMissionPreview',pending:territoryDiagPreview(),camera:territoryDiagCameraState()});
   if(missionPreviewGroup){
     if(missionPreviewGroup.parent) missionPreviewGroup.parent.remove(missionPreviewGroup);
     missionPreviewGroup.traverse?.(o=>{ if(o.geometry && o.userData?.__missionOwnedGeometry)o.geometry.dispose?.(); });
@@ -7426,7 +7663,7 @@ function updateMissionPreviewFromState(){
   if(rangeLabel)rangeLabel.textContent=type==='expand'?'完成後の領地':'行動距離';
   const previewRange=missionRangeOnly(type,workers);
   if(rangeEl)rangeEl.textContent=type==='expand'
-    ?`派遣後も維持される領地 半径 ${expansionClaimRadius(workers).toFixed(1)}m`
+    ?`完成後の領地 半径 ${(1+workers*.20).toFixed(1)}m`
     :`行動距離 ${previewRange.toFixed(1)}m`;
   if(availableLabel)availableLabel.textContent=`${PERSONNEL_TYPES[type]?.name||'専門隊'} ${fmt(avail)}人`;
   if(wc)wc.textContent=`${workers} 人`;
@@ -7473,12 +7710,15 @@ function updateMissionPreviewFromState(){
       const target=g.userData.targetRing;
       if(target){
         const visualRadius=type==='expand'?expansionVisualRadius(workers):Math.max(1,Math.min(8,stats.range*.035));
+        if(type==='expand') m.__diagVisualRadius=visualRadius;
+        target.userData.diagOuterRadius=1;
+        target.userData.diagVisualRadius=visualRadius;
         target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }
       // 大きな範囲円は人数選択画面には表示しない。開拓完了後に領地境界として残す。
       if(type==='expand'){
-        const finalR=expansionClaimRadius(workers);
+        const finalR=1 + workers*.20;
         if(rangeEl)rangeEl.textContent=`完成後の領地 半径 ${finalR.toFixed(1)}m`;
         if(note)note.textContent=`派遣完了後、ここを中心に半径 ${finalR.toFixed(1)}m が領地になります。領地内には建物・住宅・住民を配置できます。`;
       }
@@ -7527,7 +7767,7 @@ function createMissionPreview(m){
   const origin=new THREE.Vector3(m.originX||0,1.05,m.originZ||0);
   const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));const len=Math.max(1,dir.length());dir.normalize();
   const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
-  const target=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
+  const target=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);target.userData.diagOuterRadius=1;g.add(target);
   // 人数選択中は巨大な範囲円を出さない。目的地の小さなマーカーだけを表示。
   const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.55,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
   const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.23,.12,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
@@ -7642,10 +7882,13 @@ function confirmPendingMission(){
   ensurePersonnelState();
   state.personnelByType[m.type]=Math.max(0,(state.personnelByType[m.type]||0)-m.workers);
   state.trainedPersonnel=state.unassignedPersonnel;
-  const e={id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type:m.type,x:m.x,z:m.z,nodeId:m.nodeId,workers:m.workers,duration:m.duration,remaining:m.duration,claimRadius:m.type==='expand'?expansionClaimRadius(m.workers):0,originId:fresh.origin.id,originX:fresh.origin.x,originZ:fresh.origin.z};
-  // 開拓隊の完成領地半径を派遣開始時点でも固定保存する。
-  // これを毎回別計算しないことで「派遣前は大きいのに開始後に固定の小円へ戻る」を防ぐ。
-  if(m.type==='expand') e.claimRadius=expansionClaimRadius(m.workers);
+  const frozenVisualRadius=m.type==='expand'?territoryDiagFixedVisualRadius(m.__diagVisualRadius,m.workers):0;
+  const e={id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type:m.type,x:m.x,z:m.z,nodeId:m.nodeId,workers:m.workers,duration:m.duration,remaining:m.duration,claimRadius:m.type==='expand'?expansionClaimRadius(m.workers):0,visualRadius:frozenVisualRadius,originId:fresh.origin.id,originX:fresh.origin.x,originZ:fresh.origin.z};
+  if(m.type==='expand'){
+    e.claimRadius=expansionClaimRadius(m.workers);
+    e.visualRadius=frozenVisualRadius;
+    territoryDiagPush('DISPATCH_CONFIRM_BEFORE_REMOVE',{reason:'freeze-visual-radius',workers:m.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,pending:territoryDiagPreview()});
+  }
   state.expeditions.push(e);
   if(m.type==='expand') addLog(`🗺 ${m.workers}人の開拓隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から(${Math.round(m.x)},${Math.round(m.z)})へ派遣しました。`);
   else if(m.type==='forest') addLog(`🌲 ${m.workers}人の伐採隊を駐屯地(${Math.round(fresh.origin.x)},${Math.round(fresh.origin.z)})から派遣しました。`);
@@ -7658,6 +7901,7 @@ function confirmPendingMission(){
     const active=makeExpeditionVisual(e);
     effectGroup.add(active);
     expeditionObjects.push(active);
+    territoryDiagPush('DISPATCH_AFTER_ACTIVE_VISUAL',{reason:'preview-removed-active-created',expeditionId:e.id,workers:e.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,activeRingRadius:active.userData?.claimRadius});
   }
   renderAll();
   toast(`${missionTypeInfo(m.type).title}が駐屯地から出発しました`);
@@ -7715,18 +7959,18 @@ function makeExpeditionVisual(e){
   // 開拓隊の到着予定領地は「1m + 0.2m×人数」をそのままワールド寸法にする。
   // 固定2m/4.5mなどの下限は設けない。派遣前・派遣中・制圧後で同じ半径を使う。
   const targetRadius=e.type==='expand'
-    ? expansionVisualRadius(e.workers)
+    ? territoryDiagFixedVisualRadius(e.visualRadius,e.workers)
     : 1.05;
   const targetFill=new THREE.Mesh(
     new THREE.CircleGeometry(targetRadius,64),
     new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:e.type==='expand'?.10:.04,side:THREE.DoubleSide,depthWrite:false})
   );
-  targetFill.rotation.x=-Math.PI/2;targetFill.position.set(e.x,.35,e.z);targetFill.renderOrder=6;root.add(targetFill);
+  targetFill.rotation.x=-Math.PI/2;targetFill.position.set(e.x,.35,e.z);targetFill.renderOrder=6;targetFill.userData.territoryDiag={phase:'EXPEDITION_FILL',x:e.x,z:e.z,radius:targetRadius,workers:e.workers};root.add(targetFill);
   const targetRing=new THREE.Mesh(
     new THREE.RingGeometry(Math.max(.01,targetRadius-.10),targetRadius,96),
     new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.90,side:THREE.DoubleSide,depthWrite:false})
   );
-  targetRing.rotation.x=-Math.PI/2;targetRing.position.set(e.x,.42,e.z);targetRing.renderOrder=9;root.add(targetRing);
+  targetRing.rotation.x=-Math.PI/2;targetRing.position.set(e.x,.42,e.z);targetRing.renderOrder=9;targetRing.userData.territoryDiag={phase:'EXPEDITION_RING',x:e.x,z:e.z,radius:targetRadius,workers:e.workers};root.add(targetRing);
   const unit=makeExpeditionWorkerVisual(e);
   root.add(unit);
   const countLabel=document.createElement('canvas');countLabel.width=256;countLabel.height=72;
@@ -7845,6 +8089,11 @@ function loop(t){
 
   controls.update();
   rebuildWorldChunks(false);
+  territoryDiag.sampleAccumulator+=dt;
+  if(territoryDiag.sampleAccumulator>=.30){
+    territoryDiag.sampleAccumulator=0;
+    territoryDiagPush('WATCHDOG',{reason:'periodic-sample'});
+  }
   renderer.clear();renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }

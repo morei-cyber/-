@@ -1622,7 +1622,7 @@ const renderer=new THREE.WebGLRenderer({
   alpha:false,
   powerPreference:'high-performance'
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.45));
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -2034,6 +2034,27 @@ function addSmokeSource(parent,x,z,era=0){
 function addBridge(parent,x,z,vertical){
   const bridge=box(vertical?1.85:7.2,.32,vertical?7.2:1.85,mat(0x867a69),x,.28,z);
   parent.add(bridge);
+}
+
+/* GPU/メモリリーク対策。再生成したMeshのGeometry/Material/Textureを確実に解放する。 */
+function disposeMaterial(mat){
+  if(!mat)return;
+  const list=Array.isArray(mat)?mat:[mat];
+  for(const m of list){
+    if(!m)continue;
+    for(const key of ['map','alphaMap','aoMap','aoMap','bumpMap','normalMap','roughnessMap','metalnessMap','emissiveMap']){
+      const tex=m[key]; if(tex&&tex.dispose)tex.dispose();
+    }
+    if(m.dispose)m.dispose();
+  }
+}
+function disposeObject3D(root){
+  if(!root)return;
+  root.traverse(o=>{ if(o.geometry?.dispose)o.geometry.dispose(); if(o.material)disposeMaterial(o.material); });
+}
+function clearGroupContents(group){
+  if(!group)return;
+  for(const child of [...group.children]){ disposeObject3D(child); group.remove(child); }
 }
 
 const WORLD_CHUNK=64;
@@ -2496,10 +2517,15 @@ function buildTerritoryUnionVisual(){
   fill.rotation.x=-Math.PI/2;fill.position.set(0,.33,0);fill.renderOrder=3;group.add(fill);
 
   const outer=new THREE.Mesh(
-    new THREE.RingGeometry(Math.max(0,r-.22),r,128),
-    new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.72,side:THREE.DoubleSide,depthWrite:false})
+    new THREE.RingGeometry(Math.max(0,r-.30),r,160),
+    new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.84,side:THREE.DoubleSide,depthWrite:false})
   );
   outer.rotation.x=-Math.PI/2;outer.position.set(0,.36,0);outer.renderOrder=5;group.add(outer);
+  for(const rate of [.25,.5,.75]){
+    const rr=Math.max(1,r*rate);
+    const guide=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,rr-.08),rr,128),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));
+    guide.rotation.x=-Math.PI/2;guide.position.set(0,.35,0);guide.renderOrder=4;group.add(guide);
+  }
 
   // 外側へ伸びた開拓拠点は、都市本体の領地とは別の小さな輪として見せる。
   const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
@@ -2522,7 +2548,7 @@ function rebuildWorldChunks(force=false){
   const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${Math.round(activeRange)},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
-  while(worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
+  clearGroupContents(worldGroup);
   worldNodeObjects.length=0;
 
   for(let cx=tx-streamRadius;cx<=tx+streamRadius;cx++){
@@ -3030,18 +3056,45 @@ function highlightFacility(id){
   selectedFacilityRing.rotation.x=-Math.PI/2;selectedFacilityRing.position.set(f.x,.45,f.z);cityGroup.add(selectedFacilityRing);
 }
 
+let facilityVisualRefreshQueue=new Set();
+let facilityVisualRefreshRAF=0;
+function refreshFacilityVisual(id){
+  const f=state.facilities.find(x=>x.id===id); if(!f)return;
+  const idx=facilityObjects.findIndex(o=>o.userData?.facilityId===id);
+  if(idx>=0){
+    const old=facilityObjects[idx]; disposeObject3D(old); if(old.parent)old.parent.remove(old); facilityObjects.splice(idx,1);
+  }
+  try{ buildFacilityVisual(f,eraPalette()); }catch(err){
+    console.error('facility visual refresh failed',err);
+    const g=new THREE.Group();g.position.set(f.x,0,f.z);g.userData={facilityId:f.id,facilityType:f.type,level:f.level||1};
+    g.add(box(2.6,.22,2.1,makeMaterial(0x6b7278,.82),0,.12,0));
+    g.add(box(1.9,1.15,1.5,makeMaterial(0x8a735d,.86),0,.75,0));
+    facilityGroup.add(g);facilityObjects.push(g);
+  }
+}
+function queueFacilityVisualRefresh(id){
+  facilityVisualRefreshQueue.add(id);
+  if(facilityVisualRefreshRAF)return;
+  facilityVisualRefreshRAF=requestAnimationFrame(()=>{
+    const ids=[...facilityVisualRefreshQueue]; facilityVisualRefreshQueue.clear(); facilityVisualRefreshRAF=0;
+    for(const fid of ids)refreshFacilityVisual(fid);
+    if(state.selectedFacility&&ids.includes(state.selectedFacility))highlightFacility(state.selectedFacility);
+    renderSide();
+  });
+}
+
 function upgradeFacility(id){
   const f=state.facilities.find(x=>x.id===id);if(!f)return;
   const def=facilityById(f.type);if(!def)return;
-  const max=facilityMaxLevel(def);
-  f.maxLevel=max;
+  const max=facilityMaxLevel(def); f.maxLevel=max;
   if((f.level||1)>=max){toast(`現在の時代ではLv.${max}が上限です。時代が進むとさらに強化できます`);return;}
-  const cost=facilityUpgradeCost(f);
-  if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
-  pay(cost);f.level=(f.level||1)+1;
+  const cost=facilityUpgradeCost(f); if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
+  pay(cost); f.level=(f.level||1)+1;
   if(def.effects?.popMax)state.housingBonus+=def.effects.popMax*.12;
   addLog(`${def.icon}${def.name}をLv.${f.level}へ強化しました。`);
-  rebuildMap();state.selectedFacility=f.id;renderSide();highlightFacility(f.id);
+  state.stats.totalFacilityUpgrades=(state.stats.totalFacilityUpgrades||0)+1;
+  queueFacilityVisualRefresh(f.id);
+  renderAll();
   toast(`${def.icon}${def.name} Lv.${f.level}`);
 }
 window.upgradeFacility=upgradeFacility;
@@ -3383,13 +3436,17 @@ function rebuildMap(){
   state.era=Math.max(0,Math.min(ERA.length-1,Math.floor(Number(state.era)||0)));
   /* ルートGroupを丸ごと外さず、描画対象だけを差し替える。外縁施設の最大Lv強化時に全建物が消える事故を防ぐ。 */
   const coreGroups=new Set([residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup]);
-  for(const child of [...cityGroup.children]) if(!coreGroups.has(child)) cityGroup.remove(child);
+  for(const child of [...cityGroup.children]) if(!coreGroups.has(child)){disposeObject3D(child);cityGroup.remove(child);}
   selectedFacilityRing=null;
   worldStreamKey='';
   cityGroup.add(residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup);
+  clearGroupContents(residentialGroup);
+  clearGroupContents(facilityGroup);
+  clearGroupContents(constructionGroup);
+  clearGroupContents(citizenGroup);
+  clearGroupContents(effectGroup);
+  for(const obj of districtObjects.values()){disposeObject3D(obj);if(obj.parent)obj.parent.remove(obj);}
   districtObjects.clear();houseObjects.length=0;facilityObjects.length=0;smokePuffs.length=0;clearCitizens();
-  while(constructionGroup.children.length) constructionGroup.remove(constructionGroup.children[0]);
-  while(effectGroup.children.length) effectGroup.remove(effectGroup.children[0]);
   rebuildExpeditionVisuals();
   HOUSE_LOTS=makeHouseLots();
   const p=eraPalette();
@@ -5002,12 +5059,30 @@ function startEraTransition(oldEra,newEra){
   const title=document.getElementById('eraFlashTitle');const txt=document.getElementById('eraFlashText');
   title.textContent=ERA[newEra].name;txt.textContent='街の建物・道路・設備・環境が新しい時代へ変化しています。';
   fx.style.opacity='1';
-  setTimeout(()=>{rebuildMap();fx.style.opacity='0';showBanner('ERA SHIFT','文明が進化した','街全体の外観と設備が更新されました。',1900);},650);
+  setTimeout(()=>{
+    try{
+      rebuildMap();
+      camera.zoom=Math.min(1.8,Math.max(.72,camera.zoom||1));
+      controls.target.set(0,0,0);controls.update();camera.updateProjectionMatrix();
+    }catch(err){
+      console.error('Era rebuild failed:',err);
+      try{renderer.clear();renderer.render(scene,camera);}catch(_){ }
+    }
+    fx.style.opacity='0';
+    showBanner('ERA SHIFT','文明が進化した','街全体の外観と設備が更新されました。',1900);
+  },650);
 }
 
 /* =========================================================
    UPGRADE
 ========================================================= */
+
+function refreshDistrictVisual(id){
+  const d=DISTRICTS.find(x=>x.id===id); if(!d)return;
+  const old=districtObjects.get(id);
+  if(old){disposeObject3D(old);if(old.parent)old.parent.remove(old);districtObjects.delete(id);}
+  try{const obj=buildDistrictVisual(d,eraPalette());districtObjects.set(id,obj);cityGroup.add(obj);}catch(err){console.error('district visual refresh failed',id,err);}
+}
 
 function upgradeSelected(){
 
@@ -5095,7 +5170,7 @@ function upgradeSelected(){
   );
 
 
-  rebuildMap();
+  refreshDistrictVisual(d.id);
   renderAll();
 
 
@@ -5404,7 +5479,9 @@ function getMissionStats(type,workers,x,z){
   const origin=findNearestGarrison(x,z);
   if(!origin)return null;
   const w=Math.max(1,Number(workers)||1);
-  const range=info.baseRange+Math.max(0,w-1)*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  const personnelRange=4*w;
+  const supportBonus=sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  const range=personnelRange+supportBonus;
   const distance=origin.distance;
   const ratio=Math.max(.7,1+Math.max(0,distance-range)*.045);
   const personnelLoad=1+w*.115;
@@ -7144,7 +7221,9 @@ function missionRangeOnly(type,workers){
   if(!info)return 0;
   const sys=personnelSystem();
   const w=Math.max(1,Number(workers)||1);
-  return info.baseRange+Math.max(0,w-1)*info.rangePerPerson+sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  const personnelRange=4*w;
+  const supportBonus=sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
+  return personnelRange+supportBonus;
 }
 
 function updateMissionPreviewFromState(){
@@ -7235,24 +7314,24 @@ function updateMissionPreviewFromState(){
       if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(110,dlen),Math.min(3.0,1+dlen*.024),.7);}
       const target=g.userData.targetRing;
       if(target){
-        const visualRadius=type==='expand'?Math.max(1,stats.claimRadius||previewRange):.95;
-        target.geometry.dispose?.();
-        target.geometry=new THREE.RingGeometry(type==='expand'?visualRadius*.96:visualRadius,type==='expand'?visualRadius:1.15,64);
+        const visualRadius=type==='expand'?Math.max(2,stats.claimRadius||previewRange*.40):Math.max(2.2,Math.min(8,stats.range*.035));
+        target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }
       const rangeRing=g.userData.rangeRing;
       if(rangeRing){
-        const rr=Math.max(0.5,stats.range);
-        rangeRing.geometry.dispose?.();
-        rangeRing.geometry=new THREE.RingGeometry(Math.max(0.1,rr-.16),rr,144);
-        rangeRing.position.set(stats.origin.x,.365,stats.origin.z);
+        const rr=Math.max(.5,stats.range);rangeRing.scale.setScalar(rr);rangeRing.position.set(stats.origin.x,.365,stats.origin.z);
       }
       const rangeDisk=g.userData.rangeDisk;
       if(rangeDisk){
-        const rr=Math.max(0.5,stats.range);
-        rangeDisk.geometry.dispose?.();
-        rangeDisk.geometry=new THREE.CircleGeometry(rr,96);
-        rangeDisk.position.set(stats.origin.x,.34,stats.origin.z);
+        const rr=Math.max(.5,stats.range);rangeDisk.scale.setScalar(rr);rangeDisk.position.set(stats.origin.x,.34,stats.origin.z);
+      }
+      for(let i=1;i<=3;i++){const guide=g.userData[`rangeGuide${i}`];if(guide)guide.scale.setScalar(Math.max(.5,stats.range*i*.25));}
+      const rangeLabel=g.userData.rangeLabel;
+      if(rangeLabel){
+        rangeLabel.position.set(stats.origin.x,2.7,stats.origin.z-stats.range*.94);
+        rangeLabel.scale.setScalar(Math.max(.8,Math.min(2.4,stats.range/80)));
+        rangeLabel.userData.setText?.(`到達範囲 ${Math.round(stats.range)}m`);
       }
       fitCameraToMission(stats.range,stats.origin.x,stats.origin.z,m.x,m.z);
       const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
@@ -7279,30 +7358,37 @@ function updateMissionPreviewFromState(){
   }
 }
 
+function makeRangeLabel(text,color){
+  const c=document.createElement('canvas');c.width=384;c.height=96;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
+  ctx.fillStyle='rgba(6,10,16,.84)';ctx.beginPath();ctx.roundRect(10,10,364,76,24);ctx.fill();
+  ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f8e6b4';ctx.fillText(text,c.width/2,c.height/2);
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false});
+  const sprite=new THREE.Sprite(mat);sprite.scale.set(4.2,1.05,1);
+  sprite.userData.setText=(next)=>{
+    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(6,10,16,.84)';ctx.beginPath();ctx.roundRect(10,10,364,76,24);ctx.fill();
+    ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f8e6b4';ctx.fillText(next,c.width/2,c.height/2);tex.needsUpdate=true;
+  };
+  return sprite;
+}
+
 function createMissionPreview(m){
-  removeMissionPreview();
-  pendingMission=m;
-  pendingMissionWorkers=Math.max(1,m.workers||1);
-  const info=missionTypeInfo(m.type);
-  const g=new THREE.Group();
+  removeMissionPreview();pendingMission=m;pendingMissionWorkers=Math.max(1,m.workers||1);
+  const info=missionTypeInfo(m.type);const g=new THREE.Group();
   const origin=new THREE.Vector3(m.originX||0,1.05,m.originZ||0);
-  const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));
-  const len=Math.max(1,dir.length());dir.normalize();
-  const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);
-  arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
-  const previewRadius=m.type==='expand'?Math.max(1,m.claimRadius||m.range*.40):1.0;
-  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.94:previewRadius,m.type==='expand'?previewRadius:1.18,72),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.62,side:THREE.DoubleSide,depthWrite:false}));
-  target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
-  const range=Math.max(.2,m.range||previewRadius*.4);
-  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(Math.max(.1,range-.16),range,144),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
-  rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);g.add(rangeRing);
-  const rangeDisk=new THREE.Mesh(new THREE.CircleGeometry(range,96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.035,side:THREE.DoubleSide,depthWrite:false}));
-  rangeDisk.rotation.x=-Math.PI/2;rangeDisk.position.set(origin.x,.34,origin.z);g.add(rangeDisk);
+  const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));const len=Math.max(1,dir.length());dir.normalize();
+  const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
+  const target=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
+  const range=Math.max(.2,m.range||4);
+  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(.992,1,160),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);rangeRing.scale.setScalar(range);g.add(rangeRing);
+  const rangeDisk=new THREE.Mesh(new THREE.CircleGeometry(1,96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));rangeDisk.rotation.x=-Math.PI/2;rangeDisk.position.set(origin.x,.34,origin.z);rangeDisk.scale.setScalar(range);g.add(rangeDisk);
+  for(let i=1;i<=3;i++){const rr=new THREE.Mesh(new THREE.RingGeometry(.996,1,128),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));rr.rotation.x=-Math.PI/2;rr.position.set(origin.x,.35,origin.z);rr.scale.setScalar(range*i*.25);g.add(rr);g.userData[`rangeGuide${i}`]=rr;}
   const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.55,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
-  const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.19,.10,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
-  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.rangeDisk=rangeDisk;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
-  effectGroup.add(g);missionPreviewGroup=g;
-  updateMissionPreviewFromState();
+  const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.23,.12,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
+  const rangeLabel=makeRangeLabel(`到達範囲 ${Math.round(range)}m`,info.color);rangeLabel.position.set(origin.x,2.7,origin.z-range*.94);g.add(rangeLabel);
+  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.rangeDisk=rangeDisk;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.rangeLabel=rangeLabel;g.userData.type=m.type;
+  effectGroup.add(g);missionPreviewGroup=g;updateMissionPreviewFromState();
 }
 
 function setPendingWorkers(value){

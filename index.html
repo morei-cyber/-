@@ -5052,8 +5052,9 @@ function completeDispatch(e){
       // 基礎都市領地(state.mapRadius)は変えず、開拓地点そのものだけを新領地化する。
       // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
       state.territorySites.push({x:e.x,z:e.z,type:'land'});
-      const claimWorkers=Math.max(0,Number(e.workers)||0);
-      state.territoryClaims.push({x:e.x,z:e.z,radius:1+claimWorkers*.2,workers:claimWorkers,visualRadius:expansionVisualRadius(claimWorkers),type:'land',buildable:true});
+      const claimWorkers=Math.max(1,Number(e.workers)||1);
+      const syncedRadius=expansionClaimRadius(claimWorkers);
+      state.territoryClaims.push({x:e.x,z:e.z,radius:syncedRadius,workers:claimWorkers,visualRadius:syncedRadius,type:'land',buildable:true});
       state.mapExpansion++;
       rebuildPersistentExpansionClaims();
       addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
@@ -5580,10 +5581,20 @@ function missionBaseInfo(type){
   })[type]||null;
 }
 
+/*
+  TERRITORY EXPANSION HARD-SYNC PATCH
+  ------------------------------------------------------------
+  原因になっていた「派遣前は大きい円、派遣開始後に別半径へ切り替わる」
+  経路をなくすため、開拓領地の半径を派遣行動半径と完全同期する。
+  このゲームの開拓隊の行動半径は 4m × 人数。
+  したがってプレビュー / 派遣中 / 制圧後 / セーブ後をすべて同じ値にする。
+*/
+const EXPANSION_HARD_SYNC_TO_DISPATCH_RANGE = true;
+
 function expansionClaimRadius(workers){
-  // 完成後の領地サイズの唯一の基準値。
-  // 基礎1m + 1人につき0.2m。派遣行動範囲(4m/人)とは別物。
-  return 1 + Math.max(0,Number(workers)||0)*.20;
+  const w=Math.max(1,Number(workers)||1);
+  if(EXPANSION_HARD_SYNC_TO_DISPATCH_RANGE) return 4*w;
+  return 1 + Math.max(0,w)*.20;
 }
 
 // 保存データ・描画・建築判定・道路生成で同じ領地半径を使うための共通関数。
@@ -5603,9 +5614,8 @@ function getExpansionClaimRadius(claim){
 // 派遣前→派遣中→制圧後で「見た目の円」が縮まらないよう、
 // 表示半径もこの1か所だけで決める。論理上の領地半径は expansionClaimRadius のまま。
 function expansionVisualRadius(workers){
-  const logical=expansionClaimRadius(workers);
-  // 最低表示半径2m。以前の派遣画面で使われていた見た目の大きさを維持する。
-  return Math.max(2,logical);
+  // 論理領地半径と表示半径を同一値にする。
+  return expansionClaimRadius(workers);
 }
 
 function getMissionStats(type,workers,x,z){
@@ -7416,7 +7426,7 @@ function updateMissionPreviewFromState(){
   if(rangeLabel)rangeLabel.textContent=type==='expand'?'完成後の領地':'行動距離';
   const previewRange=missionRangeOnly(type,workers);
   if(rangeEl)rangeEl.textContent=type==='expand'
-    ?`完成後の領地 半径 ${(1+workers*.20).toFixed(1)}m`
+    ?`派遣後も維持される領地 半径 ${expansionClaimRadius(workers).toFixed(1)}m`
     :`行動距離 ${previewRange.toFixed(1)}m`;
   if(availableLabel)availableLabel.textContent=`${PERSONNEL_TYPES[type]?.name||'専門隊'} ${fmt(avail)}人`;
   if(wc)wc.textContent=`${workers} 人`;
@@ -7468,7 +7478,7 @@ function updateMissionPreviewFromState(){
       }
       // 大きな範囲円は人数選択画面には表示しない。開拓完了後に領地境界として残す。
       if(type==='expand'){
-        const finalR=1 + workers*.20;
+        const finalR=expansionClaimRadius(workers);
         if(rangeEl)rangeEl.textContent=`完成後の領地 半径 ${finalR.toFixed(1)}m`;
         if(note)note.textContent=`派遣完了後、ここを中心に半径 ${finalR.toFixed(1)}m が領地になります。領地内には建物・住宅・住民を配置できます。`;
       }

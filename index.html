@@ -5598,7 +5598,7 @@ function missionBaseInfo(type){
    - camera / controls / object scale / saved claim / expedition の差分を追跡
    - 同一派遣について表示半径を固定し、再計算による縮小を防止
 ========================================================= */
-const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V2';
+const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V3-CAMERA-SCALE-LOCK';
 const TERRITORY_DIAG_LIMIT=240;
 const territoryDiag={
   enabled:true,
@@ -5657,11 +5657,14 @@ function territoryDiagActiveExpand(){
   const e=(state.expeditions||[]).find(x=>x?.type==='expand');
   if(!e)return null;
   const visualRadius=territoryDiagNum(e.visualRadius)||expansionVisualRadius(e.workers);
+  const g=expeditionObjects.find?.(x=>x?.userData?.expeditionId===e.id);
+  const ringScale=territoryDiagNum(g?.userData?.targetRing?.scale?.x,1);
   return {
     id:e.id,x:territoryDiagNum(e.x),z:territoryDiagNum(e.z),workers:territoryDiagNum(e.workers),
     claimRadius:territoryDiagNum(e.claimRadius),
     visualRadius,
-    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(e.x),territoryDiagNum(e.z),visualRadius),
+    objectScale:ringScale,
+    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(e.x),territoryDiagNum(e.z),visualRadius*ringScale),
     remaining:territoryDiagNum(e.remaining),duration:territoryDiagNum(e.duration)
   };
 }
@@ -5678,7 +5681,7 @@ function territoryDiagPreview(){
     visualRadius:territoryDiagNum(m.__diagVisualRadius || expansionVisualRadius(workers)),
     objectScale:territoryDiagNum(ring?.scale?.x,1),
     ringOuterWorld:territoryDiagNum(ring?.userData?.diagOuterRadius,base)*territoryDiagNum(ring?.scale?.x,1),
-    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(m.x),territoryDiagNum(m.z),territoryDiagNum(m.__diagVisualRadius || expansionVisualRadius(workers)))
+    screenDiameterPx:territoryDiagScreenDiameter(territoryDiagNum(m.x),territoryDiagNum(m.z),territoryDiagNum(m.__diagVisualRadius || expansionVisualRadius(workers))*territoryDiagNum(ring?.scale?.x,1))
   };
 }
 function territoryDiagSceneClaims(){
@@ -5693,7 +5696,11 @@ function territoryDiagSceneClaims(){
   return out;
 }
 function territoryDiagSnapshot(stage,extra={}){
-  const snap={
+  const rect=mapEl?.getBoundingClientRect?.();
+  const mapW=territoryDiagNum(rect?.width), mapH=territoryDiagNum(rect?.height);
+  const viewH=Math.abs(territoryDiagNum(camera?.top)-territoryDiagNum(camera?.bottom));
+  const pixelsPerWorld=mapH>0&&viewH>0?mapH/viewH:0;
+  return {
     t:new Date().toISOString(),stage,
     build:TERRITORY_DIAG_BUILD,
     pending:territoryDiagPreview(),
@@ -5702,6 +5709,8 @@ function territoryDiagSnapshot(stage,extra={}){
     sceneClaims:territoryDiagSceneClaims(),
     camera:territoryDiagCameraState(),
     cameraFovOrView:{left:territoryDiagNum(camera?.left),right:territoryDiagNum(camera?.right),top:territoryDiagNum(camera?.top),bottom:territoryDiagNum(camera?.bottom)},
+    mapRect:{width:mapW,height:mapH},
+    pixelsPerWorld,
     worldStreamKey:String(worldStreamKey||''),
     pendingMissionWorkers:territoryDiagNum(pendingMissionWorkers),
     missionPreviewExists:!!missionPreviewGroup,
@@ -5709,7 +5718,6 @@ function territoryDiagSnapshot(stage,extra={}){
     worldChildren:worldGroup?.children?.length||0,
     extra
   };
-  return snap;
 }
 function territoryDiagPush(stage,extra={}){
   if(!territoryDiag.enabled)return;
@@ -5750,21 +5758,30 @@ function territoryDiagPush(stage,extra={}){
   if(warnings.length){territoryDiag.lastWarning=warnings.join(' | ');console.warn('[TerritoryDiag]',stage,...warnings);}
   else console.log('[TerritoryDiag]',stage,extra,snap);
 
-  const previous=territoryDiag.events.length>1?territoryDiag.events[territoryDiag.events.length-2]:null;
-  if(stage==='DISPATCH_AFTER_ACTIVE_VISUAL' && previous?.stage==='PREVIEW_REMOVING'){
-    const pv=previous.pending, av=snap.active;
+  const findLastEvent=(wantedStage)=>{
+    for(let i=territoryDiag.events.length-2;i>=0;i--){
+      if(territoryDiag.events[i]?.stage===wantedStage)return territoryDiag.events[i];
+    }
+    return null;
+  };
+  if(stage==='DISPATCH_AFTER_ACTIVE_VISUAL'){
+    const previous=findLastEvent('PREVIEW_REMOVING');
+    const pv=previous?.pending, av=snap.active;
     if(pv&&av){
       const wr=Math.abs((pv.visualRadius||0)-(av.visualRadius||0));
       const wp=Math.abs((pv.screenDiameterPx||0)-(av.screenDiameterPx||0));
+      const ppw=Math.abs(territoryDiagNum(previous.pixelsPerWorld)-territoryDiagNum(snap.pixelsPerWorld));
       const zoom=Math.abs((previous.camera?.zoom||0)-(snap.camera?.zoom||0));
-      if(wr>.01)territoryDiag.diagnosis=`原因候補A: ワールド半径が派遣確定時に変更。${pv.visualRadius?.toFixed?.(3)}m → ${av.visualRadius?.toFixed?.(3)}m`;
-      else if(wp>4 && zoom>.001)territoryDiag.diagnosis=`原因候補B: 円のワールド半径は同じだがカメラが変化。screen ${pv.screenDiameterPx?.toFixed?.(1)}px → ${av.screenDiameterPx?.toFixed?.(1)}px / zoom Δ${zoom.toFixed(4)}`;
-      else if(wp>4)territoryDiag.diagnosis=`原因候補C: 半径は同じなのに画面上の直径だけ変化。別オブジェクト/CSS/描画レイヤーの可能性`;
-      else territoryDiag.diagnosis='派遣前→派遣中は同一半径・ほぼ同一画面サイズ。縮小原因はこの遷移ではない';
+      if(wr>.01)territoryDiag.diagnosis=`原因A: ワールド半径そのものが変更。${pv.visualRadius?.toFixed?.(3)}m → ${av.visualRadius?.toFixed?.(3)}m`;
+      else if(wp>4 && ppw>.01)territoryDiag.diagnosis=`原因B: 円の半径は同じだが画面スケールが変更。${pv.screenDiameterPx?.toFixed?.(1)}px → ${av.screenDiameterPx?.toFixed?.(1)}px / pxPerWorld ${previous.pixelsPerWorld?.toFixed?.(3)} → ${snap.pixelsPerWorld?.toFixed?.(3)}`;
+      else if(wp>4 && zoom>.001)territoryDiag.diagnosis=`原因C: 円の半径は同じだがcamera.zoomが変更。Δ${zoom.toFixed(4)}`;
+      else if(wp>4)territoryDiag.diagnosis=`原因D: 半径とzoom以外の描画条件が変更。${pv.screenDiameterPx?.toFixed?.(1)}px → ${av.screenDiameterPx?.toFixed?.(1)}px`;
+      else territoryDiag.diagnosis='派遣前→派遣中で半径・画面直径は維持';
     }
-  }else if(stage==='COMPLETE_AFTER_REBUILD' && previous?.stage==='COMPLETE_BEFORE_REBUILD'){
-    const before=previous.claims?.[previous.claims.length-1], after=snap.claims?.[snap.claims.length-1];
-    if(before&&after&&Math.abs((before.visualRadius||0)-(after.visualRadius||0))>.01)territoryDiag.diagnosis=`原因候補D: 制圧後の保存/再構築でvisualRadiusが変更`;
+  }else if(stage==='COMPLETE_AFTER_REBUILD'){
+    const before=findLastEvent('COMPLETE_BEFORE_REBUILD');
+    const beforeClaim=before?.claims?.[before.claims.length-1], afterClaim=snap.claims?.[snap.claims.length-1];
+    if(beforeClaim&&afterClaim&&Math.abs((beforeClaim.visualRadius||0)-(afterClaim.visualRadius||0))>.01)territoryDiag.diagnosis='原因E: 制圧後の保存/再構築でvisualRadiusが変更';
     else territoryDiag.diagnosis='制圧後の保存値→領地再構築でも表示半径は維持';
   }
   territoryDiagRender();
@@ -5784,6 +5801,7 @@ function territoryDiagClear(){territoryDiag.events.length=0;territoryDiag.lastSn
 function territoryDiagRender(){
   const el=document.getElementById('territoryDiagPanel');
   if(!el)return;
+  try{
   const last=territoryDiag.events[territoryDiag.events.length-1];
   const active=territoryDiagActiveExpand();
   const pending=territoryDiagPreview();
@@ -5795,19 +5813,25 @@ function territoryDiagRender(){
   el.querySelector('[data-k="logical"]').textContent=main?expansionClaimRadius(main.workers).toFixed(2)+'m':'-';
   el.querySelector('[data-k="visual"]').textContent=main?(Number(main.visualRadius)||0).toFixed(2)+'m':'-';
   el.querySelector('[data-k="camera"]').textContent=Number(camera?.zoom||0).toFixed(4);
+  el.querySelector('[data-k="ppw"]').textContent=last?.pixelsPerWorld?Number(last.pixelsPerWorld).toFixed(3):'-';
+  el.querySelector('[data-k="mapsize"]').textContent=last?.mapRect?`${Math.round(last.mapRect.width)}×${Math.round(last.mapRect.height)}`:'-';
   el.querySelector('[data-k="claims"]').textContent=String(claims.length);
   el.querySelector('[data-k="events"]').textContent=String(territoryDiag.events.length);
   const d=territoryDiag.diagnosis||'まだ比較対象なし';el.querySelector('[data-k="diag"]').textContent=d;
   const w=territoryDiag.lastWarning||'なし';el.querySelector('[data-k="warn"]').textContent=w;
   el.querySelector('[data-k="last"]').textContent=last?`${last.stage} / ${last.t}`:'-';
+  }catch(err){
+    territoryDiag.lastWarning=`DIAG_UI_ERROR: ${err?.message||err}`;
+    console.warn('[TerritoryDiag] UI render error',err);
+  }
 }
 function territoryDiagInstallUI(){
   if(document.getElementById('territoryDiagPanel'))return;
   const style=document.createElement('style');
-  style.textContent=`#territoryDiagPanel{position:fixed;right:10px;bottom:10px;z-index:100000;width:355px;max-width:calc(100vw - 20px);background:rgba(7,12,18,.94);color:#eef3f7;border:1px solid rgba(255,214,111,.55);border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 10px 35px rgba(0,0,0,.36);backdrop-filter:blur(8px)}#territoryDiagPanel b{color:#ffd66f}#territoryDiagPanel .tdg-grid{display:grid;grid-template-columns:92px 1fr;gap:2px 8px;margin:7px 0}#territoryDiagPanel .tdg-warn{color:#ff9a9a;white-space:pre-wrap;word-break:break-word}#territoryDiagPanel button{margin:4px 4px 0 0;padding:5px 8px;border-radius:7px;border:1px solid #59636f;background:#17212b;color:#fff;cursor:pointer}#territoryDiagPanel .tdg-head{display:flex;justify-content:space-between;gap:8px;align-items:center}#territoryDiagPanel .tdg-build{font-size:9px;color:#9fb0c0;word-break:break-all}`;
+  style.textContent=`#territoryDiagPanel{position:fixed;left:10px;bottom:10px;z-index:100000;width:355px;max-width:calc(100vw - 20px);background:rgba(7,12,18,.94);color:#eef3f7;border:1px solid rgba(255,214,111,.55);border-radius:12px;padding:10px;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 10px 35px rgba(0,0,0,.36);backdrop-filter:blur(8px)}#territoryDiagPanel b{color:#ffd66f}#territoryDiagPanel .tdg-grid{display:grid;grid-template-columns:92px 1fr;gap:2px 8px;margin:7px 0}#territoryDiagPanel .tdg-warn{color:#ff9a9a;white-space:pre-wrap;word-break:break-word}#territoryDiagPanel button{margin:4px 4px 0 0;padding:5px 8px;border-radius:7px;border:1px solid #59636f;background:#17212b;color:#fff;cursor:pointer}#territoryDiagPanel .tdg-head{display:flex;justify-content:space-between;gap:8px;align-items:center}#territoryDiagPanel .tdg-build{font-size:9px;color:#9fb0c0;word-break:break-all}`;
   document.head.appendChild(style);
   const panel=document.createElement('div');panel.id='territoryDiagPanel';
-  panel.innerHTML=`<div class="tdg-head"><b>領地縮小・根本原因診断</b><span>ON</span></div><div class="tdg-build">BUILD: ${TERRITORY_DIAG_BUILD}</div><div class="tdg-grid"><div>phase</div><div data-k="phase">BOOT</div><div>workers</div><div data-k="workers">-</div><div>論理半径</div><div data-k="logical">-</div><div>表示半径</div><div data-k="visual">-</div><div>camera.zoom</div><div data-k="camera">-</div><div>claims</div><div data-k="claims">0</div><div>events</div><div data-k="events">0</div><div>last</div><div data-k="last">-</div></div><div>diagnosis</div><div class="tdg-warn" data-k="diag">まだ比較対象なし</div><div>warn</div><div class="tdg-warn" data-k="warn">なし</div><button onclick="window.__territoryDiagExport()">ログTXT</button><button onclick="window.__territoryDiagCopy()">ログコピー</button><button onclick="window.__territoryDiagClear()">クリア</button>`;
+  panel.innerHTML=`<div class="tdg-head"><b>領地縮小・根本原因診断</b><span>ON</span></div><div class="tdg-build" data-k="build">BUILD: ${TERRITORY_DIAG_BUILD}</div><div class="tdg-grid"><div>phase</div><div data-k="phase">BOOT</div><div>workers</div><div data-k="workers">-</div><div>論理半径</div><div data-k="logical">-</div><div>表示半径</div><div data-k="visual">-</div><div>camera.zoom</div><div data-k="camera">-</div><div>px/world</div><div data-k="ppw">-</div><div>map size</div><div data-k="mapsize">-</div><div>claims</div><div data-k="claims">0</div><div>events</div><div data-k="events">0</div><div>last</div><div data-k="last">-</div></div><div>diagnosis</div><div class="tdg-warn" data-k="diag">まだ比較対象なし</div><div>warn</div><div class="tdg-warn" data-k="warn">なし</div><button onclick="window.__territoryDiagExport()">ログTXT</button><button onclick="window.__territoryDiagCopy()">ログコピー</button><button onclick="window.__territoryDiagClear()">クリア</button>`;
   document.body.appendChild(panel);
   territoryDiagRender();
 }
@@ -7440,20 +7464,32 @@ renderer.domElement
   );
 
 /* =========================================================
-   RESIZE
+   RESIZE — ROOT CAUSE FIX
+   旧実装は viewH=52 固定。map高さが478px→187pxになると
+   同じ1mの円でも画面上の大きさが約39%まで縮む。
+   ここでは初回のpx/worldを固定し、レイアウト変化だけでは
+   円が縮まないようにする。
 ========================================================= */
-
-function resize(){
+let territoryCameraScaleLock={initialized:false,referenceHeight:0,referenceViewHeight:52};
+function resize(reason='resize'){
   const rect=mapEl.getBoundingClientRect();
   const w=Math.max(2,Math.round(rect.width));
   const h=Math.max(2,Math.round(rect.height));
-  const aspect=w/Math.max(1,h),viewH=52,viewW=viewH*aspect;
+  if(!territoryCameraScaleLock.initialized && h>2){
+    territoryCameraScaleLock.initialized=true;
+    territoryCameraScaleLock.referenceHeight=h;
+    territoryCameraScaleLock.referenceViewHeight=52;
+  }
+  const refH=Math.max(1,territoryCameraScaleLock.referenceHeight||h);
+  const refView=Math.max(.001,territoryCameraScaleLock.referenceViewHeight||52);
+  const viewH=Math.max(.25,h*refView/refH);
+  const aspect=w/Math.max(1,h),viewW=viewH*aspect;
   camera.left=-viewW/2;camera.right=viewW/2;camera.top=viewH/2;camera.bottom=-viewH/2;
   camera.near=.1;
   const far=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
   camera.far=far;camera.updateProjectionMatrix();
   renderer.setSize(w,h,false);
-  if(window.__territoryDiag) territoryDiagPush('RESIZE',{reason:'resize',width:w,height:h});
+  if(window.__territoryDiag) territoryDiagPush('RESIZE',{reason,width:w,height:h,viewH,viewW,pixelsPerWorld:h/viewH});
 }
 window.addEventListener('resize',resize,{passive:true});
 if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.observe(mapEl);}

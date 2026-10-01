@@ -2078,12 +2078,18 @@ function getUrbanRadius(){
   return Math.min(Math.max(18, growth), Math.max(18, territory-4));
 }
 function isInsideCityTerritory(x,z,padding=0){
-  return Math.hypot(Number(x)||0,Number(z)||0) <= Math.max(0,getTerritoryRadius()-padding);
+  const xx=Number(x)||0, zz=Number(z)||0;
+  if(Math.hypot(xx,zz) <= Math.max(0,getTerritoryRadius()-padding)) return true;
+  for(const claim of (state.territoryClaims||[])){
+    const cr=Math.max(0,Number(claim.radius)||0)-padding;
+    if(cr>0 && Math.hypot(xx-(Number(claim.x)||0),zz-(Number(claim.z)||0)) <= cr) return true;
+  }
+  return false;
 }
 function renderChunkType(cx,cz){
   const x=cx*WORLD_CHUNK+32, z=cz*WORLD_CHUNK+32;
-  // 都市領地内は自然資源地帯を描画せず、開発済み平地として扱う。
-  if(Math.hypot(x,z) <= getTerritoryRadius()+WORLD_CHUNK*.58) return 'plains';
+  // 都市領地・完成済みの開拓領地は自然資源地帯ではなく開発可能な平地として扱う。
+  if(isInsideCityTerritory(x,z,0)) return 'plains';
   return chunkType(cx,cz);
 }
 function findExternalLandPoint(angle,dist){
@@ -2532,10 +2538,13 @@ function buildTerritoryUnionVisual(){
   for(const c of claims){
     const x=Number(c.x)||0,z=Number(c.z)||0,cr=Math.max(3,Number(c.radius)||3);
     if(Math.hypot(x,z) <= r+.5) continue;
-    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.5,cr-.16),cr,56),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.78,side:THREE.DoubleSide,depthWrite:false}));
-    ring.rotation.x=-Math.PI/2;ring.position.set(x,.37,z);ring.renderOrder=5;group.add(ring);
-    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,56),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.06,side:THREE.DoubleSide,depthWrite:false}));
+    // 完成後だけ、実際の領地として見える境界を常設。
+    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,64),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false}));
     disk.rotation.x=-Math.PI/2;disk.position.set(x,.335,z);disk.renderOrder=3;group.add(disk);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr-.22),cr,96),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;ring.position.set(x,.38,z);ring.renderOrder=6;group.add(ring);
+    const inner=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr*.72-.06),Math.max(.01,cr*.72),64),new THREE.MeshBasicMaterial({color:eraColor,transparent:true,opacity:.28,side:THREE.DoubleSide,depthWrite:false}));
+    inner.rotation.x=-Math.PI/2;inner.position.set(x,.37,z);inner.renderOrder=5;group.add(inner);
   }
   return group;
 }
@@ -2709,6 +2718,37 @@ function getCityRoadSegments(){
     const ez=Math.abs(q.cx)>Math.abs(q.cz)?0:q.cz;
     add(ex,ez,sx,sz);
   }
+
+  // 開拓済みの追加領地には「支線＋小さな街区」を作る。
+  // これで獲得した領地の中にも住宅・人・施設を置ける街路が生まれる。
+  for(const claim of (state.territoryClaims||[])){
+    const cx=Number(claim.x)||0, cz=Number(claim.z)||0, rr=Math.max(.8,Number(claim.radius)||.8);
+    if(!Number.isFinite(cx)||!Number.isFinite(cz)||rr<.8) continue;
+
+    // 現在までに生成した道路のうち最も近い地点を探す。
+    let bestD=Infinity,bx=0,bz=0;
+    for(const seg of segs){
+      const [x1,z1,x2,z2]=seg;
+      const dx=x2-x1,dz=z2-z1,l2=dx*dx+dz*dz;
+      if(l2<=1e-6) continue;
+      const t=Math.max(0,Math.min(1,((cx-x1)*dx+(cz-z1)*dz)/l2));
+      const px=x1+t*dx,pz=z1+t*dz,d=Math.hypot(cx-px,cz-pz);
+      if(d<bestD){bestD=d;bx=px;bz=pz;}
+    }
+    if(bestD<Infinity) add(bx,bz,cx,cz);
+
+    // 住宅が置ける最低限の小街区。半径が小さい場合は十字の生活道路だけ。
+    const arm=Math.max(.55,rr*.72);
+    add(cx-arm,cz,cx+arm,cz);
+    add(cx,cz-arm,cx,cz+arm);
+    if(rr>=2.2){
+      const d=rr*.55;
+      add(cx-d,cz-d,cx+d,cz-d);
+      add(cx+d,cz-d,cx+d,cz+d);
+      add(cx+d,cz+d,cx-d,cz+d);
+      add(cx-d,cz+d,cx-d,cz-d);
+    }
+  }
   return segs;
 }
 
@@ -2745,14 +2785,18 @@ function cityPlacementClear(x,z,r=2.2){
 
 function makeHouseLots(){
   const lots=[];
-  const r=Math.min(150,Math.max(24,getUrbanRadius()-2));
+  const claimMax=(state.territoryClaims||[]).reduce((m,c)=>Math.max(m,Math.hypot(Number(c.x)||0,Number(c.z)||0)+Math.max(0,Number(c.radius)||0)),0);
+  const r=Math.min(320,Math.max(24,getUrbanRadius()-2,claimMax+8));
   const spacing=5.8;
   let id=0;
   for(let gx=-Math.ceil(r/spacing);gx<=Math.ceil(r/spacing);gx++){
     for(let gz=-Math.ceil(r/spacing);gz<=Math.ceil(r/spacing);gz++){
       const x=gx*spacing,z=gz*spacing;
       if(Math.hypot(x,z)<6.2 || Math.hypot(x,z)>r)continue;
-      if(cityRoadDistance(x,z)<2.15)continue;
+      // 完成済み領地の中だけ住宅候補を作る。未開拓の森林・鉱山地帯には作らない。
+      if(!isInsideCityTerritory(x,z,.45)) continue;
+      const inExpansionClaim=(state.territoryClaims||[]).some(c=>Math.hypot(x-(Number(c.x)||0),z-(Number(c.z)||0)) <= Math.max(0,Number(c.radius)||0)+.01);
+      if(!inExpansionClaim && cityRoadDistance(x,z)<2.15)continue;
       let bad=false;
       for(const d of DISTRICTS){
         if(Math.hypot(x-d.x,z-d.z)<(d.id==='capital'?6.5:4.55)){bad=true;break;}
@@ -2778,7 +2822,8 @@ function houseCapacity(){
 function getHousingState(){
   const per=houseCapacity();
   const pop=Math.max(0,Math.floor(state.pop));
-  const reachable=Math.min(HOUSE_LOTS.length,Math.max(8,Math.floor(state.cityReach*state.cityReach*.8)));
+  // 開拓済み領地も住宅・住民の配置対象にする。
+  const reachable=HOUSE_LOTS.length;
   const houses=Math.min(reachable,Math.max(1,Math.ceil(pop/per)));
   return {population:pop,perHouse:per,houses,capacity:houses*per+state.housingBonus,shortage:Math.max(0,pop-houses*per-state.housingBonus)};
 }
@@ -4848,7 +4893,7 @@ window.cancelBuildMode=cancelBuildMode;
 function placeFacilityAt(x,z){
   const def=facilityById(buildMode);if(!def)return;
   const sx=Math.round(x),sz=Math.round(z);
-  if(Math.hypot(sx,sz)>state.mapRadius){toast('領土外です。先に領域拡大を行ってください');return;}
+  if(!territoryClaimAt(sx,sz,.5)){toast('未開放地です。開拓隊で領地を獲得してから建設してください');return;}
   if(!facilityPlacementOk(def,sx,sz))return;
   if(Math.hypot(sx,sz)<5.0){toast('中央広場には建設できません');return;}
   for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存地区に近すぎます');return;}}
@@ -4935,7 +4980,7 @@ function completeDispatch(e){
     showBanner('OCEAN CLAIM','海域制圧',`新しい航路を確保。金 +${gold}　制海力 +${power}`,1700);
   }else if(e.type==='expand'){
     const old=state.mapRadius;
-    const claimRadius=Math.max(4,Number(e.claimRadius)||Math.max(4,(e.workers||1)*4));
+    const claimRadius=1 + Math.max(1,Number(e.workers)||1)*.20;
     if(territoryClaimAt(e.x,e.z,.05)){
       ensurePersonnelState();
       state.personnelByType[e.type]=Math.min(personnelSystem().personnelCap,Math.max(0,state.personnelByType[e.type]||0)+(e.workers||0));
@@ -4949,8 +4994,8 @@ function completeDispatch(e){
     if(!state.territorySites)state.territorySites=[];
     if(!state.territoryClaims)state.territoryClaims=[];
     state.territorySites.push({x:e.x,z:e.z,type:'land'});
-    state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius});
-    addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}を開放しました。`);
+    state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,type:'land',buildable:true});
+    addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
     showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)} の円形領域を開放しました。`,1700);
   }else if(e.type==='hunt'){
     const gold=Math.round(50+e.workers*13+state.era*16);
@@ -5489,7 +5534,9 @@ function getMissionStats(type,workers,x,z){
   for(const [k,v] of Object.entries(info.cost))cost[k]=Math.ceil(v*personnelLoad*ratio*(1+state.era*.018));
   const duration=Math.max(12,18+distance*(1.4/info.speed)-Math.min(12,w*.15)-sys.garrisonLv*1.1);
   /* 領域開放の円は「行動範囲」より小さめ。人数が増えるほど少し広がる。 */
-  const claimRadius=type==='expand' ? Math.max(4,w*4) : 0;
+  // 開拓完了後の「領地」だけは別ルール。基礎1m + 1人ごとに0.2m拡大。
+  // 派遣の移動可能距離(range=4m×人数)とは意図的に分離する。
+  const claimRadius=type==='expand' ? (1 + w*.20) : 0;
   return {origin:origin.facility,distance,range,cost,duration,workers:w,claimRadius};
 }
 
@@ -6836,6 +6883,13 @@ function loadGame(){
     state.huntClaims=Array.isArray(saved.huntClaims)?saved.huntClaims:[];
     state.territorySites=Array.isArray(saved.territorySites)?saved.territorySites:[];
     state.territoryClaims=Array.isArray(saved.territoryClaims)?saved.territoryClaims:[];
+    state.territoryClaims=state.territoryClaims.map(c=>({
+      x:Number(c.x)||0,
+      z:Number(c.z)||0,
+      radius:Math.max(.2,Number(c.radius)||1),
+      type:c.type||'land',
+      buildable:c.buildable!==false
+    }));
     state.constructionQueue=Array.isArray(saved.constructionQueue)?saved.constructionQueue:[];
     state.stats=(saved.stats&&typeof saved.stats==='object')?saved.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
     state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
@@ -7256,9 +7310,11 @@ function updateMissionPreviewFromState(){
   if(title)title.textContent=`${info.title}  出動確認`;
   if(coord)coord.textContent=`${Math.round(m.x)}, ${Math.round(m.z)}`;
   if(biomeEl)biomeEl.textContent=biomeLabel(m.biome||worldBiomeAt(m.x,m.z));
-  if(rangeLabel)rangeLabel.textContent=type==='expand'?'開放範囲':'行動範囲';
+  if(rangeLabel)rangeLabel.textContent=type==='expand'?'完成後の領地':'行動距離';
   const previewRange=missionRangeOnly(type,workers);
-  if(rangeEl)rangeEl.textContent=`半径 ${previewRange.toFixed(1)}`;
+  if(rangeEl)rangeEl.textContent=type==='expand'
+    ?`完成後の領地 半径 ${(1+workers*.20).toFixed(1)}m`
+    :`行動距離 ${previewRange.toFixed(1)}m`;
   if(availableLabel)availableLabel.textContent=`${PERSONNEL_TYPES[type]?.name||'専門隊'} ${fmt(avail)}人`;
   if(wc)wc.textContent=`${workers} 人`;
 
@@ -7307,20 +7363,11 @@ function updateMissionPreviewFromState(){
         target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }
-      const rangeRing=g.userData.rangeRing;
-      if(rangeRing){
-        const rr=Math.max(.5,stats.range);rangeRing.scale.setScalar(rr);rangeRing.position.set(stats.origin.x,.365,stats.origin.z);
-      }
-      const rangeDisk=g.userData.rangeDisk;
-      if(rangeDisk){
-        const rr=Math.max(.5,stats.range);rangeDisk.scale.setScalar(rr);rangeDisk.position.set(stats.origin.x,.34,stats.origin.z);
-      }
-      for(let i=1;i<=3;i++){const guide=g.userData[`rangeGuide${i}`];if(guide)guide.scale.setScalar(Math.max(.5,stats.range*i*.25));}
-      const rangeLabel=g.userData.rangeLabel;
-      if(rangeLabel){
-        rangeLabel.position.set(stats.origin.x,2.7,stats.origin.z-stats.range*.94);
-        rangeLabel.scale.setScalar(Math.max(.8,Math.min(2.4,stats.range/80)));
-        rangeLabel.userData.setText?.(`到達範囲 ${Math.round(stats.range)}m`);
+      // 大きな範囲円は人数選択画面には表示しない。開拓完了後に領地境界として残す。
+      if(type==='expand'){
+        const finalR=1 + workers*.20;
+        if(rangeEl)rangeEl.textContent=`完成後の領地 半径 ${finalR.toFixed(1)}m`;
+        if(note)note.textContent=`派遣完了後、ここを中心に半径 ${finalR.toFixed(1)}m が領地になります。領地内には建物・住宅・住民を配置できます。`;
       }
       const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
       const startDot=g.userData.startDot;if(startDot)startDot.position.set(stats.origin.x,.48,stats.origin.z);
@@ -7368,14 +7415,10 @@ function createMissionPreview(m){
   const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));const len=Math.max(1,dir.length());dir.normalize();
   const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
   const target=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
-  const range=Math.max(.2,m.range||4);
-  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(.997,1,192),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);rangeRing.scale.setScalar(range);g.add(rangeRing);
-  const rangeDisk=new THREE.Mesh(new THREE.CircleGeometry(1,96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));rangeDisk.rotation.x=-Math.PI/2;rangeDisk.position.set(origin.x,.34,origin.z);rangeDisk.scale.setScalar(range);g.add(rangeDisk);
-  for(let i=1;i<=3;i++){const rr=new THREE.Mesh(new THREE.RingGeometry(.998,1,160),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));rr.rotation.x=-Math.PI/2;rr.position.set(origin.x,.35,origin.z);rr.scale.setScalar(range*i*.25);g.add(rr);g.userData[`rangeGuide${i}`]=rr;}
+  // 人数選択中は巨大な範囲円を出さない。目的地の小さなマーカーだけを表示。
   const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.55,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
   const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.23,.12,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
-  const rangeLabel=makeRangeLabel(`到達範囲 ${Math.round(range)}m`,info.color);rangeLabel.position.set(origin.x,2.7,origin.z-range*.94);g.add(rangeLabel);
-  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.rangeDisk=rangeDisk;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.rangeLabel=rangeLabel;g.userData.type=m.type;
+  g.userData.targetRing=target;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
   effectGroup.add(g);missionPreviewGroup=g;updateMissionPreviewFromState();
 }
 

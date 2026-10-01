@@ -1669,7 +1669,7 @@ controls.enablePan=true;
 controls.enableDamping=true;
 controls.dampingFactor=.08;
 
-controls.minZoom=.62;
+controls.minZoom=.06;
 controls.maxZoom=1.8;
 
 controls.target.set(0,0,0);
@@ -1997,6 +1997,24 @@ function addLowPolyTree(parent,x,z,scale=1,variant=0){
     const a=new THREE.Mesh(new THREE.ConeGeometry(.58,1.24,6),crown);a.position.y=1.02;g.add(a);
   }
   parent.add(g);return g;
+}
+
+/* 道路・施設共通の街灯。時代2以降の再生成で必ず利用できるよう共通定義。 */
+function addStreetLamp(parent,x,z,rot=0,scale=1){
+  const g=new THREE.Group();
+  g.position.set(x,0,z); g.rotation.y=rot||0;
+  const poleMat=makeMaterial(state.era>=6?0x4a5660:0x5b5145,.62,.18);
+  const lightMat=makeMaterial(0xfff2bd,.18,.05,0xffd56a,.95);
+  g.add(cyl(.035*scale,.72*scale,poleMat,0,.36*scale,0,7));
+  const arm=box(.22*scale,.028*scale,.028*scale,poleMat,.10*scale,.66*scale,0);
+  arm.rotation.z=-.12; g.add(arm);
+  const lamp=new THREE.Mesh(new THREE.SphereGeometry(.085*scale,8,6),lightMat);
+  lamp.position.set(.18*scale,.61*scale,0); g.add(lamp);
+  if(state.era>=5){
+    const cap=new THREE.Mesh(new THREE.CylinderGeometry(.07*scale,.07*scale,.025*scale,8),poleMat);
+    cap.rotation.z=Math.PI/2; cap.position.set(.18*scale,.67*scale,0); g.add(cap);
+  }
+  parent.add(g); return g;
 }
 
 function addSmokeSource(parent,x,z,era=0){
@@ -2499,47 +2517,53 @@ function buildTerritoryUnionVisual(){
 function rebuildWorldChunks(force=false){
   const tx=Math.floor(controls.target.x/WORLD_CHUNK);
   const tz=Math.floor(controls.target.z/WORLD_CHUNK);
-  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
+  const activeRange=(pendingMission&&Number(pendingMission.range))||0;
+  const streamRadius=Math.min(4,Math.max(WORLD_STREAM_RADIUS,Math.ceil((Math.max(getTerritoryRadius(),activeRange)+WORLD_CHUNK*.5)/WORLD_CHUNK)));
+  const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${Math.round(activeRange)},${state.forestClears.length},${(state.territoryClaims||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
   while(worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
   worldNodeObjects.length=0;
 
-  for(let cx=tx-WORLD_STREAM_RADIUS;cx<=tx+WORLD_STREAM_RADIUS;cx++){
-    for(let cz=tz-WORLD_STREAM_RADIUS;cz<=tz+WORLD_STREAM_RADIUS;cz++){
-      const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
-      const biome=chunkType(cx,cz);
-      const variant=((cx*17+cz*31)%3+3)%3;
-      const ground=makeTerrainGround(biome,x,z,variant);
-      worldGroup.add(ground);
-      if(biome==='sea'){ addSeaChunk(cx,cz); addShoreDetail(cx,cz); }
-      else if(biome==='forest') addForestPatch(cx,cz);
-      else if(biome==='hills') addHillPatch(cx,cz);
-      else if(hash2(cx*7,cz*11)<.23) addLake(cx,cz);
-      if(biome==='plains') addPlainsDetail(cx,cz);
-      addRiverChunk(cx,cz);
-      if(biome==='plains'){
-        for(let i=0;i<6;i++){
-          const a=hash2(cx+i*5,cz-i*3)*Math.PI*2;
-          const rr=10+hash2(cx-i,cz+i)*18;
-          const px=x+Math.cos(a)*rr, pz=z+Math.sin(a)*rr;
-          if(Math.abs(pz-riverCenterX(px))<4.5) continue;
-          addGrassTuft(worldGroup,px,pz,.65+(i%3)*.12,i%2);
-        }
-        if(hash2(cx+13,cz-19)>.48){
-          for(let i=0;i<3;i++){
-            const a=hash2(cx+i*7,cz-i*9)*Math.PI*2,rr=7+hash2(cx-i,cz+i)*16;
-            addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.55+(i%2)*.10,(i+1)%3);
+  for(let cx=tx-streamRadius;cx<=tx+streamRadius;cx++){
+    for(let cz=tz-streamRadius;cz<=tz+streamRadius;cz++){
+      try{
+        const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
+        const biome=renderChunkType(cx,cz);
+        const variant=((cx*17+cz*31)%3+3)%3;
+        worldGroup.add(makeTerrainGround(biome,x,z,variant));
+        if(biome==='sea'){ addSeaChunk(cx,cz); addShoreDetail(cx,cz); }
+        else if(biome==='forest') addForestPatch(cx,cz);
+        else if(biome==='hills') addHillPatch(cx,cz);
+        else if(hash2(cx*7,cz*11)<.23) addLake(cx,cz);
+        if(biome==='plains') addPlainsDetail(cx,cz);
+        addRiverChunk(cx,cz);
+        if(biome==='plains'){
+          for(let i=0;i<6;i++){
+            const a=hash2(cx+i*5,cz-i*3)*Math.PI*2;
+            const rr=10+hash2(cx-i,cz+i)*18;
+            const px=x+Math.cos(a)*rr, pz=z+Math.sin(a)*rr;
+            if(Math.abs(pz-riverCenterX(px))<4.5) continue;
+            addGrassTuft(worldGroup,px,pz,.65+(i%3)*.12,i%2);
+          }
+          if(hash2(cx+13,cz-19)>.48){
+            for(let i=0;i<3;i++){
+              const a=hash2(cx+i*7,cz-i*9)*Math.PI*2,rr=7+hash2(cx-i,cz+i)*16;
+              addLowPolyTree(worldGroup,x+Math.cos(a)*rr,z+Math.sin(a)*rr,.55+(i%2)*.10,(i+1)%3);
+            }
           }
         }
+        addBiomeBoundaryDetail(cx,cz);
+        addWorldLandmark(cx,cz,biome);
+      }catch(err){
+        console.warn('World chunk skipped',cx,cz,err);
+        try{ worldGroup.add(makeTerrainGround('plains',cx*WORLD_CHUNK+32,cz*WORLD_CHUNK+32,0)); }catch(_){ }
       }
-      addBiomeBoundaryDetail(cx,cz);
-      addWorldLandmark(cx,cz,biome);
     }
   }
-  addExternalResourceBelt();
+  try{ addExternalResourceBelt(); }catch(err){ console.warn('External resource belt skipped',err); }
 
-  /* 都市圏の道路網：中央→放射＋環状＋地区接続。住居ロットは道路を避ける。 */
+  /* 都市圏道路：生成規則はgetCityRoadSegmentsに一本化。 */
   const roadMat=new THREE.MeshStandardMaterial({color:ERA_ROAD[state.era]||ERA_ROAD[0],roughness:state.era<5?.88:.62,metalness:state.era>=6?.12:0});
   const sidewalkMat=new THREE.MeshStandardMaterial({color:state.era>=6?0x68747a:0x8a8173,roughness:.94});
   const lineMat=new THREE.MeshBasicMaterial({color:state.era>=6?0xd9e7e9:0xe0c77d,transparent:true,opacity:.68});
@@ -2547,35 +2571,24 @@ function rebuildWorldChunks(force=false){
     const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz); if(len<1)return;
     const angle=Math.atan2(dz,dx),midX=(x1+x2)/2,midZ=(z1+z2)/2;
     const rr=box(len,.11,w,roadMat,midX,.12,midZ); rr.rotation.y=angle; worldGroup.add(rr);
-    const px=-Math.sin(angle),pz=Math.cos(angle);
-    const sw=.16,off=w*.5+.13;
+    const px=-Math.sin(angle),pz=Math.cos(angle),sw=.16,off=w*.5+.13;
     const s1=box(len,.055,sw,sidewalkMat,midX+px*off,.15,midZ+pz*off);s1.rotation.y=angle;worldGroup.add(s1);
     const s2=box(len,.055,sw,sidewalkMat,midX-px*off,.15,midZ-pz*off);s2.rotation.y=angle;worldGroup.add(s2);
-    if(w>=1.65 && len>10){
-      const lm=box(len*.78,.018,.045,lineMat,midX,.182,midZ);lm.rotation.y=angle;worldGroup.add(lm);
-    }
+    if(w>=1.65&&len>10){const lm=box(len*.78,.018,.045,lineMat,midX,.182,midZ);lm.rotation.y=angle;worldGroup.add(lm);}
   };
-  for(const [x1,z1,x2,z2] of getCityRoadSegments()){
-    const d=Math.hypot(x2-x1,z2-z1);
-    addRoadSegment(x1,z1,x2,z2,d>8?1.72:1.28);
-  }
+  for(const seg of getCityRoadSegments()) addRoadSegment(seg[0],seg[1],seg[2],seg[3],Math.hypot(seg[2]-seg[0],seg[3]-seg[1])>8?1.72:1.28);
   if(state.era>=2){
     const limit=Math.min(160,Math.max(22,getUrbanRadius()));
     const ringR=Math.max(11,Math.min(limit*.60,limit-5));
-    for(let i=0;i<16;i+=2){
-      const a=i/16*Math.PI*2;
-      const x=Math.cos(a)*ringR,z=Math.sin(a)*ringR;
-      addStreetLamp(worldGroup,x,z,a+.5,0.7);
-    }
+    for(let i=0;i<16;i+=2){const a=i/16*Math.PI*2;addStreetLamp(worldGroup,Math.cos(a)*ringR,Math.sin(a)*ringR,a+.5,.7);}
   }
 
-  /* 領地の見た目はbuildTerritoryUnionVisualが数値半径を直接描画する。 */
-  const territoryUnion=buildTerritoryUnionVisual();
-  worldGroup.add(territoryUnion);
-
+  worldGroup.add(buildTerritoryUnionVisual());
   for(const site of (state.territorySites||[])) addTerritorySite(site);
-  for(const site of (state.huntClaims||[])) { const ring=new THREE.Mesh(new THREE.RingGeometry(1.1,1.24,18),new THREE.MeshBasicMaterial({color:0xe0a34e,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.set(site.x,.32,site.z); worldGroup.add(ring); }
-
+  for(const site of (state.huntClaims||[])){
+    const ring=new THREE.Mesh(new THREE.RingGeometry(1.1,1.24,18),new THREE.MeshBasicMaterial({color:0xe0a34e,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false}));
+    ring.rotation.x=-Math.PI/2;ring.position.set(site.x,.32,site.z);worldGroup.add(ring);
+  }
 }
 
 function worldBiomeAt(x,z){
@@ -2946,7 +2959,7 @@ function facilityById(id){ return FACILITIES.find(x=>x.id===id); }
 
 function facilityMaxLevel(def){
   /* 全施設を最終的にLv.30まで育てられる。時代に応じて到達可能上限だけ増える。 */
-  return Math.min(30,10+state.era*3);
+  return Math.min(30,10+state.era*5);
 }
 
 function facilityUpgradeCost(f){
@@ -3263,6 +3276,50 @@ function buildFacilityVisual(f,p){
     g.add(cyl(.15,3.2*growth,makeMaterial(0x9dbdcc,.3,.55),0,1.60*growth,0,10));
   }
 
+  /* Lv.1→30の細密成長。3Lv刻みで増築、照明、設備、塔、広場を追加。 */
+  const detailScale=growth;
+  const steel=makeMaterial(state.era>=6?0x596873:0x6b6258,.46,.28);
+  const trim=makeMaterial(state.era>=6?0x87a5b4:0xa08359,.52,.25);
+  const warm=makeMaterial(0xf0d79a,.20,.04,0xe1a74a,.7);
+  if(lv>=2){
+    g.add(box(.42*detailScale,.05*detailScale,.86*detailScale,trim,-.86*detailScale,.58*detailScale,-.88*detailScale));
+    g.add(box(.24*detailScale,.16*detailScale,.05*detailScale,makeMaterial(0x5a463a,.85),0,.25*detailScale,-.98*detailScale));
+  }
+  if(lv>=4){ for(const x of [-1,1])g.add(box(.09*detailScale,.72*detailScale,.09*detailScale,steel,x*1.18*detailScale,.38*detailScale,.72*detailScale)); }
+  if(lv>=7){
+    g.add(box(2.12*detailScale,.055*detailScale,.08*detailScale,trim,0,.74*detailScale,.92*detailScale));
+    for(const x of [-.72,0,.72])addWindow3(g,x*detailScale,1.05*detailScale,.79*detailScale,.19*detailScale,.16*detailScale,p.glass,Math.PI);
+  }
+  if(lv>=10){
+    g.add(box(1.38*detailScale,.72*detailScale,1.12*detailScale,steel,0,1.72*detailScale,0));
+    for(const x of [-.42,0,.42])addWindow3(g,x*detailScale,1.72*detailScale,-.58*detailScale,.18*detailScale,.16*detailScale,p.glass);
+  }
+  if(lv>=13){
+    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){const x=Math.cos(a)*1.18*detailScale,z=Math.sin(a)*1.18*detailScale;g.add(cyl(.045*detailScale,.78*detailScale,trim,x,.46*detailScale,z,7));}
+  }
+  if(lv>=16){
+    const annex=box(.54*detailScale,.66*detailScale,.74*detailScale,steel,1.22*detailScale,.40*detailScale,.20*detailScale);g.add(annex);
+    g.add(box(.62*detailScale,.05*detailScale,.82*detailScale,trim,1.22*detailScale,.76*detailScale,.20*detailScale));
+  }
+  if(lv>=19){
+    g.add(cyl(.14*detailScale,1.65*detailScale,steel,0,1.10*detailScale,0,10));
+    g.add(cyl(.19*detailScale,.10*detailScale,trim,0,1.95*detailScale,0,10));
+  }
+  if(lv>=22){ for(const a of [Math.PI/4,Math.PI*3/4,Math.PI*5/4,Math.PI*7/4])addStreetLamp(g,Math.cos(a)*1.45*detailScale,Math.sin(a)*1.45*detailScale,a,.92*detailScale); }
+  if(lv>=25){
+    const plaza=new THREE.Mesh(new THREE.CylinderGeometry(1.72*detailScale,1.84*detailScale,.055*detailScale,32),makeMaterial(state.era>=6?0x55626d:0x9b8a6d,.72,.12));
+    plaza.position.y=.30*detailScale;g.add(plaza);
+    for(const a of [0,Math.PI/2,Math.PI,Math.PI*1.5]){const beacon=new THREE.Mesh(new THREE.SphereGeometry(.07*detailScale,8,6),warm);beacon.position.set(Math.cos(a)*1.58*detailScale,.72*detailScale,Math.sin(a)*1.58*detailScale);g.add(beacon);}
+  }
+  if(lv>=28){
+    for(const x of [-.72,.72])g.add(cyl(.055*detailScale,1.15*detailScale,steel,x*detailScale,2.18*detailScale,.22*detailScale,8));
+    g.add(box(1.88*detailScale,.045*detailScale,.045*detailScale,warm,0,2.74*detailScale,.22*detailScale));
+  }
+  if(lv>=30){
+    const crown30=new THREE.Mesh(new THREE.TorusGeometry(1.98*detailScale,.10*detailScale,10,36),makeMaterial(0xe0c47b,.24,.55,state.era>=6?0x42d7ff:0xe2a748,.9));
+    crown30.rotation.x=Math.PI/2;crown30.position.y=2.86*detailScale;g.add(crown30);
+  }
+
   /* Lv.1→30の外観進化。建物ごとの個性に加え、都市設備の成長が一目で分かる共通ディテール。 */
   const tier = lv>=30?7:lv>=25?6:lv>=20?5:lv>=15?4:lv>=10?3:lv>=5?2:lv>=2?1:0;
   if(tier>=1){
@@ -3329,7 +3386,7 @@ function rebuildMap(){
   for(const child of [...cityGroup.children]) if(!coreGroups.has(child)) cityGroup.remove(child);
   selectedFacilityRing=null;
   worldStreamKey='';
-  cityGroup.add(residentialGroup,facilityGroup,citizenGroup,effectGroup);
+  cityGroup.add(residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup);
   districtObjects.clear();houseObjects.length=0;facilityObjects.length=0;smokePuffs.length=0;clearCitizens();
   while(constructionGroup.children.length) constructionGroup.remove(constructionGroup.children[0]);
   while(effectGroup.children.length) effectGroup.remove(effectGroup.children[0]);
@@ -3340,10 +3397,13 @@ function rebuildMap(){
   const viewFar=Math.max(1200,Math.min(6000,Math.max(state.mapRadius,state.cityReach+80)*4.5));
   renderer.setClearColor(sky,1);scene.background=new THREE.Color(sky);if(scene.fog){scene.fog.color.setHex(sky);scene.fog.near=Math.max(220,Math.min(900,viewFar*.28));scene.fog.far=viewFar;}
   camera.far=Math.max(1200,viewFar*1.15);camera.updateProjectionMatrix();
-  buildTerrainMap(p);
-  buildResidentialCity(p);
-  buildFacilities(p);
-  rebuildConstructionVisuals(p);
+  try{ buildTerrainMap(p); }catch(err){
+    console.error('Terrain rebuild failed; keeping a guaranteed city ground.',err);
+    try{ worldGroup.add(makeTerrainGround('plains',0,0,0)); }catch(_){ }
+  }
+  try{ buildResidentialCity(p); }catch(err){ console.error('Residential rebuild failed',err); }
+  try{ buildFacilities(p); }catch(err){ console.error('Facility rebuild failed',err); }
+  try{ rebuildConstructionVisuals(p); }catch(err){ console.error('Construction visual rebuild failed',err); }
   for(const d of DISTRICTS){
     const ds=state.districts[d.id];
     if(state.era<d.unlock && ds.level===0) continue;
@@ -5352,9 +5412,7 @@ function getMissionStats(type,workers,x,z){
   for(const [k,v] of Object.entries(info.cost))cost[k]=Math.ceil(v*personnelLoad*ratio*(1+state.era*.018));
   const duration=Math.max(12,18+distance*(1.4/info.speed)-Math.min(12,w*.15)-sys.garrisonLv*1.1);
   /* 領域開放の円は「行動範囲」より小さめ。人数が増えるほど少し広がる。 */
-  const claimRadius=type==='expand'
-    ? Math.max(4,4*w)
-    : 0;
+  const claimRadius=type==='expand' ? Math.max(4,w*4) : 0;
   return {origin:origin.facility,distance,range,cost,duration,workers:w,claimRadius};
 }
 
@@ -5554,7 +5612,7 @@ function simulate(sec){
 
   state.worldTime=(state.worldTime||0)+sec;
   state.discoveryCooldown=Math.max(0,(state.discoveryCooldown||0)-sec);
-  state.cityReach=Math.min(state.mapRadius-3,Math.max(state.cityReach,16+Math.sqrt(Math.max(0,state.pop))*0.72+state.mapExpansion*4));
+  state.cityReach=Math.max(12,Math.min(Math.max(18,state.mapRadius-3),Math.max(state.cityReach,16+Math.sqrt(Math.max(0,state.pop))*0.72+state.mapExpansion*4)));
   if(state.pop>25 && state.discoveryCooldown<=0 && Math.random()<sec*.0022){
     triggerDiscovery();
   }
@@ -7048,18 +7106,37 @@ function hideMissionPanel(){
 }
 window.hideMissionPanel=hideMissionPanel;
 
+let missionViewState=null;
+function fitCameraToMission(range,originX=0,originZ=0,targetX=0,targetZ=0){
+  if(!Number.isFinite(range)||range<=0)return;
+  if(!missionViewState)missionViewState={zoom:camera.zoom,target:controls.target.clone()};
+  const midX=(originX+targetX)/2,midZ=(originZ+targetZ)/2;
+  const span=Math.max(range*2+12,Math.hypot(targetX-originX,targetZ-originZ)+12);
+  const viewH=52;
+  camera.zoom=Math.max(.06,Math.min(1.8,viewH/span));
+  controls.minZoom=.06;
+  controls.target.set(midX,0,midZ);
+  controls.update();camera.updateProjectionMatrix();
+}
+function restoreMissionCamera(){
+  if(!missionViewState)return;
+  camera.zoom=missionViewState.zoom;
+  controls.target.copy(missionViewState.target);
+  controls.minZoom=.06;controls.maxZoom=1.8;
+  controls.update();camera.updateProjectionMatrix();
+  missionViewState=null;
+}
 function removeMissionPreview(){
   if(missionPreviewGroup){
     if(missionPreviewGroup.parent) missionPreviewGroup.parent.remove(missionPreviewGroup);
-    missionPreviewGroup.traverse?.(o=>{
-      if(o.geometry && o.userData?.__missionOwnedGeometry){o.geometry.dispose?.();}
-    });
+    missionPreviewGroup.traverse?.(o=>{ if(o.geometry && o.userData?.__missionOwnedGeometry)o.geometry.dispose?.(); });
     missionPreviewGroup=null;
   }
   if(window.__mapTarget){effectGroup.remove(window.__mapTarget);window.__mapTarget=null;}
   hideMissionPanel();
   pendingMission=null;
   pendingMissionWorkers=1;
+  restoreMissionCamera();
 }
 
 function missionRangeOnly(type,workers){
@@ -7167,9 +7244,17 @@ function updateMissionPreviewFromState(){
       if(rangeRing){
         const rr=Math.max(0.5,stats.range);
         rangeRing.geometry.dispose?.();
-        rangeRing.geometry=new THREE.RingGeometry(Math.max(0.1,rr-.10),rr,96);
+        rangeRing.geometry=new THREE.RingGeometry(Math.max(0.1,rr-.16),rr,144);
         rangeRing.position.set(stats.origin.x,.365,stats.origin.z);
       }
+      const rangeDisk=g.userData.rangeDisk;
+      if(rangeDisk){
+        const rr=Math.max(0.5,stats.range);
+        rangeDisk.geometry.dispose?.();
+        rangeDisk.geometry=new THREE.CircleGeometry(rr,96);
+        rangeDisk.position.set(stats.origin.x,.34,stats.origin.z);
+      }
+      fitCameraToMission(stats.range,stats.origin.x,stats.origin.z,m.x,m.z);
       const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
       const startDot=g.userData.startDot;if(startDot)startDot.position.set(stats.origin.x,.48,stats.origin.z);
     }
@@ -7203,16 +7288,19 @@ function createMissionPreview(m){
   const origin=new THREE.Vector3(m.originX||0,1.05,m.originZ||0);
   const dir=new THREE.Vector3(m.x-(m.originX||0),0,m.z-(m.originZ||0));
   const len=Math.max(1,dir.length());dir.normalize();
-  const arrow=new THREE.ArrowHelper(dir,origin,Math.min(90,len),info.color,Math.min(2.5,1+len*.025),.7);
-  arrow.line.material.transparent=true;arrow.line.material.opacity=.62;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.95;g.add(arrow);
+  const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);
+  arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
   const previewRadius=m.type==='expand'?Math.max(1,m.claimRadius||m.range*.40):1.0;
-  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.96:previewRadius,m.type==='expand'?previewRadius:1.15,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
+  const target=new THREE.Mesh(new THREE.RingGeometry(m.type==='expand'?previewRadius*.94:previewRadius,m.type==='expand'?previewRadius:1.18,72),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.62,side:THREE.DoubleSide,depthWrite:false}));
   target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
-  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(Math.max(.1,(m.range||previewRadius*.4)-.10),Math.max(.2,m.range||previewRadius*.4),96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
+  const range=Math.max(.2,m.range||previewRadius*.4);
+  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(Math.max(.1,range-.16),range,144),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.48,side:THREE.DoubleSide,depthWrite:false}));
   rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);g.add(rangeRing);
-  const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.45,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
-  const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.19,.10,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.35,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
-  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
+  const rangeDisk=new THREE.Mesh(new THREE.CircleGeometry(range,96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.035,side:THREE.DoubleSide,depthWrite:false}));
+  rangeDisk.rotation.x=-Math.PI/2;rangeDisk.position.set(origin.x,.34,origin.z);g.add(rangeDisk);
+  const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.55,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
+  const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.15,.19,.10,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
+  g.userData.targetRing=target;g.userData.rangeRing=rangeRing;g.userData.rangeDisk=rangeDisk;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
   effectGroup.add(g);missionPreviewGroup=g;
   updateMissionPreviewFromState();
 }

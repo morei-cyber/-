@@ -2543,7 +2543,7 @@ function rebuildPersistentExpansionClaims(){
     const x=Number(c.x)||0;
     const z=Number(c.z)||0;
     // 完成後の領地サイズはこの1か所だけで決定する。
-    const cr=getExpansionClaimRadius(c);
+    const cr=expansionVisualRadius(getExpansionClaimWorkers(c));
     if(cr<=0)continue;
     const fill=new THREE.Mesh(
       new THREE.CircleGeometry(cr,96),
@@ -5053,7 +5053,7 @@ function completeDispatch(e){
       // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
       state.territorySites.push({x:e.x,z:e.z,type:'land'});
       const claimWorkers=Math.max(0,Number(e.workers)||0);
-      state.territoryClaims.push({x:e.x,z:e.z,radius:1+claimWorkers*.2,workers:claimWorkers,type:'land',buildable:true});
+      state.territoryClaims.push({x:e.x,z:e.z,radius:1+claimWorkers*.2,workers:claimWorkers,visualRadius:expansionVisualRadius(claimWorkers),type:'land',buildable:true});
       state.mapExpansion++;
       rebuildPersistentExpansionClaims();
       addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
@@ -5598,6 +5598,14 @@ function getExpansionClaimWorkers(claim){
 }
 function getExpansionClaimRadius(claim){
   return expansionClaimRadius(getExpansionClaimWorkers(claim));
+}
+
+// 派遣前→派遣中→制圧後で「見た目の円」が縮まらないよう、
+// 表示半径もこの1か所だけで決める。論理上の領地半径は expansionClaimRadius のまま。
+function expansionVisualRadius(workers){
+  const logical=expansionClaimRadius(workers);
+  // 最低表示半径2m。以前の派遣画面で使われていた見た目の大きさを維持する。
+  return Math.max(2,logical);
 }
 
 function getMissionStats(type,workers,x,z){
@@ -6894,7 +6902,7 @@ function saveGameSilent(){
   if(Array.isArray(state.territoryClaims)){
     state.territoryClaims=state.territoryClaims.map(c=>{
       const workers=getExpansionClaimWorkers(c);
-      return {...c,workers,radius:expansionClaimRadius(workers)};
+      return {...c,workers,radius:expansionClaimRadius(workers),visualRadius:expansionVisualRadius(workers)};
     });
   }
   state.last=Date.now();
@@ -6980,6 +6988,7 @@ function loadGame(){
         z:Number(c.z)||0,
         workers,
         radius:1+workers*.2,
+        visualRadius:expansionVisualRadius(workers),
         type:c.type||'land',
         buildable:c.buildable!==false
       };
@@ -7453,7 +7462,7 @@ function updateMissionPreviewFromState(){
       if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(110,dlen),Math.min(3.0,1+dlen*.024),.7);}
       const target=g.userData.targetRing;
       if(target){
-        const visualRadius=type==='expand'?1:Math.max(1,Math.min(8,stats.range*.035));
+        const visualRadius=type==='expand'?expansionVisualRadius(workers):Math.max(1,Math.min(8,stats.range*.035));
         target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }
@@ -7696,7 +7705,7 @@ function makeExpeditionVisual(e){
   // 開拓隊の到着予定領地は「1m + 0.2m×人数」をそのままワールド寸法にする。
   // 固定2m/4.5mなどの下限は設けない。派遣前・派遣中・制圧後で同じ半径を使う。
   const targetRadius=e.type==='expand'
-    ? expansionClaimRadius(e.workers)
+    ? expansionVisualRadius(e.workers)
     : 1.05;
   const targetFill=new THREE.Mesh(
     new THREE.CircleGeometry(targetRadius,64),

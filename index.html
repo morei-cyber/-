@@ -5479,9 +5479,9 @@ function getMissionStats(type,workers,x,z){
   const origin=findNearestGarrison(x,z);
   if(!origin)return null;
   const w=Math.max(1,Number(workers)||1);
-  const personnelRange=4*w;
-  const supportBonus=sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
-  const range=personnelRange+supportBonus;
+  // 行動半径は常に「人数 × 4m」。
+  // 見た目の円もこの値をそのままワールド単位で使用する。
+  const range=4*w;
   const distance=origin.distance;
   const ratio=Math.max(.7,1+Math.max(0,distance-range)*.045);
   const personnelLoad=1+w*.115;
@@ -7184,23 +7184,13 @@ function hideMissionPanel(){
 window.hideMissionPanel=hideMissionPanel;
 
 let missionViewState=null;
-function fitCameraToMission(range,originX=0,originZ=0,targetX=0,targetZ=0){
-  if(!Number.isFinite(range)||range<=0)return;
-  if(!missionViewState)missionViewState={zoom:camera.zoom,target:controls.target.clone()};
-  const midX=(originX+targetX)/2,midZ=(originZ+targetZ)/2;
-  const span=Math.max(range*2+12,Math.hypot(targetX-originX,targetZ-originZ)+12);
-  const viewH=52;
-  camera.zoom=Math.max(.06,Math.min(1.8,viewH/span));
-  controls.minZoom=.06;
-  controls.target.set(midX,0,midZ);
-  controls.update();camera.updateProjectionMatrix();
+// 派遣範囲を表示するためにカメラを勝手に縮小しない。
+// 範囲円はワールド座標そのものの大きさで描画し、プレイヤーの視点を維持する。
+function fitCameraToMission(){
+  // 意図的に何もしない。旧実装では半径に合わせて camera.zoom を下げ、
+  // 「円が広がらず、マップだけが縮小する」現象を起こしていた。
 }
 function restoreMissionCamera(){
-  if(!missionViewState)return;
-  camera.zoom=missionViewState.zoom;
-  controls.target.copy(missionViewState.target);
-  controls.minZoom=.06;controls.maxZoom=1.8;
-  controls.update();camera.updateProjectionMatrix();
   missionViewState=null;
 }
 function removeMissionPreview(){
@@ -7222,8 +7212,7 @@ function missionRangeOnly(type,workers){
   const sys=personnelSystem();
   const w=Math.max(1,Number(workers)||1);
   const personnelRange=4*w;
-  const supportBonus=sys.rangeBonus+sys.academyLv*1.15+sys.trainingGroundLv*.55+Math.max(0,sys.garrisonLv-1)*2.2;
-  return personnelRange+supportBonus;
+  return 4*w;
 }
 
 function updateMissionPreviewFromState(){
@@ -7333,7 +7322,6 @@ function updateMissionPreviewFromState(){
         rangeLabel.scale.setScalar(Math.max(.8,Math.min(2.4,stats.range/80)));
         rangeLabel.userData.setText?.(`到達範囲 ${Math.round(stats.range)}m`);
       }
-      fitCameraToMission(stats.range,stats.origin.x,stats.origin.z,m.x,m.z);
       const dot=g.userData.dot;if(dot)dot.position.set(m.x,.48,m.z);
       const startDot=g.userData.startDot;if(startDot)startDot.position.set(stats.origin.x,.48,stats.origin.z);
     }
@@ -7381,9 +7369,9 @@ function createMissionPreview(m){
   const arrow=new THREE.ArrowHelper(dir,origin,Math.min(110,len),info.color,Math.min(3.2,1+len*.025),.7);arrow.line.material.transparent=true;arrow.line.material.opacity=.72;arrow.cone.material.transparent=true;arrow.cone.material.opacity=.98;g.add(arrow);
   const target=new THREE.Mesh(new THREE.RingGeometry(.92,1,64),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));target.rotation.x=-Math.PI/2;target.position.set(m.x,.40,m.z);g.add(target);
   const range=Math.max(.2,m.range||4);
-  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(.992,1,160),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.82,side:THREE.DoubleSide,depthWrite:false}));rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);rangeRing.scale.setScalar(range);g.add(rangeRing);
+  const rangeRing=new THREE.Mesh(new THREE.RingGeometry(.997,1,192),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.92,side:THREE.DoubleSide,depthWrite:false}));rangeRing.rotation.x=-Math.PI/2;rangeRing.position.set(origin.x,.365,origin.z);rangeRing.scale.setScalar(range);g.add(rangeRing);
   const rangeDisk=new THREE.Mesh(new THREE.CircleGeometry(1,96),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.055,side:THREE.DoubleSide,depthWrite:false}));rangeDisk.rotation.x=-Math.PI/2;rangeDisk.position.set(origin.x,.34,origin.z);rangeDisk.scale.setScalar(range);g.add(rangeDisk);
-  for(let i=1;i<=3;i++){const rr=new THREE.Mesh(new THREE.RingGeometry(.996,1,128),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));rr.rotation.x=-Math.PI/2;rr.position.set(origin.x,.35,origin.z);rr.scale.setScalar(range*i*.25);g.add(rr);g.userData[`rangeGuide${i}`]=rr;}
+  for(let i=1;i<=3;i++){const rr=new THREE.Mesh(new THREE.RingGeometry(.998,1,160),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));rr.rotation.x=-Math.PI/2;rr.position.set(origin.x,.35,origin.z);rr.scale.setScalar(range*i*.25);g.add(rr);g.userData[`rangeGuide${i}`]=rr;}
   const dot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.24,.13,12),new THREE.MeshStandardMaterial({color:info.color,emissive:info.color,emissiveIntensity:.55,roughness:.25}));dot.position.set(m.x,.48,m.z);g.add(dot);
   const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.23,.12,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
   const rangeLabel=makeRangeLabel(`到達範囲 ${Math.round(range)}m`,info.color);rangeLabel.position.set(origin.x,2.7,origin.z-range*.94);g.add(rangeLabel);

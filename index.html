@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>文明都市放置記｜MEGA CITY</title>
+<title>領地拡張・根本修正版 | 文明都市放置記｜MEGA CITY</title>
 <style>
 :root{
   --bg:#080b12;
@@ -2089,7 +2089,7 @@ function getUrbanRadius(){
 function getWorldExtentRadius(){
   let extent=Math.max(getTerritoryRadius(),getUrbanRadius(),64);
   for(const claim of (state.territoryClaims||[])){
-    const x=Number(claim.x)||0,z=Number(claim.z)||0,r=Math.max(0,Number(claim.radius)||0);
+    const x=Number(claim.x)||0,z=Number(claim.z)||0,r=getExpansionClaimRadius(claim);
     extent=Math.max(extent,Math.hypot(x,z)+r+24);
   }
   for(const e of (state.expeditions||[])){
@@ -2106,7 +2106,7 @@ function isInsideCityTerritory(x,z,padding=0){
   const xx=Number(x)||0, zz=Number(z)||0;
   if(Math.hypot(xx,zz) <= Math.max(0,getTerritoryRadius()-padding)) return true;
   for(const claim of (state.territoryClaims||[])){
-    const cr=Math.max(0,Number(claim.radius)||0)-padding;
+    const cr=getExpansionClaimRadius(claim)-padding;
     if(cr>0 && Math.hypot(xx-(Number(claim.x)||0),zz-(Number(claim.z)||0)) <= cr) return true;
   }
   return false;
@@ -2543,10 +2543,7 @@ function rebuildPersistentExpansionClaims(){
     const x=Number(c.x)||0;
     const z=Number(c.z)||0;
     // 完成後の領地サイズはこの1か所だけで決定する。
-    const workers=Math.max(0,Number(c.workers)||0);
-    const cr=Number.isFinite(Number(c.radius)) && Number(c.radius)>0
-      ? Number(c.radius)
-      : (1 + workers*0.2);
+    const cr=getExpansionClaimRadius(c);
     if(cr<=0)continue;
     const fill=new THREE.Mesh(
       new THREE.CircleGeometry(cr,96),
@@ -2602,21 +2599,8 @@ function buildTerritoryUnionVisual(){
     guide.rotation.x=-Math.PI/2;guide.position.set(0,.35,0);guide.renderOrder=4;group.add(guide);
   }
 
-  // 開拓完了後の領地は、基礎領地の内側にあっても必ず描画する。
-  // 以前は「基礎領地の内側ならcontinue」で消していたため、制圧後に
-  // 見た目が変わらない原因になっていた。
-  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
-  for(const c of claims){
-    const x=Number(c.x)||0,z=Number(c.z)||0,cr=Math.max(.2,Number(c.radius)||.2);
-    const disk=new THREE.Mesh(new THREE.CircleGeometry(cr,64),new THREE.MeshBasicMaterial({color:0xe6c36b,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));
-    disk.rotation.x=-Math.PI/2;disk.position.set(x,.37,z);disk.renderOrder=7;group.add(disk);
-
-    const ring=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr-.10),cr,96),new THREE.MeshBasicMaterial({color:0xf0c66d,transparent:true,opacity:.98,side:THREE.DoubleSide,depthWrite:false}));
-    ring.rotation.x=-Math.PI/2;ring.position.set(x,.43,z);ring.renderOrder=9;group.add(ring);
-
-    const inner=new THREE.Mesh(new THREE.RingGeometry(Math.max(.01,cr*.72-.05),Math.max(.01,cr*.72),64),new THREE.MeshBasicMaterial({color:0xf5d88a,transparent:true,opacity:.36,side:THREE.DoubleSide,depthWrite:false}));
-    inner.rotation.x=-Math.PI/2;inner.position.set(x,.42,z);inner.renderOrder=8;group.add(inner);
-  }
+  // 開拓完了後の領地は territoryClaimGroup だけで描画する。
+  // ここでは二重描画しない。
   return group;
 }
 
@@ -2797,7 +2781,7 @@ function getCityRoadSegments(){
   // 開拓済みの追加領地には「支線＋小さな街区」を作る。
   // これで獲得した領地の中にも住宅・人・施設を置ける街路が生まれる。
   for(const claim of (state.territoryClaims||[])){
-    const cx=Number(claim.x)||0, cz=Number(claim.z)||0, rr=Math.max(.8,Number(claim.radius)||.8);
+    const cx=Number(claim.x)||0, cz=Number(claim.z)||0, rr=Math.max(.8,getExpansionClaimRadius(claim));
     if(!Number.isFinite(cx)||!Number.isFinite(cz)||rr<.8) continue;
 
     // 現在までに生成した道路のうち最も近い地点を探す。
@@ -2860,7 +2844,7 @@ function cityPlacementClear(x,z,r=2.2){
 
 function makeHouseLots(){
   const lots=[];
-  const claimMax=(state.territoryClaims||[]).reduce((m,c)=>Math.max(m,Math.hypot(Number(c.x)||0,Number(c.z)||0)+Math.max(0,Number(c.radius)||0)),0);
+  const claimMax=(state.territoryClaims||[]).reduce((m,c)=>Math.max(m,Math.hypot(Number(c.x)||0,Number(c.z)||0)+getExpansionClaimRadius(c)),0);
   const r=Math.min(320,Math.max(24,getUrbanRadius()-2,claimMax+8));
   const spacing=5.8;
   let id=0;
@@ -2870,7 +2854,7 @@ function makeHouseLots(){
       if(Math.hypot(x,z)<6.2 || Math.hypot(x,z)>r)continue;
       // 完成済み領地の中だけ住宅候補を作る。未開拓の森林・鉱山地帯には作らない。
       if(!isInsideCityTerritory(x,z,.45)) continue;
-      const inExpansionClaim=(state.territoryClaims||[]).some(c=>Math.hypot(x-(Number(c.x)||0),z-(Number(c.z)||0)) <= Math.max(0,Number(c.radius)||0)+.01);
+      const inExpansionClaim=(state.territoryClaims||[]).some(c=>Math.hypot(x-(Number(c.x)||0),z-(Number(c.z)||0)) <= getExpansionClaimRadius(c)+.01);
       if(!inExpansionClaim && cityRoadDistance(x,z)<2.15)continue;
       let bad=false;
       for(const d of DISTRICTS){
@@ -5068,7 +5052,8 @@ function completeDispatch(e){
       // 基礎都市領地(state.mapRadius)は変えず、開拓地点そのものだけを新領地化する。
       // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
       state.territorySites.push({x:e.x,z:e.z,type:'land'});
-      state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,workers:Number(e.workers)||0,type:'land',buildable:true});
+      const claimWorkers=Math.max(0,Number(e.workers)||0);
+      state.territoryClaims.push({x:e.x,z:e.z,radius:1+claimWorkers*.2,workers:claimWorkers,type:'land',buildable:true});
       state.mapExpansion++;
       rebuildPersistentExpansionClaims();
       addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
@@ -5599,6 +5584,20 @@ function expansionClaimRadius(workers){
   // 完成後の領地サイズの唯一の基準値。
   // 基礎1m + 1人につき0.2m。派遣行動範囲(4m/人)とは別物。
   return 1 + Math.max(0,Number(workers)||0)*.20;
+}
+
+// 保存データ・描画・建築判定・道路生成で同じ領地半径を使うための共通関数。
+// 旧セーブにworkersが無い場合だけ、旧radiusから人数を復元する。
+function getExpansionClaimWorkers(claim){
+  if(!claim)return 0;
+  const w=Number(claim.workers);
+  if(Number.isFinite(w) && w>0)return Math.max(0,w);
+  const oldR=Number(claim.radius);
+  if(Number.isFinite(oldR) && oldR>1)return Math.max(0,(oldR-1)/.2);
+  return 0;
+}
+function getExpansionClaimRadius(claim){
+  return expansionClaimRadius(getExpansionClaimWorkers(claim));
 }
 
 function getMissionStats(type,workers,x,z){
@@ -6891,6 +6890,13 @@ function renderAll(){
 ========================================================= */
 
 function saveGameSilent(){
+  // セーブ直前にも領地半径を正規化し、古い/外部変更されたradiusが残らないようにする。
+  if(Array.isArray(state.territoryClaims)){
+    state.territoryClaims=state.territoryClaims.map(c=>{
+      const workers=getExpansionClaimWorkers(c);
+      return {...c,workers,radius:expansionClaimRadius(workers)};
+    });
+  }
   state.last=Date.now();
   localStorage.setItem('civilization_city_idle',JSON.stringify(state));
 }
@@ -6966,13 +6972,18 @@ function loadGame(){
     state.huntClaims=Array.isArray(saved.huntClaims)?saved.huntClaims:[];
     state.territorySites=Array.isArray(saved.territorySites)?saved.territorySites:[];
     state.territoryClaims=Array.isArray(saved.territoryClaims)?saved.territoryClaims:[];
-    state.territoryClaims=state.territoryClaims.map(c=>({
-      x:Number(c.x)||0,
-      z:Number(c.z)||0,
-      radius:Math.max(.2,Number(c.radius)||1),
-      type:c.type||'land',
-      buildable:c.buildable!==false
-    }));
+    state.territoryClaims=state.territoryClaims.map(c=>{
+      const oldRadius=Math.max(1,Number(c.radius)||1);
+      const workers=Math.max(0,Number(c.workers)||Math.round((oldRadius-1)/.2));
+      return {
+        x:Number(c.x)||0,
+        z:Number(c.z)||0,
+        workers,
+        radius:1+workers*.2,
+        type:c.type||'land',
+        buildable:c.buildable!==false
+      };
+    });
     state.constructionQueue=Array.isArray(saved.constructionQueue)?saved.constructionQueue:[];
     state.stats=(saved.stats&&typeof saved.stats==='object')?saved.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
     state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
@@ -7527,7 +7538,7 @@ function territoryClaimAt(x,z,padding=0){
     return {x:0,z:0,radius:getTerritoryRadius(),type:'city'};
   }
   for(const claim of (state.territoryClaims||[])){
-    const cr=Math.max(0,Number(claim.radius)||0)-padding;
+    const cr=getExpansionClaimRadius(claim)-padding;
     if(Math.hypot(x-(Number(claim.x)||0),z-(Number(claim.z)||0))<cr){
       return claim;
     }

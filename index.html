@@ -7394,7 +7394,7 @@ function updateMissionPreviewFromState(){
       if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(110,dlen),Math.min(3.0,1+dlen*.024),.7);}
       const target=g.userData.targetRing;
       if(target){
-        const visualRadius=type==='expand'?Math.max(2,stats.claimRadius||previewRange*.40):Math.max(2.2,Math.min(8,stats.range*.035));
+        const visualRadius=type==='expand'?Math.max(0.1,Number(stats.claimRadius)||expansionClaimRadius(workers)):Math.max(1,Math.min(8,stats.range*.035));
         target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }
@@ -7564,7 +7564,7 @@ function confirmPendingMission(){
   ensurePersonnelState();
   state.personnelByType[m.type]=Math.max(0,(state.personnelByType[m.type]||0)-m.workers);
   state.trainedPersonnel=state.unassignedPersonnel;
-  const e={id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type:m.type,x:m.x,z:m.z,nodeId:m.nodeId,workers:m.workers,duration:m.duration,remaining:m.duration,claimRadius:m.type==='expand'?(fresh.claimRadius||m.claimRadius||5):0,originId:fresh.origin.id,originX:fresh.origin.x,originZ:fresh.origin.z};
+  const e={id:`exp_${Date.now()}_${Math.floor(Math.random()*99999)}`,type:m.type,x:m.x,z:m.z,nodeId:m.nodeId,workers:m.workers,duration:m.duration,remaining:m.duration,claimRadius:m.type==='expand'?expansionClaimRadius(m.workers):0,originId:fresh.origin.id,originX:fresh.origin.x,originZ:fresh.origin.z};
   // 開拓隊の完成領地半径を派遣開始時点でも固定保存する。
   // これを毎回別計算しないことで「派遣前は大きいのに開始後に固定の小円へ戻る」を防ぐ。
   if(m.type==='expand') e.claimRadius=expansionClaimRadius(m.workers);
@@ -7634,19 +7634,28 @@ function makeExpeditionVisual(e){
   const arrow=new THREE.ArrowHelper(dir,new THREE.Vector3(ox,1.04,oz),Math.max(1,Math.min(110,distance)),info.color,Math.min(2.6,1+distance*.024),.72);
   arrow.line.material.transparent=true;arrow.line.material.opacity=.28;
   arrow.cone.material.transparent=true;arrow.cone.material.opacity=.68;root.add(arrow);
-  // 開拓地の円は完成領地と同じ実寸を使う。固定の4.5m最小値は置かない。
+  // 開拓隊の到着予定領地は「1m + 0.2m×人数」をそのままワールド寸法にする。
+  // 固定2m/4.5mなどの下限は設けない。派遣前・派遣中・制圧後で同じ半径を使う。
   const targetRadius=e.type==='expand'
-    ? Math.max(.2,Number(e.claimRadius)|| (1 + Math.max(1,Number(e.workers)||1)*.20))
+    ? expansionClaimRadius(e.workers)
     : 1.05;
-  const targetRing=new THREE.Mesh(new THREE.RingGeometry(targetRadius*.88,targetRadius,48),new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false}));
-  targetRing.rotation.x=-Math.PI/2;targetRing.position.set(e.x,.36,e.z);root.add(targetRing);
+  const targetFill=new THREE.Mesh(
+    new THREE.CircleGeometry(targetRadius,64),
+    new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:e.type==='expand'?.10:.04,side:THREE.DoubleSide,depthWrite:false})
+  );
+  targetFill.rotation.x=-Math.PI/2;targetFill.position.set(e.x,.35,e.z);targetFill.renderOrder=6;root.add(targetFill);
+  const targetRing=new THREE.Mesh(
+    new THREE.RingGeometry(Math.max(.01,targetRadius-.10),targetRadius,96),
+    new THREE.MeshBasicMaterial({color:info.color,transparent:true,opacity:.90,side:THREE.DoubleSide,depthWrite:false})
+  );
+  targetRing.rotation.x=-Math.PI/2;targetRing.position.set(e.x,.42,e.z);targetRing.renderOrder=9;root.add(targetRing);
   const unit=makeExpeditionWorkerVisual(e);
   root.add(unit);
   const countLabel=document.createElement('canvas');countLabel.width=256;countLabel.height=72;
   const ctx=countLabel.getContext('2d');ctx.clearRect(0,0,256,72);ctx.fillStyle='rgba(8,13,20,.82)';ctx.beginPath();ctx.roundRect(8,8,240,56,18);ctx.fill();ctx.font='bold 32px sans-serif';ctx.fillStyle='#f3dfad';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${e.workers||0}人`,128,37);
   const tex=new THREE.CanvasTexture(countLabel);tex.colorSpace=THREE.SRGBColorSpace;
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));label.scale.set(3.2,.9,1);label.position.set(0,2.0,0);root.add(label);
-  root.userData={expeditionId:e.id,unit,targetRing,origin:new THREE.Vector3(ox,.52,oz),label,count:e.workers||0};
+  root.userData={expeditionId:e.id,unit,targetRing,targetFill,origin:new THREE.Vector3(ox,.52,oz),label,count:e.workers||0,claimRadius:targetRadius};
   return root;
 }
 
@@ -7673,8 +7682,11 @@ function animateExpeditions(dt,t){
       unit.rotation.y=Math.atan2(ez-sz,ex-sx);
     }
     if(g.userData.label) g.userData.label.position.set(0,2.0+Math.sin(t*.004)*.05,0);
+    const pulse=1+Math.sin(t*.005+progress*5)*.045;
     const ring=g.userData.targetRing;
-    if(ring){ring.scale.setScalar(1+Math.sin(t*.005+progress*5)*.10);ring.material.opacity=.24+Math.sin(t*.005+progress*5)*.10;}
+    const fill=g.userData.targetFill;
+    if(ring){ring.scale.setScalar(pulse);ring.material.opacity=.82+Math.sin(t*.005+progress*5)*.10;}
+    if(fill){fill.scale.setScalar(pulse);fill.material.opacity=.10+Math.sin(t*.005+progress*5)*.025;}
   }
   for(let i=expeditionObjects.length-1;i>=0;i--){
     const g=expeditionObjects[i];

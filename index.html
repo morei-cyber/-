@@ -1729,7 +1729,9 @@ const facilityGroup=new THREE.Group();
 const constructionGroup=new THREE.Group();
 const citizenGroup=new THREE.Group();
 const effectGroup=new THREE.Group();
+const territoryClaimGroup=new THREE.Group();
 const worldGroup=new THREE.Group();
+scene.add(territoryClaimGroup);
 scene.add(worldGroup);
 cityGroup.add(residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup);
 
@@ -2533,6 +2535,50 @@ function addTerritorySite(site){
    重複する開放円を1枚の「領域」にまとめ、重なり部分が濃くならないようにする
 ========================================================= */
 
+function rebuildPersistentExpansionClaims(){
+  if(!territoryClaimGroup)return;
+  clearGroupContents(territoryClaimGroup);
+  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
+  for(const c of claims){
+    const x=Number(c.x)||0;
+    const z=Number(c.z)||0;
+    // 完成後の領地サイズはこの1か所だけで決定する。
+    const workers=Math.max(0,Number(c.workers)||0);
+    const cr=Number.isFinite(Number(c.radius)) && Number(c.radius)>0
+      ? Number(c.radius)
+      : (1 + workers*0.2);
+    if(cr<=0)continue;
+    const fill=new THREE.Mesh(
+      new THREE.CircleGeometry(cr,96),
+      new THREE.MeshBasicMaterial({color:0xe6c36b,transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false})
+    );
+    fill.rotation.x=-Math.PI/2;
+    fill.position.set(x,.58,z);
+    fill.renderOrder=80;
+    territoryClaimGroup.add(fill);
+    const ring=new THREE.Mesh(
+      new THREE.RingGeometry(Math.max(.001,cr-.12),cr,128),
+      new THREE.MeshBasicMaterial({color:0xffd66f,transparent:true,opacity:.98,side:THREE.DoubleSide,depthWrite:false})
+    );
+    ring.rotation.x=-Math.PI/2;
+    ring.position.set(x,.64,z);
+    ring.renderOrder=82;
+    territoryClaimGroup.add(ring);
+    const inner=new THREE.Mesh(
+      new THREE.RingGeometry(Math.max(.001,cr*.72-.055),Math.max(.001,cr*.72),96),
+      new THREE.MeshBasicMaterial({color:0xffe4a0,transparent:true,opacity:.32,side:THREE.DoubleSide,depthWrite:false})
+    );
+    inner.rotation.x=-Math.PI/2;
+    inner.position.set(x,.63,z);
+    inner.renderOrder=81;
+    territoryClaimGroup.add(inner);
+    const label=makeRangeLabel(`領地 ${cr.toFixed(1)}m`,0xffd66f);
+    label.position.set(x,2.2,z);
+    label.renderOrder=90;
+    territoryClaimGroup.add(label);
+  }
+}
+
 function buildTerritoryUnionVisual(){
   const group=new THREE.Group();
   const r=getTerritoryRadius();
@@ -2652,6 +2698,7 @@ function rebuildWorldChunks(force=false){
     const ring=new THREE.Mesh(new THREE.RingGeometry(1.1,1.24,18),new THREE.MeshBasicMaterial({color:0xe0a34e,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false}));
     ring.rotation.x=-Math.PI/2;ring.position.set(site.x,.32,site.z);worldGroup.add(ring);
   }
+  rebuildPersistentExpansionClaims();
 }
 
 function worldBiomeAt(x,z){
@@ -5021,8 +5068,9 @@ function completeDispatch(e){
       // 基礎都市領地(state.mapRadius)は変えず、開拓地点そのものだけを新領地化する。
       // これで「派遣先まで都市全体の円が伸びて小さく見える」現象を防ぐ。
       state.territorySites.push({x:e.x,z:e.z,type:'land'});
-      state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,type:'land',buildable:true});
+      state.territoryClaims.push({x:e.x,z:e.z,radius:claimRadius,workers:Number(e.workers)||0,type:'land',buildable:true});
       state.mapExpansion++;
+      rebuildPersistentExpansionClaims();
       addLog(`🗺 領域拡大隊が帰還。中心(${Math.round(e.x)},${Math.round(e.z)})の半径${claimRadius.toFixed(1)}mを開放しました。`);
       showBanner('TERRITORY EXPANSION','新領土を獲得',`開拓隊が現地へ到達。半径 ${claimRadius.toFixed(1)}m の領地を開放しました。`,1700);
     }
@@ -5550,7 +5598,7 @@ function missionBaseInfo(type){
 function expansionClaimRadius(workers){
   // 完成後の領地サイズの唯一の基準値。
   // 基礎1m + 1人につき0.2m。派遣行動範囲(4m/人)とは別物。
-  return 1 + Math.max(1,Number(workers)||1)*.20;
+  return 1 + Math.max(0,Number(workers)||0)*.20;
 }
 
 function getMissionStats(type,workers,x,z){
@@ -7394,7 +7442,7 @@ function updateMissionPreviewFromState(){
       if(arr){arr.position.set(stats.origin.x,1.05,stats.origin.z);arr.setDirection(dir);arr.setLength(Math.min(110,dlen),Math.min(3.0,1+dlen*.024),.7);}
       const target=g.userData.targetRing;
       if(target){
-        const visualRadius=type==='expand'?Math.max(0.1,Number(stats.claimRadius)||expansionClaimRadius(workers)):Math.max(1,Math.min(8,stats.range*.035));
+        const visualRadius=type==='expand'?1:Math.max(1,Math.min(8,stats.range*.035));
         target.scale.setScalar(visualRadius);
         target.position.set(m.x,.40,m.z);
       }

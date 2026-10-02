@@ -707,6 +707,7 @@ button{
 
 
 .world-mode-pulse{animation:worldPulse 1.1s ease-in-out infinite alternate}
+#landModeBtn.active{outline:2px solid rgba(255,220,120,.55);box-shadow:0 0 18px rgba(255,220,120,.22);transform:translateY(-1px)}
 @keyframes worldPulse{from{box-shadow:0 0 0 rgba(255,218,132,0)}to{box-shadow:0 0 28px rgba(255,218,132,.22)}}
 
 .mission-panel.hidden{display:none!important;pointer-events:none!important}.mission-panel{position:absolute;right:16px;top:84px;width:min(350px,calc(100% - 32px));max-height:calc(100% - 112px);overflow:auto;padding:13px;border:1px solid rgba(255,255,255,.16);border-radius:16px;background:rgba(8,13,19,.95);backdrop-filter:blur(16px);box-shadow:0 18px 60px rgba(0,0,0,.42);z-index:100;display:none;pointer-events:auto;isolation:isolate}.mission-panel.show{display:block!important}.mission-panel.show{display:block}.mission-kicker{font-size:9px;letter-spacing:.14em;color:#d7bd79;font-weight:1000}.mission-title{font-size:17px;font-weight:1000;margin-top:3px}.mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px}.mission-stat{padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.045)}.mission-label{font-size:8px;color:#8f9aaa}.mission-value{font-size:12px;font-weight:1000;margin-top:2px}.mission-route{font-size:10px;color:#c4ccd6;line-height:1.55;margin-top:8px}.mission-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.mission-btn{border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px;background:#171d27;color:#eef2f6;font-weight:1000;cursor:pointer}.mission-btn.confirm{background:linear-gradient(135deg,#e9c46b,#a96f31);color:#171108;border:0}.world-route-note{font-size:9px;color:#9aa5b3;margin-top:7px}.mission-workers{margin-top:9px;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}.mission-workers-head{display:flex;justify-content:space-between;align-items:center;font-size:9px;color:#a8b2bf}.worker-stepper{display:grid;grid-template-columns:34px 1fr 34px;gap:7px;align-items:center;margin-top:7px}.worker-stepper button{height:30px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#18202a;color:#eef2f6;font-size:15px;font-weight:1000;cursor:pointer}.worker-slider{width:100%;accent-color:#e7c46e}.worker-count{font-size:16px;font-weight:1000;text-align:center}.mission-mini{font-size:8px;color:#818c9a;margin-top:5px;line-height:1.45}.personnel-card{padding:10px 11px;border-radius:12px;background:linear-gradient(135deg,rgba(89,111,135,.16),rgba(218,170,94,.08));border:1px solid rgba(255,255,255,.08);margin-bottom:8px}.personnel-card .pc-row{display:flex;justify-content:space-between;align-items:center;gap:8px}.personnel-big{font-size:19px;font-weight:1000;letter-spacing:.02em}.personnel-sub{font-size:9px;color:#98a4b2}.personnel-bar{height:5px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:7px}.personnel-bar>i{display:block;height:100%;background:linear-gradient(90deg,#a9d18e,#e6c56e);border-radius:99px}
@@ -791,6 +792,7 @@ button{
       <div class="top-actions">
         <button class="top-action" type="button" onclick="openOverview('summary')">📋 一覧</button>
         <button class="top-action" type="button" onclick="openOverview('build')">🏗 建築</button>
+        <button class="top-action" id="landModeBtn" type="button" onclick="toggleLandMode()" aria-pressed="false">🧭 開拓モード</button>
       </div>
 
     </div>
@@ -4976,43 +4978,133 @@ function placeFacilityAt(x,z){
   toast(`${def.icon}${def.name} 建設開始：完成まで約${duration}秒`);
 }
 
+function updateDispatchModeUI(){
+  const btn=document.getElementById('landModeBtn');
+  const el=document.getElementById('worldMode');
+  const expand=dispatchMode==='expand';
+  if(btn){
+    btn.textContent=expand?'🧭 開拓モード中':'🧭 開拓モード';
+    btn.classList.toggle('active',expand);
+    btn.setAttribute('aria-pressed',expand?'true':'false');
+  }
+  if(el){
+    if(dispatchMode){
+      el.style.display='block';
+      el.classList.add('world-mode-pulse');
+      el.textContent=expand?'開拓先をマップで選択':'派遣先をマップで選択';
+    }else{
+      el.style.display='none';
+      el.classList.remove('world-mode-pulse');
+    }
+  }
+}
+
+function toggleLandMode(){
+  dispatchMode=dispatchMode==='expand'?null:'expand';
+  removeMissionPreview();
+  updateDispatchModeUI();
+  toast(dispatchMode==='expand'?'開拓モード：未開放の陸地をタップしてください':'開拓モードを解除しました');
+}
+window.toggleLandMode=toggleLandMode;
+
 function startTerritoryExpansion(){
-  toast('マップをタップすると必要に応じて開拓隊を自動選択します');
+  dispatchMode='expand';
+  removeMissionPreview();
+  updateDispatchModeUI();
+  toast('開拓モード：未開放の陸地をタップしてください');
 }
 window.startTerritoryExpansion=startTerritoryExpansion;
+
 function startDispatch(type){
-  toast('隊種はマップの地形と位置から自動選択されます');
+  dispatchMode=type||null;
+  removeMissionPreview();
+  updateDispatchModeUI();
+  const info=dispatchMode?missionTypeInfo(dispatchMode):null;
+  toast(dispatchMode?`${info?.title||'派遣隊'}モード：マップから目的地を選択`:'派遣モードを解除しました');
 }
 window.startDispatch=startDispatch;
+
 function cancelDispatch(){
   dispatchMode=null;
-  const el=document.getElementById('worldMode');
-  if(el){el.style.display='none';el.classList.remove('world-mode-pulse');}
+  removeMissionPreview();
+  updateDispatchModeUI();
 }
 window.cancelDispatch=cancelDispatch;
+
+/* 森林・海域ノードの最近傍検索。元コードでは呼び出しだけ存在していたため、
+   ここで実体を用意する。worldNodeObjects は addWorldNode() が保持している。 */
+function findNearestWorldNode(type,x,z){
+  let best=null;
+  let bestDistance=Infinity;
+  for(const obj of worldNodeObjects){
+    const node=obj?.userData?.worldNode;
+    if(!node || node.type!==type)continue;
+    const d=Math.hypot((Number(node.x)||0)-x,(Number(node.z)||0)-z);
+    if(d<bestDistance){
+      bestDistance=d;
+      best=node;
+    }
+  }
+  return best;
+}
+
+/* 水域から近い陸地への補正。開拓モード中に海・川・湖をタップしても、
+   開拓隊そのものを無効化せず、近い陸地点を目的地にする。 */
+function snapToLand(x,z){
+  for(let r=2;r<=40;r+=2){
+    for(let i=0;i<24;i++){
+      const a=i/24*Math.PI*2;
+      const px=x+Math.cos(a)*r;
+      const pz=z+Math.sin(a)*r;
+      if(!['sea','river','lake'].includes(worldBiomeAt(px,pz))) return {x:px,z:pz};
+    }
+  }
+  return {x,z};
+}
+
 function smartDispatchAt(x,z){
-  if(isInsideCityTerritory(x,z,0.2)){toast('都市領地内です。森林・鉱山などの資源は領地の外側にあります。');return;}
+  if(isInsideCityTerritory(x,z,0.2)){
+    toast('都市領地内です。森林・鉱山などの資源は領地の外側にあります。');
+    return;
+  }
+
   const raw=worldBiomeAt(x,z);
-  let type='hunt',tx=x,tz=z,nodeId=null,biome=raw;
-  if(raw==='forest'){
+  let type=dispatchMode==='expand'?'expand':'hunt';
+  let tx=x,tz=z,nodeId=null,biome=raw;
+
+  /* ★根本修正★
+     開拓モード中は地形による自動判定を上書きして、必ず expand に入れる。
+     これで smartDispatchAt() -> prepareMission('expand',...) が実際に発火する。 */
+  if(dispatchMode==='expand'){
+    if(['sea','river','lake','forest'].includes(raw)){
+      const land=snapToLand(x,z);
+      tx=land.x;
+      tz=land.z;
+      biome=worldBiomeAt(tx,tz);
+    }
+    type='expand';
+  }else if(raw==='forest'){
     type='forest';
     const node=findNearestWorldNode('forest',x,z);
-    if(node){tx=node.x;tz=node.z;nodeId=node.id;}
+    if(node){tx=node.x;tz=node.z;nodeId=node.id;biome='forest';}
   }else if(raw==='sea'){
     type='sea';
     const node=findNearestWorldNode('sea',x,z);
-    if(node){tx=node.x;tz=node.z;nodeId=node.id;}
+    if(node){tx=node.x;tz=node.z;nodeId=node.id;biome='sea';}
   }else{
     type='hunt';
     if(['river','lake'].includes(raw)){
-      const land=snapToLand(x,z);tx=land.x;tz=land.z;biome=worldBiomeAt(tx,tz);
+      const land=snapToLand(x,z);
+      tx=land.x;
+      tz=land.z;
+      biome=worldBiomeAt(tx,tz);
     }
   }
 
-  /* 既存領域の内側を押した場合も「無反応」にはしない。
-     その地点をプレビューして、なぜ出動できないかを画面に表示する。 */
   const blocked=!!territoryClaimAt(tx,tz,0.05);
-  prepareMission(type,tx,tz,nodeId,{blockedReason:blocked?'開放済み領域の内側です。円の外側を選択してください。':null});
+  prepareMission(type,tx,tz,nodeId,{
+    blockedReason:blocked?'開放済み領域の内側です。円の外側を選択してください。':null
+  });
 }
 
 window.smartDispatchAt=smartDispatchAt;
@@ -5598,7 +5690,7 @@ function missionBaseInfo(type){
    - camera / controls / object scale / saved claim / expedition の差分を追跡
    - 同一派遣について表示半径を固定し、再計算による縮小を防止
 ========================================================= */
-const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V4-DISPATCH-CAMERA-LOCK';
+const TERRITORY_DIAG_BUILD='2026-10-01-TERRITORY-ROOTCAUSE-V5-CLICK-MONITOR';
 const TERRITORY_DIAG_LIMIT=240;
 const territoryDiag={
   enabled:true,
@@ -7502,8 +7594,10 @@ resize();
 territoryDiagPush('START_BEFORE_LOAD',{reason:'diagnostic-build-start'});
 loadGame();
 ensurePersonnelState();
+dispatchMode=null;
 state.selectedFacility=null;
 rebuildMap();
+updateDispatchModeUI();
 rebuildWorldChunks(true);
 renderAll();
 updateMilestones();
@@ -7528,8 +7622,36 @@ if(missionPanelEl){
   missionPanelEl.addEventListener('click',e=>e.stopPropagation());
   const cancelBtn=missionPanelEl.querySelector('#missionCancelBtn');
   const confirmBtn=missionPanelEl.querySelector('#missionConfirmBtn');
-  cancelBtn?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();cancelPendingMission();});
-  confirmBtn?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();confirmPendingMission();});
+
+  /* V5: ボタン自体に直接onclickを設定。
+     既存のaddEventListener依存をやめ、Safariでも確実に発火する。
+     同時にcaptureフェーズで「本当にボタンが押されたか」を記録する。 */
+  cancelBtn && (cancelBtn.onclick=(e)=>{e.preventDefault();e.stopPropagation();cancelPendingMission();});
+  confirmBtn && (confirmBtn.onclick=(e)=>{e.preventDefault();e.stopPropagation();confirmPendingMission();});
+
+  document.addEventListener('click',(e)=>{
+    const target=e.target?.closest?.('#missionConfirmBtn');
+    const cancel=e.target?.closest?.('#missionCancelBtn');
+    if(target){
+      if(window.__territoryDiag){
+        territoryDiagPush('RAW_CONFIRM_CLICK',{
+          reason:'document-capture-confirm-button',
+          disabled:!!target.disabled,
+          text:target.textContent,
+          pendingBefore:territoryDiagPreview(),
+          camera:territoryDiagCameraState()
+        });
+      }
+    }else if(cancel){
+      if(window.__territoryDiag){
+        territoryDiagPush('RAW_CANCEL_CLICK',{
+          reason:'document-capture-cancel-button',
+          pendingBefore:territoryDiagPreview(),
+          camera:territoryDiagCameraState()
+        });
+      }
+    }
+  },true);
 }
 
 function biomeLabel(type){
@@ -7845,6 +7967,15 @@ function createMissionPreview(m){
   const startDot=new THREE.Mesh(new THREE.CylinderGeometry(.18,.23,.12,12),new THREE.MeshStandardMaterial({color:0xefe1a2,emissive:0x7e6325,emissiveIntensity:.40,roughness:.3}));startDot.position.copy(origin);g.add(startDot);
   g.userData.targetRing=target;g.userData.dot=dot;g.userData.startDot=startDot;g.userData.routeArrow=arrow;g.userData.type=m.type;
   effectGroup.add(g);missionPreviewGroup=g;updateMissionPreviewFromState();
+  if(window.__territoryDiag){
+    territoryDiagPush('MISSION_PREVIEW_CREATED',{
+      reason:'createMissionPreview-complete',
+      type:m.type,
+      pending:territoryDiagPreview(),
+      camera:territoryDiagCameraState(),
+      panelVisible:!!document.getElementById('missionPanel') && !document.getElementById('missionPanel').hidden
+    });
+  }
 }
 
 function setPendingWorkers(value){
@@ -7934,6 +8065,18 @@ function prepareMission(type,x,z,nodeId=null,options=null){
   const fallbackCost=stats?.cost || {};
   const fallbackDuration=stats?.duration || Math.max(12,18+Math.hypot(tx,tz));
   createMissionPreview({type,x:tx,z:tz,nodeId:id,biome,distance:stats?.distance||null,workers:defaultWorkers,cost:fallbackCost,duration:fallbackDuration,range:stats?.range||fallbackRange,claimRadius:stats?.claimRadius||0,originId:stats?.origin?.id||null,originX:stats?.origin?.x||0,originZ:stats?.origin?.z||0,blockedReason});
+  if(window.__territoryDiag){
+    territoryDiagPush('MISSION_PREPARED',{
+      reason:'prepareMission-created-preview',
+      type,
+      x:tx,z:tz,
+      workers:defaultWorkers,
+      blockedReason,
+      buttonDisabled:!!document.getElementById('missionConfirmBtn')?.disabled,
+      pending:territoryDiagPreview(),
+      camera:territoryDiagCameraState()
+    });
+  }
   if(blockedReason)toast(blockedReason);
 }
 
@@ -7941,6 +8084,18 @@ function confirmPendingMission(){
   const beforeDispatchCamera=captureMissionCameraState();
   if(window.__territoryDiag) territoryDiagPush('DISPATCH_CLICKED',{reason:'confirmPendingMission-enter',pending:territoryDiagPreview(),camera:territoryDiagCameraState()});
   const btn=document.getElementById('missionConfirmBtn');
+  if(window.__territoryDiag){
+    territoryDiagPush('CONFIRM_HANDLER_ENTER',{
+      reason:'confirmPendingMission-enter-direct-handler',
+      buttonExists:!!btn,
+      disabled:!!btn?.disabled,
+      pendingExists:!!pendingMission,
+      pendingType:pendingMission?.type||null,
+      pendingWorkers:pendingMission?.workers||null,
+      pending:territoryDiagPreview(),
+      camera:territoryDiagCameraState()
+    });
+  }
   if(btn?.disabled){toast(btn.textContent||'派遣できません');return;}
   const m=pendingMission;if(!m)return;
   if(m.blockedReason){toast(m.blockedReason);return;}
@@ -7981,6 +8136,8 @@ function confirmPendingMission(){
     territoryDiagPush('DISPATCH_AFTER_ACTIVE_VISUAL',{reason:'preview-removed-active-created',expeditionId:e.id,workers:e.workers,logicalRadius:e.claimRadius,visualRadius:e.visualRadius,activeRingRadius:active.userData?.claimRadius,cameraAfter:territoryDiagCameraState()});
   }
   restoreMissionCameraState(beforeDispatchCamera);
+  dispatchMode=null;
+  updateDispatchModeUI();
   renderAll();
   renderer.render(scene,camera);
   requestAnimationFrame(()=>{
@@ -7995,8 +8152,7 @@ function cancelPendingMission(){
   removeMissionPreview();
   if(wasPreview) restoreMissionCamera();
   dispatchMode=null;
-  const mode=document.getElementById('worldMode');
-  if(mode){mode.style.display='none';mode.classList.remove('world-mode-pulse');}
+  updateDispatchModeUI();
   toast('派遣をキャンセルしました');
 }
 window.cancelPendingMission=cancelPendingMission;

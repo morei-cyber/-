@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>領地拡張・根本修正版 | 文明都市放置記｜MEGA CITY</title>
+<title>文明都市放置記｜5km・30国家・国家政治NEWS AI強化版</title>
 <style>
 :root{
   --bg:#080b12;
@@ -23,6 +23,7 @@
 }
 
 html,body{
+  -webkit-tap-highlight-color:transparent;
   margin:0;
   width:100%;
   height:100%;
@@ -744,6 +745,21 @@ button{
 .build-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.build-card{border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.025);padding:10px}.build-card-top{display:flex;align-items:center;gap:8px}.build-icon{font-size:20px}.build-name{font-size:11px;font-weight:1000}.build-meta{font-size:8px;color:#8994a1;margin-top:2px}.build-card p{font-size:8px;color:#8f9aa8;line-height:1.5;margin:7px 0}.build-btn{width:100%;border:0;border-radius:9px;padding:8px;background:#e7c06b;color:#171107;font-size:9px;font-weight:1000;cursor:pointer}.build-btn:disabled{opacity:.35;cursor:not-allowed}
 .milestone-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.milestone{padding:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.022)}.milestone.done{border-color:rgba(228,193,104,.38);background:rgba(228,193,104,.055)}.milestone-top{display:flex;justify-content:space-between;gap:8px}.milestone-title{font-size:10px;font-weight:1000}.milestone-state{font-size:8px;font-weight:1000;color:#84909f}.milestone.done .milestone-state{color:#ebc86c}.milestone-desc{font-size:8px;color:#7f8b98;line-height:1.45;margin-top:4px}.construction-card{padding:10px;border:1px solid rgba(228,193,104,.18);border-radius:12px;background:rgba(228,193,104,.035);margin-bottom:8px}.construction-bar{height:6px;margin-top:7px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden}.construction-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fb5ef,#e7c56b)}
 @media(max-width:620px){.top-action{padding:7px 8px;font-size:9px}.overview-grid,.build-grid,.milestone-grid{grid-template-columns:1fr}.overview-modal{height:min(820px,94vh)}}
+/* ===== NATION TRAVEL ===== */
+.nation-travel-overlay{position:fixed;inset:0;z-index:210;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(2,5,9,.80);backdrop-filter:blur(14px)}
+.nation-travel-overlay.show{display:flex}
+.nation-travel-modal{width:min(760px,96vw);max-height:min(820px,92vh);overflow:hidden;border:1px solid rgba(255,255,255,.11);border-radius:20px;background:#0d131c;box-shadow:0 35px 120px rgba(0,0,0,.65);display:grid;grid-template-rows:auto 1fr}
+.nation-travel-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.nation-travel-title{font-size:20px;font-weight:1000}.nation-travel-sub{font-size:9px;color:#8995a5;margin-top:3px}
+.nation-travel-body{padding:12px;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.nation-travel-card{padding:11px;border:1px solid rgba(255,255,255,.08);border-radius:13px;background:rgba(255,255,255,.022);cursor:pointer;transition:.15s}
+.nation-travel-card:hover{filter:brightness(1.12);transform:translateY(-1px);border-color:rgba(231,194,104,.32)}
+.nation-travel-card.selected{border-color:rgba(231,194,104,.42);background:rgba(231,194,104,.055)}
+.nation-travel-top{display:flex;align-items:center;gap:8px}.nation-travel-dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.10)}
+.nation-travel-name{font-size:11px;font-weight:1000;min-width:0}.nation-travel-badge{margin-left:auto;font-size:8px;color:#e7c46e;font-weight:1000}
+.nation-travel-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:8px;font-size:8px;color:#8f99a7}.nation-travel-meta b{color:#e4e9ef;font-size:9px}
+@media(max-width:620px){.nation-travel-body{grid-template-columns:1fr}.nation-travel-modal{max-height:94vh}}
+
 /* ===== ADMIN / DEBUG UI ===== */
 .admin-overlay{position:fixed;inset:0;z-index:220;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(2,5,9,.84);backdrop-filter:blur(16px)}
 .admin-overlay.show{display:flex}
@@ -764,6 +780,47 @@ button{
 .admin-note{margin-top:9px;padding:8px 10px;border-radius:10px;background:rgba(230,193,104,.055);border:1px solid rgba(230,193,104,.12);font-size:8px;color:#9ca7b5;line-height:1.55}
 @media(max-width:620px){.admin-grid{grid-template-columns:1fr}.admin-status{grid-template-columns:repeat(2,1fr)}.admin-speed{grid-template-columns:repeat(3,1fr)}.admin-title{font-size:18px}}
 
+
+
+/* ===== POLISHED LIGHT UI ===== */
+body::selection{background:rgba(231,194,104,.26)}
+.topbar{box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.top-action{transition:transform .14s ease,filter .14s ease,border-color .14s ease;box-shadow:0 5px 18px rgba(0,0,0,.10)}
+.top-action:active{transform:translateY(1px) scale(.98)}
+.map-hud .hud-card{box-shadow:0 10px 28px rgba(0,0,0,.16);backdrop-filter:blur(11px)}
+.map-shell{background:#10161d}
+#map{background:#8faeb8}
+.city-plan-overlay{position:fixed;inset:0;z-index:205;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,5,9,.76);backdrop-filter:blur(10px)}
+.city-plan-overlay.show{display:flex}
+.city-plan-modal{width:min(940px,96vw);height:min(820px,93vh);display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:linear-gradient(180deg,#101721,#0c121a);box-shadow:0 35px 120px rgba(0,0,0,.66)}
+.city-plan-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.city-plan-kicker{font-size:9px;letter-spacing:.18em;color:#d9bd76;font-weight:1000}.city-plan-title{font-size:21px;font-weight:1000;margin-top:3px}.city-plan-sub{font-size:9px;color:#8793a2;margin-top:3px}
+.city-plan-tabs{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);overflow:auto}
+.city-plan-tab{border:1px solid var(--line);border-radius:10px;background:#131923;color:#b7c1cc;padding:8px 12px;font-size:10px;font-weight:1000;white-space:nowrap;cursor:pointer}.city-plan-tab.active{background:linear-gradient(135deg,#e8c36c,#a96f34);color:#181208;border-color:transparent}
+.city-plan-body{padding:13px;overflow:auto}.city-plan-footer{padding:9px 12px;border-top:1px solid var(--line);font-size:8px;color:#788493}
+.city-plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.city-plan-card{padding:11px;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:rgba(255,255,255,.022);box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.city-plan-card:hover{border-color:rgba(231,194,104,.18)}
+.city-plan-icon{font-size:24px;line-height:1}.city-plan-name{font-size:11px;font-weight:1000;margin-top:6px}.city-plan-meta{font-size:8px;color:#8d98a5;margin-top:2px;line-height:1.5}.city-plan-desc{font-size:8px;color:#a5afbb;line-height:1.5;margin-top:6px;min-height:36px}.city-plan-btn{width:100%;border:0;border-radius:9px;padding:8px;margin-top:8px;background:#e7c06b;color:#171107;font-size:9px;font-weight:1000;cursor:pointer}.city-plan-btn.warn{background:#3a2522;color:#f1c5b8;border:1px solid rgba(255,150,120,.16)}.city-plan-btn:disabled{opacity:.34;cursor:not-allowed}
+.city-plan-statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}.city-plan-stat{padding:9px 10px;border:1px solid rgba(255,255,255,.06);border-radius:11px;background:rgba(255,255,255,.022)}.city-plan-stat span{display:block;font-size:8px;color:#7f8997}.city-plan-stat b{display:block;margin-top:2px;font-size:15px}
+.city-plan-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px;border:1px solid rgba(255,255,255,.065);border-radius:11px;background:rgba(255,255,255,.018);margin-bottom:7px}.city-plan-row-main{min-width:0}.city-plan-row-title{font-size:10px;font-weight:1000}.city-plan-row-sub{font-size:8px;color:#85909d;line-height:1.45;margin-top:3px}.city-plan-actions{display:flex;gap:5px;flex-wrap:wrap}.city-plan-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid rgba(255,255,255,.075);border-radius:999px;background:#141b25;color:#aeb7c2;font-size:8px;font-weight:1000;cursor:pointer}
+.city-plan-note{padding:9px 10px;border-radius:10px;border:1px solid rgba(231,194,104,.11);background:rgba(231,194,104,.045);font-size:8px;line-height:1.55;color:#97a1ae;margin-bottom:10px}
+.demolish-mode-badge{position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:210;display:none;padding:9px 13px;border:1px solid rgba(239,151,122,.25);border-radius:12px;background:rgba(28,14,14,.93);box-shadow:0 12px 32px rgba(0,0,0,.38);font-size:10px;font-weight:1000;color:#f3c1b5;pointer-events:none}.demolish-mode-badge.show{display:block}
+@media(max-width:760px){.city-plan-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.city-plan-statgrid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.city-plan-grid{grid-template-columns:1fr}.city-plan-modal{height:94vh}.city-plan-row{grid-template-columns:1fr}}
+
+
+/* ===== WORLD NEWS ===== */
+.news-action{position:relative}
+.news-badge{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;padding:0 4px;margin-left:4px;border-radius:99px;background:#d86b5f;color:#fff;font-size:8px;line-height:1;font-weight:1000;vertical-align:middle}
+.news-badge:empty{display:none}
+.news-overlay{position:fixed;inset:0;z-index:240;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,5,9,.82);backdrop-filter:blur(14px)}
+.news-overlay.show{display:flex}
+.news-modal{width:min(980px,96vw);height:min(820px,93vh);display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:linear-gradient(180deg,#0f151e,#0b1119);box-shadow:0 35px 130px rgba(0,0,0,.7)}
+.news-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.news-kicker{font-size:9px;letter-spacing:.18em;color:#d8bc76;font-weight:1000}.news-title{font-size:22px;font-weight:1000;margin-top:3px}.news-sub{font-size:9px;color:#8995a5;margin-top:4px;line-height:1.5}.news-head-actions{display:flex;gap:7px;align-items:center}.news-live{padding:5px 8px;border:1px solid rgba(119,216,168,.2);background:rgba(119,216,168,.08);border-radius:999px;color:#9be2bf;font-size:8px;font-weight:1000;box-shadow:0 0 20px rgba(119,216,168,.07)}
+.news-filters{display:flex;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line);overflow:auto}.news-filter{border:1px solid var(--line);border-radius:10px;background:#131a23;color:#afb8c4;padding:7px 10px;font-size:9px;font-weight:1000;white-space:nowrap;cursor:pointer}.news-filter.active{background:linear-gradient(135deg,#e7c36c,#ac7437);color:#171106;border-color:transparent}
+.news-body{padding:12px;overflow:auto;display:grid;gap:7px;align-content:start}.news-item{display:grid;grid-template-columns:74px 1fr auto;gap:9px;align-items:start;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:rgba(255,255,255,.022)}.news-item.unread{border-color:rgba(230,193,104,.22);background:linear-gradient(135deg,rgba(230,193,104,.055),rgba(255,255,255,.018))}.news-item.important{box-shadow:inset 3px 0 0 rgba(224,126,96,.8)}.news-time{font-size:8px;color:#7f8997}.news-chip{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding:4px 6px;border-radius:8px;background:rgba(255,255,255,.055);font-size:8px;font-weight:1000;color:#cbd3dc}.news-chip.war{background:rgba(205,90,82,.13);color:#f0aaa1}.news-chip.politics{background:rgba(103,137,208,.12);color:#a8c0ef}.news-chip.diplomacy{background:rgba(96,168,153,.12);color:#a6ddcf}.news-chip.economy{background:rgba(210,167,74,.12);color:#e8cd88}.news-chip.science{background:rgba(142,118,198,.12);color:#c8b9ed}.news-chip.event{background:rgba(180,121,77,.12);color:#e2b996}.news-main{min-width:0}.news-item-title{font-size:11px;font-weight:1000;line-height:1.4}.news-item-text{font-size:9px;color:#9da7b4;line-height:1.5;margin-top:3px}.news-nations{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}.news-nation-btn{border:1px solid rgba(255,255,255,.07);border-radius:999px;background:#151c26;color:#bec8d2;padding:3px 7px;font-size:8px;font-weight:900;cursor:pointer}.news-nation-btn:hover{filter:brightness(1.13)}.news-item-action{font-size:8px;color:#e7c46f;font-weight:1000;white-space:nowrap}.news-footer{padding:9px 12px;border-top:1px solid var(--line);font-size:8px;color:#778392}
+@media(max-width:620px){.news-modal{height:94vh}.news-item{grid-template-columns:1fr}.news-item-action{justify-self:start}.news-head{padding:13px}.news-title{font-size:19px}}
 
 </style>
 </head>
@@ -810,11 +867,12 @@ button{
 
       <div class="top-actions">
         <button class="top-action" type="button" onclick="openOverview('summary')">📋 一覧</button>
-        <button class="top-action" type="button" onclick="openOverview('build')">🏗 建築</button>
-        <button class="top-action" type="button" onclick="startRoadBuildMode()">🛣 道路</button>
-        <button class="top-action" type="button" onclick="openPolitics()">🏛 政治</button>
+        <button class="top-action" type="button" onclick="openCityPlan('build')">🏗 都市計画</button>
+        <button class="top-action nation-action" type="button" onclick="openPolitics()">🌐 国家・政策</button>
+        <button class="top-action news-action" type="button" onclick="openNews()">📰 NEWS <span id="newsBadge" class="news-badge">0</span></button>
+        <button class="top-action" type="button" onclick="focusNation('player')">🏠 自国へ</button>
+        <button class="top-action" type="button" onclick="openNationTravel()">🌍 他国へ</button>
         <button class="top-action" type="button" onclick="startTerritoryExpansion()">🗺 領地拡大</button>
-        <button class="top-action" type="button" onclick="startHuntClearMode()">🛡 討伐・駆除</button>
         <button class="top-action" type="button" onclick="openAdminPanel()">🛠 管理者</button>
       </div>
 
@@ -873,7 +931,7 @@ button{
 
           <div class="hud-value"
                id="hudCity">
-            集落
+            集落 · 世界10km
           </div>
 
         </div>
@@ -884,7 +942,7 @@ button{
       <div id="missionTracker" style="position:absolute;left:16px;top:118px;width:180px;display:none;z-index:6;pointer-events:none"></div>
 
       <div class="map-help">
-        <b>地区</b>タップ→詳細　 <b>ドラッグ</b>→移動　 <b>ホイール/ピンチ</b>→ズーム
+        <b>地区</b>タップ→詳細　 <b>ドラッグ</b>→移動　 <b>ホイール/ピンチ</b>→ズーム　 <b>世界</b>5km×5km / 30か国
       </div>
 
       <div id="worldMode" style="position:absolute;right:16px;bottom:16px;display:none;padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(7,12,18,.88);backdrop-filter:blur(12px);font-size:10px;font-weight:1000;color:#e7edf4;pointer-events:none;z-index:5">派遣先をマップで選択</div>
@@ -1109,6 +1167,16 @@ button{
 </div>
 
 
+<div class="city-plan-overlay" id="cityPlanOverlay" onclick="if(event.target===this)closeCityPlan()">
+  <div class="city-plan-modal" onclick="event.stopPropagation()">
+    <div class="city-plan-head"><div><div class="city-plan-kicker">CITY MANAGEMENT</div><div class="city-plan-title">🏗 都市計画</div><div class="city-plan-sub">建築・道路・解体をひとつの管理画面から操作します。</div></div><button class="overview-close" type="button" onclick="closeCityPlan()">×</button></div>
+    <div class="city-plan-tabs"><button class="city-plan-tab active" data-cp-tab="build" onclick="openCityPlan('build')">🏠 建築</button><button class="city-plan-tab" data-cp-tab="road" onclick="openCityPlan('road')">🛣 道路</button><button class="city-plan-tab" data-cp-tab="demolish" onclick="openCityPlan('demolish')">🗑 解体</button></div>
+    <div class="city-plan-body" id="cityPlanBody"></div>
+    <div class="city-plan-footer">都市計画は軽量表示です。建物は必要なときだけ生成・再構築し、常時大量のDOMや3Dオブジェクトを追加しません。</div>
+  </div>
+</div>
+<div id="demolishModeBadge" class="demolish-mode-badge">🗑 解体モード：建物をタップ　Escで終了</div>
+
 <div class="overview-overlay" id="overviewOverlay" onclick="if(event.target===this)closeOverview()">
   <div class="overview-modal">
     <div class="overview-head">
@@ -1132,11 +1200,53 @@ button{
 <div class="politics-overlay" id="politicsOverlay" onclick="if(event.target===this)closePolitics()">
   <div class="politics-modal" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
     <div class="politics-head">
-      <div><div class="politics-title">🏛 政治・国家運営</div><div class="politics-sub">税制・国家予算・派閥・政策・議会・選挙をまとめて管理します。</div></div>
+      <div><div class="politics-title">🌐 国家・政治・世界30か国</div><div class="politics-sub">自国の政治、政策、外交、戦争、交易、そして世界30か国の動きをここで一括管理します。</div></div>
       <button class="overview-close" type="button" onclick="closePolitics()">×</button>
     </div>
     <div class="politics-grid" id="politicsBody"></div>
-    <div class="politics-footer">政策は住民の支持・国家予算・生産・人口成長に継続的な影響を与えます。選挙は一定年数ごとに自動実施されます。</div>
+    <div class="politics-footer">世界には30か国が存在します。すべてのAI国家は同じ初期条件から始まり、その後は独自に発展・政治運営・外交・交易・建設・戦争を行います。</div>
+  </div>
+</div>
+
+<div class="nation-travel-overlay" id="nationTravelOverlay" onclick="if(event.target===this)closeNationTravel()">
+  <div class="nation-travel-modal" onclick="event.stopPropagation()">
+    <div class="nation-travel-head">
+      <div>
+        <div class="nation-travel-title">🌍 他国へ移動</div>
+        <div class="nation-travel-sub">国を選ぶと、その国へカメラが移動して詳細情報を表示します。</div>
+      </div>
+      <button class="overview-close" type="button" onclick="closeNationTravel()">×</button>
+    </div>
+    <div class="nation-travel-body" id="nationTravelBody"></div>
+  </div>
+</div>
+
+
+<div class="news-overlay" id="newsOverlay" onclick="if(event.target===this)closeNews()">
+  <div class="news-modal" onclick="event.stopPropagation()">
+    <div class="news-head">
+      <div>
+        <div class="news-kicker">WORLD NEWS NETWORK</div>
+        <div class="news-title">📰 国家ニュース</div>
+        <div class="news-sub">自国・他国の政治、戦争、外交、経済、災害、建設、科学の重大ニュースを時系列で表示します。</div>
+      </div>
+      <div class="news-head-actions">
+        <span id="newsLive" class="news-live">LIVE</span>
+        <button class="overview-close" type="button" onclick="closeNews()">×</button>
+      </div>
+    </div>
+    <div class="news-filters" id="newsFilters">
+      <button class="news-filter active" data-news-filter="all" onclick="setNewsFilter('all')">すべて</button>
+      <button class="news-filter" data-news-filter="important" onclick="setNewsFilter('important')">重要</button>
+      <button class="news-filter" data-news-filter="politics" onclick="setNewsFilter('politics')">政治</button>
+      <button class="news-filter" data-news-filter="war" onclick="setNewsFilter('war')">戦争</button>
+      <button class="news-filter" data-news-filter="diplomacy" onclick="setNewsFilter('diplomacy')">外交</button>
+      <button class="news-filter" data-news-filter="economy" onclick="setNewsFilter('economy')">経済</button>
+      <button class="news-filter" data-news-filter="science" onclick="setNewsFilter('science')">科学</button>
+      <button class="news-filter" data-news-filter="event" onclick="setNewsFilter('event')">事件</button>
+    </div>
+    <div class="news-body" id="newsBody"></div>
+    <div class="news-footer">最新120件を保持。ニュースはゲーム内時間に応じて自動生成されます。</div>
   </div>
 </div>
 
@@ -1580,7 +1690,7 @@ const FACILITIES = [
   {id:'apartment',name:'アパート',icon:'🏢',minEra:4,category:'住宅',placement:'nearRoad',cost:{stone:190,iron:45,gold:40},desc:'道路網の整備された都市向け住宅。人口容量と移住を伸ばします。',effects:{happiness:1.1,popMax:40,migration:.055}},
   {id:'warehouse',name:'倉庫',icon:'📦',minEra:0,category:'物流',placement:'land',cost:{wood:80,stone:55},desc:'資材と食料の集積拠点。保管効率を高めます。',effects:{storage:900,production:.018}},
   {id:'bakery',name:'パン工房',icon:'🥖',minEra:1,category:'食料',placement:'nearCity',cost:{wood:65,stone:55,gold:12},desc:'食料加工を行い、食料生産と幸福度を支えます。',effects:{food:.48,happiness:.5,production:.022}},
-  {id:'park',name:'公園',icon:'🌳',minEra:1,category:'公共',placement:'land',cost:{wood:75,stone:35,gold:18},desc:'緑地と公共空間。周辺住民の幸福度と移住を高めます。',effects:{happiness:2.4,migration:.025,popMax:5}},
+  {id:'park',name:'公園',icon:'🌳',minEra:1,category:'公共',placement:'land',cost:{wood:75,stone:35,gold:18},desc:'緑地と公共空間。周辺住民の幸福度と移住を高めます。',effects:{happiness:2.4,migration:.025}},
   {id:'courthouse',name:'裁判所',icon:'⚖️',minEra:2,category:'行政',placement:'nearCity',cost:{stone:210,iron:32,gold:85,science:30},desc:'司法と行政を支える公共施設。政治の正統性と税収効率を高めます。',effects:{happiness:.8,production:.03}},
   {id:'bank',name:'銀行',icon:'🏦',minEra:4,category:'金融',placement:'nearCity',cost:{stone:280,iron:55,gold:180,science:80},desc:'金融と投資の中枢。金収入と国家予算の税収効率を高めます。',effects:{gold:.42,production:.07,migration:.035}},
   {id:'theater',name:'劇場',icon:'🎭',minEra:3,category:'文化',placement:'nearCity',cost:{wood:180,stone:150,gold:90},desc:'文化と娯楽の中心。文化収入と幸福度を増やします。',effects:{culture:.46,happiness:2.0,migration:.035}},
@@ -1588,9 +1698,9 @@ const FACILITIES = [
   {id:'trainingGround',name:'養成所',icon:'🪖',minEra:0,category:'人員育成',placement:'land',cost:{wood:95,stone:65},desc:'市民を派遣要員として訓練する最初の施設。時間をかけて訓練済み人員を増やします。',effects:{trainingRate:.0055,trainingCap:2.5,personnelCap:12,production:.01}},
   {id:'academy',name:'教育施設',icon:'🎓',minEra:1,category:'人員育成',placement:'nearTraining',requiresFacility:'trainingGround',cost:{wood:145,stone:110,science:35},desc:'養成所と連携して教育速度・養成人数上限を大きく伸ばす施設。',effects:{trainingRate:.011,trainingCap:5,personnelCap:28,production:.018}},
   {id:'garrison',name:'駐屯地',icon:'🏕️',minEra:1,category:'派遣拠点',placement:'edge',requiresFacility:'trainingGround',cost:{wood:170,stone:135,iron:12},desc:'訓練済みの派遣隊がここから出発します。Lv.が上がるほど同時派遣枠と行動半径が増えます。',effects:{garrisonSlots:1,rangeBonus:3.5,personnelCap:4}},
-  {id:'well',name:'井戸',icon:'💧',minEra:0,category:'生活',placement:'land',cost:{wood:30,stone:20},desc:'住宅街の水供給。人口容量と幸福度を上げる。',effects:{happiness:.8,popMax:4}},
+  {id:'well',name:'井戸',icon:'💧',minEra:0,category:'生活',placement:'land',cost:{wood:30,stone:20},desc:'住宅街の水供給。人口容量と幸福度を上げる。',effects:{happiness:.8}},
   {id:'granary',name:'共同穀倉',icon:'🌾',minEra:0,category:'食料',placement:'nearFarm',cost:{wood:50,stone:35},desc:'農地の収穫を集約し、食料生産と保管量を増やす。',effects:{food:.28,storage:500}},
-  {id:'farmPlot',name:'農地',icon:'🌾',minEra:1,category:'農業',placement:'land',cost:{wood:45,stone:18},desc:'都市の外縁ではなく都市圏内の農業区画。時間とともに畑・水路・納屋が発展する。',effects:{food:.75,popMax:3,production:.02}},
+  {id:'farmPlot',name:'農地',icon:'🌾',minEra:1,category:'農業',placement:'land',cost:{wood:45,stone:18},desc:'都市の外縁ではなく都市圏内の農業区画。時間とともに畑・水路・納屋が発展する。',effects:{food:.75,production:.02}},
   {id:'school',name:'学び舎',icon:'📚',minEra:0,category:'研究',placement:'nearTraining',cost:{wood:70,stone:45,science:30},desc:'記録・教育を行い科学と文化を生み出す。',effects:{science:.22,culture:.08}},
   {id:'sawmill',name:'製材所',icon:'🪵',minEra:0,category:'資源',placement:'forestEdge',unique:true,cost:{wood:75,stone:35},desc:'森林の木材を製品化する拠点。木材生産量を大きく増やす。',effects:{wood:.72,production:.025}},
   {id:'quarryWorks',name:'採石場',icon:'⛏️',minEra:0,category:'資源',placement:'nearQuarry',unique:true,cost:{wood:65,stone:90},desc:'露天採掘を本格化。石材生産を強化し、時代と共に採掘設備が巨大化する。',effects:{stone:.80,production:.025}},
@@ -1599,15 +1709,15 @@ const FACILITIES = [
   {id:'market',name:'市場',icon:'🏪',minEra:2,category:'商業',placement:'nearCity',cost:{wood:110,stone:90,gold:45},desc:'交易商が集まり、金と文化と人口流入を生む。',effects:{gold:.32,culture:.18,migration:.03}},
   {id:'cityHall',name:'市役所',icon:'🏛️',minEra:2,category:'行政',placement:'nearCity',unique:true,cost:{wood:180,stone:260,iron:40,gold:120,science:90},desc:'都市行政の中枢。人口容量・幸福度・建設効率を引き上げ、レベルに応じて庁舎が大きく発展する。',effects:{popMax:24,happiness:1.6,production:.055}},
   {id:'harbor',name:'港湾',icon:'⚓',minEra:3,category:'海運',placement:'coast',unique:true,cost:{wood:220,stone:180,gold:100},desc:'海へ出るための大型港。海洋遠征の効率と金収入を上げる。',effects:{gold:.55,production:.05,ocean:.8}},
-  {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,category:'生活',placement:'nearCity',cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口容量を増やす。',effects:{happiness:1.7,popMax:14}},
-  {id:'fortress',name:'要塞',icon:'🏰',minEra:4,category:'防衛',placement:'hillsOrEdge',unique:true,cost:{stone:420,iron:55,gold:120},desc:'外縁部を守る大型防衛施設。討伐隊の成功報酬と領域維持を支える。',effects:{happiness:.7,popMax:18,production:.045}},
-  {id:'clinic',name:'診療所',icon:'🏥',minEra:4,category:'生活',placement:'nearCity',cost:{stone:220,iron:35,gold:120,science:100},desc:'医療によって人口成長と幸福度を支える。',effects:{happiness:2.2,popMax:26}},
+  {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,category:'生活',placement:'nearCity',cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口容量を増やす。',effects:{happiness:1.7}},
+  {id:'fortress',name:'要塞',icon:'🏰',minEra:4,category:'防衛',placement:'hillsOrEdge',unique:true,cost:{stone:420,iron:55,gold:120},desc:'外縁部を守る大型防衛施設。討伐隊の成功報酬と領域維持を支える。',effects:{happiness:.7,production:.045}},
+  {id:'clinic',name:'診療所',icon:'🏥',minEra:4,category:'生活',placement:'nearCity',cost:{stone:220,iron:35,gold:120,science:100},desc:'医療によって人口成長と幸福度を支える。',effects:{happiness:2.2}},
   {id:'factory',name:'工場',icon:'🏭',minEra:5,category:'工業',placement:'land',unique:true,cost:{wood:260,stone:340,iron:120,gold:180},desc:'大量生産施設。時代に応じて工場形態が変化する。',effects:{iron:.55,gold:.5,production:.09}},
   {id:'railhub',name:'鉄道駅',icon:'🚂',minEra:5,category:'物流',placement:'nearRoad',unique:true,cost:{stone:300,iron:160,gold:220},desc:'物流と人口移動を高速化し、都市圏を広げる。',effects:{gold:.28,migration:.05,production:.10}},
   {id:'power',name:'発電所',icon:'⚡',minEra:6,category:'電力',placement:'nearRiver',unique:true,cost:{stone:500,iron:260,gold:420,science:500},desc:'電力網の中心。都市全体の研究・金・生産を増幅する。',effects:{science:.35,gold:.65,production:.16}},
   {id:'research',name:'研究センター',icon:'🧬',minEra:7,category:'研究',placement:'nearCity',unique:true,cost:{stone:650,iron:300,gold:600,science:1200},desc:'情報時代の研究中枢。大量の科学を生み出す。',effects:{science:1.35,culture:.4}},
-  {id:'spaceport',name:'宇宙港',icon:'🚀',minEra:8,category:'宇宙',placement:'edge',unique:true,cost:{stone:1000,iron:800,gold:1800,science:6000},desc:'惑星間物流の拠点。巨大な科学・金生産を得る。',effects:{science:2.6,gold:2.0,popMax:80}},
-  {id:'habitat',name:'軌道居住区',icon:'🛰️',minEra:9,category:'宇宙',placement:'edge',unique:true,cost:{iron:1800,gold:4000,science:15000},desc:'恒星文明の人口拡張設備。',effects:{science:5.5,gold:3.4,popMax:280}}
+  {id:'spaceport',name:'宇宙港',icon:'🚀',minEra:8,category:'宇宙',placement:'edge',unique:true,cost:{stone:1000,iron:800,gold:1800,science:6000},desc:'惑星間物流の拠点。巨大な科学・金生産を得る。',effects:{science:2.6,gold:2.0}},
+  {id:'habitat',name:'軌道居住区',icon:'🛰️',minEra:9,category:'宇宙',placement:'edge',unique:true,cost:{iron:1800,gold:4000,science:15000},desc:'恒星文明の人口拡張設備。',effects:{science:5.5,gold:3.4}}
 ];
 
 
@@ -1632,7 +1742,7 @@ const adminState={speed:1,paused:false,open:false};
 
 const state = {
 
-  version:12,
+  version:14,
 
   last:Date.now(),
 
@@ -1691,6 +1801,7 @@ const state = {
   facilities:[],
   infrastructure:1,
   housingBonus:0,
+  cityHallAdminCap:40,
   migration:0,
   festivals:0,
   policy:'balanced',
@@ -1698,6 +1809,8 @@ const state = {
   discoveryCooldown:115,
 
   worldSeed:417203,
+  worldMapSize:10000,
+  nations:[],
   seaClaims:0,
   oceanPower:0,
   forestClears:[],
@@ -1716,6 +1829,10 @@ const state = {
   roadBonus:0,
   politics:{
     treasury:600,
+    debt:0,
+    lastIncome:0,
+    lastExpense:0,
+    fiscalStatus:'健全',
     taxRate:.10,
     legitimacy:72,
     approval:68,
@@ -1736,7 +1853,14 @@ const state = {
   territoryClaims:[],
   constructionQueue:[],
   stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:28,totalConstructionTime:0},
-  unlockedMilestones:[]
+  unlockedMilestones:[],
+  news:[],
+  newsUnread:0,
+  newsFilter:'all',
+  newsSeq:0,
+  wars:[],
+  diplomacyTick:0,
+  nationAIModelVersion:'v3'
 };
 
 
@@ -1786,8 +1910,8 @@ const renderer=new THREE.WebGLRenderer({
   alpha:false,
   powerPreference:'high-performance'
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.45));
-renderer.shadowMap.enabled=true;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,window.innerWidth<760?1.02:1.22));
+renderer.shadowMap.enabled=window.innerWidth>=760;
 renderer.shadowMap.type=THREE.PCFShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -1833,7 +1957,7 @@ controls.enablePan=true;
 controls.enableDamping=true;
 controls.dampingFactor=.08;
 
-controls.minZoom=.06;
+controls.minZoom=.0048;
 controls.maxZoom=1.8;
 
 controls.target.set(0,0,0);
@@ -1895,8 +2019,10 @@ const citizenGroup=new THREE.Group();
 const effectGroup=new THREE.Group();
 const territoryClaimGroup=new THREE.Group();
 const worldGroup=new THREE.Group();
+const nationGroup=new THREE.Group();
 scene.add(territoryClaimGroup);
 scene.add(worldGroup);
+scene.add(nationGroup);
 cityGroup.add(residentialGroup,facilityGroup,constructionGroup,citizenGroup,effectGroup);
 
 const worldNodeObjects=[];
@@ -1904,6 +2030,31 @@ let worldStreamKey='';
 let dispatchMode=null;
 const expeditionObjects=[];
 let buildPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+
+/* ズームアウト時に「空（ERA_SKY）」が露出しないための無限に近い背景床。
+   実際の地形チャンクより少し下に置き、チャンクの切れ目はこの床で埋める。 */
+let worldBackdrop=null;
+function ensureWorldBackdrop(){
+  if(worldBackdrop) return worldBackdrop;
+  const geo=new THREE.PlaneGeometry(8000,8000,1,1);
+  geo.rotateX(-Math.PI/2);
+  const mat=new THREE.MeshStandardMaterial({
+    color:0x66785f,
+    roughness:1,
+    metalness:0,
+    depthWrite:true,
+    depthTest:true
+  });
+  worldBackdrop=new THREE.Mesh(geo,mat);
+  worldBackdrop.position.set(0,-.16,0);
+  worldBackdrop.receiveShadow=true;
+  worldBackdrop.renderOrder=-20;
+  worldBackdrop.userData.isWorldBackdrop=true;
+  scene.add(worldBackdrop);
+  return worldBackdrop;
+}
+
+ensureWorldBackdrop();
 
 /* Raycaster */
 
@@ -2208,8 +2359,11 @@ function disposeMaterial(mat){
   const list=Array.isArray(mat)?mat:[mat];
   for(const m of list){
     if(!m)continue;
-    for(const key of ['map','alphaMap','aoMap','aoMap','bumpMap','normalMap','roughnessMap','metalnessMap','emissiveMap']){
-      const tex=m[key]; if(tex&&tex.dispose)tex.dispose();
+    for(const key of ['map','alphaMap','aoMap','bumpMap','normalMap','roughnessMap','metalnessMap','emissiveMap']){
+      const tex=m[key];
+      /* terrainTextureCache のテクスチャは複数チャンクで共有しているため、
+         チャンク再構築のたびにdisposeすると次回描画が壊れる。 */
+      if(tex&&tex.dispose&&!terrainSharedTextures.has(tex)) tex.dispose();
     }
     if(m.dispose)m.dispose();
   }
@@ -2412,6 +2566,7 @@ function isForestCleared(id){
    タイル感を減らし、地形ごとに「地図として読める」質感を持たせる。
 ========================================================= */
 const terrainTextureCache=new Map();
+const terrainSharedTextures=new Set();
 function terrainTextureKey(biome,variant=0){return `${biome}_${state.era}_${variant}`;}
 function getTerrainTexture(biome,variant=0){
   const key=terrainTextureKey(biome,variant);
@@ -2452,7 +2607,9 @@ function getTerrainTexture(biome,variant=0){
   tex.colorSpace=THREE.SRGBColorSpace;
   tex.wrapS=THREE.ClampToEdgeWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;
   tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
-  terrainTextureCache.set(key,tex);return tex;
+  terrainTextureCache.set(key,tex);
+  terrainSharedTextures.add(tex);
+  return tex;
 }
 
 function makeTerrainGround(biome,x,z,variant=0){
@@ -2808,7 +2965,7 @@ function rebuildWorldChunks(force=false){
   const key=`${tx},${tz},${state.era},${state.seaClaims},${state.mapExpansion},${Math.round(getTerritoryRadius()*10)},${Math.round(extent)},${state.forestClears.length},${(state.territoryClaims||[]).length},${(state.expeditions||[]).length}`;
   if(!force && key===worldStreamKey) return;
   worldStreamKey=key;
-  clearGroupContents(worldGroup);
+  try{clearGroupContents(worldGroup);}catch(err){console.error('World cleanup failed:',err);}
   worldNodeObjects.length=0;
 
   for(let cx=tx-streamRadius;cx<=tx+streamRadius;cx++){
@@ -3073,17 +3230,21 @@ function makeHouseLots(){
 
 let HOUSE_LOTS=makeHouseLots();
 
-function houseCapacity(){
-  return [4,5,7,9,12,18,28,48,90,180][state.era]||4;
+function residentialCapacityForType(type,level=1){
+  const lv=Math.max(1,Number(level)||1);
+  const base={house:6,townhouse:16,apartment:40}[type]||0;
+  return base*lv*(1+Math.max(0,lv-1)*.12);
 }
-
+function getResidentialFacilities(){
+  return (state.facilities||[]).filter(f=>['house','townhouse','apartment'].includes(f.type));
+}
 function getHousingState(){
-  const per=houseCapacity();
   const pop=Math.max(0,Math.floor(state.pop));
-  // 開拓済み領地も住宅・住民の配置対象にする。
-  const reachable=HOUSE_LOTS.length;
-  const houses=Math.min(reachable,Math.max(1,Math.ceil(pop/per)));
-  return {population:pop,perHouse:per,houses,capacity:houses*per+state.housingBonus,shortage:Math.max(0,pop-houses*per-state.housingBonus)};
+  const homes=getResidentialFacilities();
+  const capacity=homes.reduce((sum,f)=>sum+residentialCapacityForType(f.type,f.level||1),0);
+  const adminCap=Math.max(1,Number(state.popMax)||1);
+  const effectiveCapacity=Math.min(adminCap,capacity);
+  return {population:pop,perHouse:0,houses:homes.length,capacity,adminCap,effectiveCapacity,shortage:Math.max(0,pop-effectiveCapacity),homes};
 }
 
 function drawHouseVisual(lot,occupied,p){
@@ -3177,15 +3338,9 @@ function makeCitizen(index,era){
 }
 
 function buildResidentialCity(p){
+  // 住宅は人口に応じて自動生成しない。実際に建設した住宅施設だけが存在する。
   while(residentialGroup.children.length) residentialGroup.remove(residentialGroup.children[0]);
   houseObjects.length=0;
-  const h=getHousingState();
-  for(let i=0;i<h.houses;i++){
-    const lot=HOUSE_LOTS[i];
-    if(!lot) break;
-    const occupied=Math.max(0,Math.min(h.perHouse,h.population-i*h.perHouse));
-    drawHouseVisual(lot,occupied,p);
-  }
 }
 
 function clearCitizens(){
@@ -3198,9 +3353,11 @@ function rebuildCitizenAgents(){
   if(!state.pop) return;
   const h=getHousingState();
   const active=DISTRICTS.filter(d=>state.era>=d.unlock && state.districts[d.id].level>0);
-  const count=Math.min(85,Math.floor(state.pop));
+  const homes=h.homes||[];
+  const count=Math.min(45,Math.floor(state.pop));
   for(let i=0;i<count;i++){
-    const home=HOUSE_LOTS[i%Math.max(1,h.houses)];
+    const hf=homes[i%Math.max(1,homes.length)];
+    const home=hf?{x:Number(hf.x)||0,z:Number(hf.z)||0}:{x:0,z:0};
     const job=active[i%Math.max(1,active.length)] || DISTRICTS[0];
     const g=makeCitizen(i,state.era);
     const rx=Math.round(home.x/8)*8, rz=Math.round(home.z/8)*8;
@@ -3264,7 +3421,7 @@ function completeConstruction(c){
   const maxLevel=facilityMaxLevel(def);
   const f={id:c.id,type:def.id,x:c.x,z:c.z,level:c.level||1,maxLevel};
   state.facilities.push(f);
-  state.housingBonus+=def.effects?.popMax||0;
+  if(def.id==='cityHall') state.popMax=Math.max(1,state.popMax+(def.effects?.popMax||0));
   state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
   state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
   state.stats.buildingsCompleted=(state.stats.buildingsCompleted||0)+1;
@@ -3278,10 +3435,19 @@ function completeConstruction(c){
 function simulateConstruction(sec){
   if(!Array.isArray(state.constructionQueue))state.constructionQueue=[];
   const done=[];
-  for(const c of state.constructionQueue){c.remaining=Math.max(0,(Number(c.remaining)||0)-sec); if(c.remaining<=0)done.push(c);}
+  for(const c of state.constructionQueue){
+    c.remaining=Math.max(0,(Number(c.remaining)||0)-sec);
+    if(c.remaining<=0)done.push(c);
+  }
   for(const c of done) completeConstruction(c);
-  if(done.length) return;
-  const p=eraPalette(); rebuildConstructionVisuals(p);
+  // 毎フレーム全工事メッシュを作り直さない。既存メッシュの進捗だけ更新する。
+  if(!done.length){
+    for(const g of constructionGroup.children){
+      const id=g.userData?.constructionId;
+      const c=state.constructionQueue.find(x=>x.id===id);
+      if(c){const pct=1-Math.max(0,c.remaining)/Math.max(1,c.duration);g.scale.y=.86+pct*.14;}
+    }
+  }
 }
 
 function facilityById(id){ return FACILITIES.find(x=>x.id===id); }
@@ -3298,6 +3464,8 @@ function facilityUpgradeCost(f){
   const eraMul=1+Math.max(0,state.era-def.minEra)*.04;
   const out={};
   for(const [k,v] of Object.entries(def.cost)) out[k]=Math.ceil(v*.85*mult*eraMul);
+  const materialValue=(out.wood||0)*.16+(out.stone||0)*.14+(out.iron||0)*.24+(out.science||0)*.035;
+  out.gold=Math.ceil((out.gold||0)+24+materialValue+state.era*6+lv*8);
   return out;
 }
 
@@ -3393,7 +3561,7 @@ function upgradeFacility(id){
   if((f.level||1)>=max){toast(`現在の時代ではLv.${max}が上限です。時代が進むとさらに強化できます`);return;}
   const cost=facilityUpgradeCost(f); if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
   pay(cost); f.level=(f.level||1)+1;
-  if(def.effects?.popMax)state.housingBonus+=def.effects.popMax*.12;
+  if(def.id==='cityHall' && def.effects?.popMax)state.popMax=Math.max(1,state.popMax+(def.effects.popMax||0));
   addLog(`${def.icon}${def.name}をLv.${f.level}へ強化しました。`);
   state.stats.totalFacilityUpgrades=(state.stats.totalFacilityUpgrades||0)+1;
   queueFacilityVisualRefresh(f.id);
@@ -3770,7 +3938,7 @@ function rebuildMap(){
   HOUSE_LOTS=makeHouseLots();
   const p=eraPalette();
   const sky=ERA_SKY[state.era]||ERA_SKY[0];
-  const viewFar=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
+  const viewFar=12000;
   renderer.setClearColor(sky,1);scene.background=new THREE.Color(sky);if(scene.fog){scene.fog.color.setHex(sky);scene.fog.near=Math.max(220,Math.min(900,viewFar*.28));scene.fog.far=viewFar;}
   camera.far=Math.max(1200,viewFar*1.15);camera.updateProjectionMatrix();
   try{ buildTerrainMap(p); }catch(err){
@@ -5136,6 +5304,9 @@ function facilityCost(def){
   const mult=Math.pow(1.28,owned);
   const out={};
   for(const [k,v] of Object.entries(def.cost))out[k]=Math.ceil(v*mult);
+  // すべての建物は資材だけでは建たない。土地取得・人件費・行政手数料を金で支払う。
+  const materialValue=(out.wood||0)*.18+(out.stone||0)*.15+(out.iron||0)*.26+(out.science||0)*.035;
+  out.gold=Math.ceil((out.gold||0)+18+materialValue+state.era*5+(def.category==='住宅'?6:0));
   return out;
 }
 function canBuildFacility(def){
@@ -5159,7 +5330,8 @@ function startBuildFacility(id){
   const cost=facilityCost(def);
   if(!canAfford(cost)){toast(`建設資源が足りません：${formatCost(cost)}`);return;}
   buildMode=id;
-  toast(`${def.icon}${def.name}：空き地をタップして建設開始（${constructionDuration(def)}秒）`);
+  const purchase=facilityCost(def);
+  toast(`${def.icon}${def.name}：空き地をタップ。購入費 ${formatCost(purchase)}・建設 ${constructionDuration(def)}秒`);
 }
 window.startBuildFacility=startBuildFacility;
 function cancelBuildMode(){buildMode=null;toast('建設モードを解除');}
@@ -5208,7 +5380,7 @@ function placeRoadSegment(x1,z1,x2,z2){
   if(len<1.2){toast('道路はもう少し長くしてください');return false;}
   const maxLen=18;
   if(len>maxLen){toast('道路1本は18mまでです。端点を分けて連続して敷いてください');return false;}
-  const cost={wood:Math.ceil(len*2.0),stone:Math.ceil(len*.9)};
+  const cost={wood:Math.ceil(len*2.0),stone:Math.ceil(len*.9),gold:Math.ceil(len*(1.35+state.era*.08))};
   if(!canAfford(cost)){toast(`道路資材が足りません：${formatCost(cost)}`);return false;}
   // 建物・道路との重なりを避けるが、既存道路への接続は許可する。
   const midX=(a.x1+a.x2)/2,midZ=(a.z1+a.z2)/2;
@@ -5218,7 +5390,7 @@ function placeRoadSegment(x1,z1,x2,z2){
   state.roadsBuilt=(state.roadsBuilt||0)+1;
   state.roadMiles=(state.roadMiles||0)+len;
   state.infrastructure=Math.min(999,state.infrastructure+len*.0035);
-  addLog(`🛣 道路を${len.toFixed(1)}m敷設しました。`);
+  addLog(`🛣 道路を${len.toFixed(1)}m敷設しました。`);pushNews('event',`🛣 自国で道路整備`,`新しい道路 ${len.toFixed(1)}m が完成し、都市インフラが改善しました。`,['player'],1);
   rebuildMap();renderAll();
   return true;
 }
@@ -5231,11 +5403,11 @@ function startTerritoryExpansion(){
   else toast('欲しい領地をタップ。1区画4人を自動割当、最大32区画をまとめて出撃できます');
 }
 window.startTerritoryExpansion=startTerritoryExpansion;
-function startHuntClearMode(){removeMissionPreview();clearExpansionGrid();clearHuntGrid();dispatchMode='huntGrid';const mode=document.getElementById('worldMode');if(mode){mode.style.display='block';mode.textContent='🛡 討伐・駆除：開拓済み区画をタップして選択';mode.classList.add('world-mode-pulse');}if(Math.floor(availablePersonnel('hunt'))<4)toast('討伐隊は4人で1区画を担当します。まず4人以上を養成してください');else toast('開拓済み領地をタップ。1区画4人を自動割当、最大32区画をまとめて討伐できます');}
+function startHuntClearMode(){toast('討伐・駆除は廃止されています');}
 window.startHuntClearMode=startHuntClearMode;
 function startDispatch(type){
   if(type==='expand'){startTerritoryExpansion();return;}
-  if(type==='hunt'){startHuntClearMode();return;}
+  if(type==='hunt'){toast('討伐・駆除は廃止されています。国家の自動運営へ統合されました');return;}
   toast('隊種はマップの地形と位置から自動選択されます');
 }
 window.startDispatch=startDispatch;
@@ -5344,12 +5516,17 @@ function simulateExpeditions(sec){
 function ensurePoliticsState(){
   if(!state.politics||typeof state.politics!=='object')state.politics={};
   const p=state.politics;
-  p.treasury=Math.max(0,Number(p.treasury)||600);p.taxRate=THREE.MathUtils.clamp(Number(p.taxRate)||.10,0,.30);
+  p.treasury=Math.max(0,Number(p.treasury)||600);p.debt=Math.max(0,Number(p.debt)||0);p.lastIncome=Math.max(0,Number(p.lastIncome)||0);p.lastExpense=Math.max(0,Number(p.lastExpense)||0);p.fiscalStatus=p.fiscalStatus||'健全';p.taxRate=THREE.MathUtils.clamp(Number(p.taxRate)||.10,0,.30);
   p.legitimacy=THREE.MathUtils.clamp(Number(p.legitimacy)||72,0,100);p.approval=THREE.MathUtils.clamp(Number(p.approval)||68,0,100);
   p.nextElectionYear=Math.max(5,Number(p.nextElectionYear)||20);p.lastElectionYear=Math.max(0,Number(p.lastElectionYear)||0);
   p.rulingBloc=p.rulingBloc||'市民連合';p.cabinet=p.cabinet||'balanced';p.electionCount=Math.max(0,Number(p.electionCount)||0);
-  p.laws=Object.assign({education:false,welfare:false,roads:false,trade:false,security:false},p.laws||{});
+  p.laws=Object.assign({education:false,welfare:false,roads:false,trade:false,security:false,housing:false,health:false,commerce:false,environment:false},p.laws||{});
   p.lawCooldown=Math.max(0,Number(p.lawCooldown)||0);
+  p.economyPolicy=p.economyPolicy||'market';
+  p.foreignPolicy=p.foreignPolicy||'trade';
+  p.welfareBudget=THREE.MathUtils.clamp(Number(p.welfareBudget)||.10,0,.35);
+  p.infrastructureBudget=THREE.MathUtils.clamp(Number(p.infrastructureBudget)||.10,0,.35);
+  if(!p.projects||typeof p.projects!=='object')p.projects={};
   p.factions=Object.assign({citizens:64,workers:58,merchants:52,scholars:55,guard:48},p.factions||{});
   p.seats=Object.assign({citizens:32,workers:25,merchants:18,scholars:16,guard:9},p.seats||{});
 }
@@ -5376,16 +5553,37 @@ function runElection(){
   updatePoliticsSeats();p.electionCount++;p.lastElectionYear=state.year;p.nextElectionYear=state.year+20;
   p.legitimacy=THREE.MathUtils.clamp(55+p.approval*.38+(p.seats.citizens+p.seats.workers)*.12,0,100);
   addLog(`🗳 選挙が行われました。最大会派は「${p.rulingBloc}」です。`);
+  pushNews('politics',`🗳 自国で選挙が実施`,`最大会派は「${p.rulingBloc}」。支持率 ${Math.round(p.approval)}%で政局が更新されました。`,['player'],3);
   showBanner('ELECTION','選挙結果',`「${p.rulingBloc}」が最大会派となりました。`,1700);
 }
 function simulatePolitics(sec,r){
   ensurePoliticsState(); const p=state.politics;
-  const taxEfficiency=1+(state.facilities.filter(f=>f.type==='courthouse').reduce((a,f)=>a+(f.level||1),0)*.018)+(state.facilities.filter(f=>f.type==='bank').reduce((a,f)=>a+(f.level||1),0)*.025);
-  const revenue=Math.max(0,r.gold||0)*p.taxRate*.55*taxEfficiency;
-  p.treasury=Math.max(0,p.treasury+revenue*sec);
+  const taxEfficiency=1+(state.facilities.filter(f=>f.type==='courthouse').reduce((a,f)=>a+(f.level||1),0)*.022)+(state.facilities.filter(f=>f.type==='bank').reduce((a,f)=>a+(f.level||1),0)*.03);
+  const grossIncome=Math.max(0,r.gold||0);
+  const taxRevenue=grossIncome*p.taxRate*.62*taxEfficiency;
+  const businessTax=grossIncome*(p.laws.trade?.035:.015);
+  const citizenService=state.pop*(p.laws.welfare?.011:.006);
+  const administration=state.facilities.length*.012;
+  const infrastructure=(state.roadMiles||0)*.0045*(p.laws.roads?0.84:1);
+  const security=state.facilities.filter(f=>f.type==='garrison'||f.type==='fortress').length*.018*(p.laws.security?0.9:1);
+  const education=state.facilities.filter(f=>f.type==='school'||f.type==='academy'||f.type==='research').length*.016*(p.laws.education?0.88:1);
+  const welfareBudget=state.pop*p.welfareBudget*.004*(p.economyPolicy==='welfare'?1.18:1);
+  const infraBudget=(state.roadMiles||0)*p.infrastructureBudget*.0022;
+  const projectExpense=Object.values(p.projects||{}).reduce((a,x)=>a+(Number(x?.upkeep)||0),0);
+  const debtInterest=p.debt*.00012;
+  const expensePerSec=citizenService+administration+infrastructure+security+education+welfareBudget+infraBudget+projectExpense+debtInterest;
+  const incomePerSec=taxRevenue+businessTax;
+  p.lastIncome=incomePerSec; p.lastExpense=expensePerSec;
+  const net=incomePerSec-expensePerSec;
+  if(net>=0){p.treasury+=net*sec; if(p.debt>0)p.debt=Math.max(0,p.debt-net*sec*.42);}
+  else{const need=(-net)*sec; const fromTreasury=Math.min(p.treasury,need);p.treasury-=fromTreasury; const unpaid=need-fromTreasury; if(unpaid>0)p.debt+=unpaid;}
+  p.treasury=Math.max(0,p.treasury);
+  p.fiscalStatus=p.debt>500?'債務警戒':p.lastExpense>p.lastIncome*1.08?'赤字':'健全';
   const roadSatisfaction=Math.min(14,(state.roadMiles||0)/28);
-  const lawMood=(p.laws.welfare?4:0)+(p.laws.education?3:0)+(p.laws.roads?roadSatisfaction*.45:0)+(p.laws.trade?2:0)-(p.laws.security?1:0);
-  p.approval=THREE.MathUtils.clamp(52+state.happiness*.42+roadSatisfaction*.55-p.taxRate*88+lawMood+(p.cabinet==='welfare'?4:0),0,100);
+  const fiscalMood=p.fiscalStatus==='健全'?2:p.fiscalStatus==='赤字'?-4:-7;
+  const lawMood=(p.laws.welfare?4:0)+(p.laws.education?3:0)+(p.laws.roads?roadSatisfaction*.45:0)+(p.laws.trade?2:0)+(p.laws.housing?2.4:0)+(p.laws.health?2.8:0)+(p.laws.commerce?1.5:0)+(p.laws.environment?1.8:0)-(p.laws.security?1:0);
+  const policyMood={market:0,industrial:-.8,welfare:3.1,knowledge:1.4}[p.economyPolicy]||0;
+  p.approval=THREE.MathUtils.clamp(52+state.happiness*.42+roadSatisfaction*.55-p.taxRate*88+lawMood+fiscalMood+policyMood+(p.cabinet==='welfare'?4:0)-p.welfareBudget*8-p.infrastructureBudget*3,0,100);
   p.legitimacy=THREE.MathUtils.clamp(p.legitimacy+sec*((p.approval-50)*.00042),0,100);
   p.lawCooldown=Math.max(0,p.lawCooldown-sec);
   state.roadBonus=getRoadCoverageBonus();
@@ -5394,32 +5592,102 @@ function simulatePolitics(sec,r){
 function setTaxRate(v){ensurePoliticsState();const n=THREE.MathUtils.clamp(Number(v)||0,0,.30);state.politics.taxRate=n;renderPolitics();renderAll();toast(`税率を${Math.round(n*100)}%にしました`);}
 function setCabinet(id){ensurePoliticsState();if(!['balanced','growth','welfare','science','security'].includes(id))return;state.politics.cabinet=id;state.politics.legitimacy=THREE.MathUtils.clamp(state.politics.legitimacy+(id==='balanced'?1:-.5),0,100);addLog(`内閣方針を「${politicsCabinetLabel(id)}」に変更しました。`);renderPolitics();renderAll();}
 function toggleLaw(id){
-  ensurePoliticsState();const p=state.politics;const data={education:['教育振興法',120,'科学+8%、研究派+支持','science'],welfare:['公共福祉法',150,'食料+5%、幸福度・市民支持上昇','welfare'],roads:['全国道路整備法',180,'道路効果・交通網の経済効果を強化','road'],trade:['交易自由化令',210,'金収入+11%、商業会派支持上昇','trade'],security:['国家防衛法',190,'鉄生産+5%、防衛会派支持上昇','security']}[id];
+  ensurePoliticsState();const p=state.politics;
+  const data={education:['教育振興法',120,'科学+8%、学者支持が上昇'],welfare:['公共福祉法',150,'食料+5%、幸福度・市民支持上昇'],roads:['全国道路整備法',180,'道路網の経済効果を強化'],trade:['交易自由化令',210,'金収入+11%、商業支持が上昇'],security:['国家防衛法',190,'鉄生産+5%、防衛支持が上昇'],housing:['住宅安定法',170,'住宅容量を拡大し人口成長を支える'],health:['公衆衛生法',210,'幸福度と人口安定を改善'],commerce:['商業振興法',230,'商業収益と交易を強化'],environment:['環境保全法',160,'文化・幸福度を高める都市緑化']}[id];
   if(!data)return;
-  if(p.laws[id]){p.laws[id]=false;addLog(`制度「${data[0]}」を廃止しました。`);toast(`${data[0]}を廃止しました`);renderPolitics();return;}
+  if(p.laws[id]){p.laws[id]=false;addLog(`制度「${data[0]}」を廃止しました。`);pushNews('politics',`📜 自国で制度を廃止`,`「${data[0]}」が廃止され、政策の方向が変更されました。`,['player'],2);toast(`${data[0]}を廃止しました`);renderPolitics();return;}
   if(p.lawCooldown>0){toast(`新しい法案はあと${Math.ceil(p.lawCooldown)}秒待つ必要があります`);return;}
-  if(p.treasury<data[1]){toast(`国家予算が足りません。必要：${data[1]}`);return;}
-  p.treasury-=data[1];p.laws[id]=true;p.lawCooldown=18;state.happiness=THREE.MathUtils.clamp(state.happiness+(id==='welfare'?2.5:id==='education'?1.2:.8),0,100);
-  addLog(`📜 「${data[0]}」を制定しました。`);showBanner('LAW ENACTED',data[0],data[2],1450);renderPolitics();renderAll();
+  if(p.treasury<data[1]){toast(`国家予算が足りません。必要：${fmt(data[1])}`);return;}
+  p.treasury-=data[1];p.laws[id]=true;p.lawCooldown=18;
+  if(id==='housing')state.popMax+=18;
+  if(id==='health')state.happiness=THREE.MathUtils.clamp(state.happiness+2,0,100);
+  addLog(`📜 「${data[0]}」を制定しました。`);pushNews('politics',`📜 自国で新法成立`,`「${data[0]}」が制定されました。${data[2]}`,['player'],2);showBanner('LAW ENACTED',data[0],data[2],1450);renderPolitics();renderAll();
+}
+function openCityPlan(tab='build'){const el=document.getElementById('cityPlanOverlay');if(!el)return;el.classList.add('show');el.dataset.tab=tab;renderCityPlan(tab);}
+function closeCityPlan(){document.getElementById('cityPlanOverlay')?.classList.remove('show');if(!demolishMode)cancelBuildMode();}
+window.openCityPlan=openCityPlan;window.closeCityPlan=closeCityPlan;
+function cancelConstruction(id){const q=(state.constructionQueue||[]).find(x=>x.id===id);if(!q)return;const def=facilityById(q.type);if(!def)return;const base=facilityCost(def);for(const [k,v] of Object.entries(base))state.resources[k]=(state.resources[k]||0)+Math.floor(v*.70);state.constructionQueue=state.constructionQueue.filter(x=>x.id!==id);rebuildConstructionVisuals(eraPalette());renderAll();renderCityPlan('build');toast(`${def.name}の建設を中止。70%を返還しました`);}
+window.cancelConstruction=cancelConstruction;
+let demolishMode=false;
+function stopDemolishMode(){demolishMode=false;const b=document.getElementById('demolishModeBadge');if(b)b.classList.remove('show');}
+function startDemolishMode(){demolishMode=true;buildMode=null;cancelRoadBuildMode();cancelDispatch();document.getElementById('cityPlanOverlay')?.classList.remove('show');const b=document.getElementById('demolishModeBadge');if(b)b.classList.add('show');toast('解体する建物をマップでタップしてください。Escで終了');}
+window.startDemolishMode=startDemolishMode;
+function demolishFacility(id){const idx=state.facilities.findIndex(f=>f.id===id);if(idx<0)return false;const f=state.facilities[idx];const def=facilityById(f.type);if(!def)return false;const base=facilityCost(def);for(const [k,v] of Object.entries(base))state.resources[k]=(state.resources[k]||0)+Math.floor(v*.45);state.facilities.splice(idx,1);state.stats=state.stats||{};state.stats.demolitions=(state.stats.demolitions||0)+1;if(state.selectedFacility===id)state.selectedFacility=null;stopDemolishMode();rebuildMap();renderAll();toast(`${def.icon}${def.name}を解体。約45%を回収しました`);return true;}
+window.demolishFacility=demolishFacility;
+function demolishRoad(index){const r=(state.roads||[])[index];if(!r)return;const len=Math.hypot((r.x2||0)-(r.x1||0),(r.z2||0)-(r.z1||0));const refund={wood:Math.floor(len*.7),stone:Math.floor(len*.3),gold:Math.floor(len*.22)};for(const [k,v] of Object.entries(refund))state.resources[k]=(state.resources[k]||0)+v;state.roadMiles=Math.max(0,(state.roadMiles||0)-len);state.roads.splice(index,1);state.roadsBuilt=Math.max(0,(state.roadsBuilt||0)-1);rebuildMap();renderAll();renderCityPlan('road');toast('道路を解体しました');}
+window.demolishRoad=demolishRoad;
+function renderCityPlan(tab='build'){
+  const body=document.getElementById('cityPlanBody');if(!body)return;document.querySelectorAll('[data-cp-tab]').forEach(b=>b.classList.toggle('active',b.dataset.cpTab===tab));
+  if(tab==='build'){
+    const q=(state.constructionQueue||[]).map(c=>{const d=facilityById(c.type);const pct=Math.max(0,Math.min(100,(1-c.remaining/Math.max(1,c.duration))*100));return `<div class="city-plan-row"><div class="city-plan-row-main"><div class="city-plan-row-title">${d?.icon||'🏗'} ${d?.name||c.type}　建設中</div><div class="city-plan-row-sub">残り ${Math.ceil(c.remaining)}秒 ／ ${Math.floor(pct)}% ／ (${Math.round(c.x)}, ${Math.round(c.z)})</div></div><div class="city-plan-actions"><button class="city-plan-chip" onclick="cancelConstruction('${c.id}')">中止</button></div></div>`}).join('');
+    body.innerHTML=`<div class="city-plan-statgrid"><div class="city-plan-stat"><span>完成施設</span><b>${fmt(state.facilities.length)}</b></div><div class="city-plan-stat"><span>建設中</span><b>${fmt((state.constructionQueue||[]).length)}</b></div><div class="city-plan-stat"><span>道路</span><b>${fmt(Math.round(state.roadMiles||0))}m</b></div><div class="city-plan-stat"><span>インフラ</span><b>${(state.infrastructure||1).toFixed(1)}</b></div></div>${q?`<div class="city-plan-note">🚧 建設予定</div>${q}`:''}<div class="city-plan-grid">${FACILITIES.map(def=>{const unlocked=state.era>=def.minEra;const cost=facilityCost(def);const ok=unlocked&&canAfford(cost)&&!(def.unique&&(state.facilities.some(f=>f.type===def.id)||isFacilityQueued(def.id)));return `<div class="city-plan-card"><div class="city-plan-icon">${def.icon}</div><div class="city-plan-name">${def.name}</div><div class="city-plan-meta">${def.category}　${unlocked?'解禁済み':'🔒 '+ERA[def.minEra].name}</div><div class="city-plan-desc">${def.desc}</div><div class="city-plan-meta">費用：${formatCost(cost)}<br>建設：約${constructionDuration(def)}秒</div><button class="city-plan-btn" onclick="startBuildFacility('${def.id}');closeCityPlan()" ${ok?'':'disabled'}>${def.unique&&state.facilities.some(f=>f.type===def.id)?'建設済み':(state.constructionQueue.some(c=>c.type===def.id)?'建設中':'この建物を建てる')}</button></div>`}).join('')}</div>`;
+  }else if(tab==='road'){
+    const roads=(state.roads||[]).map((r,i)=>{const len=Math.hypot((r.x2||0)-(r.x1||0),(r.z2||0)-(r.z1||0));return `<div class="city-plan-row"><div class="city-plan-row-main"><div class="city-plan-row-title">🛣 道路 ${i+1}</div><div class="city-plan-row-sub">${len.toFixed(1)}m　(${Math.round(r.x1)},${Math.round(r.z1)}) → (${Math.round(r.x2)},${Math.round(r.z2)})</div></div><div class="city-plan-actions"><button class="city-plan-chip" onclick="demolishRoad(${i})">解体</button></div></div>`}).join('');
+    body.innerHTML=`<div class="city-plan-statgrid"><div class="city-plan-stat"><span>道路本数</span><b>${fmt(state.roads?.length||0)}</b></div><div class="city-plan-stat"><span>総延長</span><b>${fmt(Math.round(state.roadMiles||0))}m</b></div><div class="city-plan-stat"><span>交通効果</span><b>+${((state.roadBonus||0)*100).toFixed(1)}%</b></div><div class="city-plan-stat"><span>道路法</span><b>${state.politics?.laws?.roads?'施行':'未施行'}</b></div></div><div class="city-plan-note">道路は都市計画へ統合済み。始点→終点で最大18mずつ連続建設できます。</div><button class="city-plan-btn" onclick="closeCityPlan();startRoadBuildMode()">🛣 道路建設モード</button>${roads||'<div class="overview-empty">まだ道路がありません。</div>'}`;
+  }else{
+    const rows=(state.facilities||[]).map(f=>{const d=facilityById(f.type);const c=facilityCost(d);const refund=Object.entries(c).filter(([,v])=>v>0).map(([k,v])=>`${resourceIcon(k)} ${fmt(Math.floor(v*.45))}`).join('　');return `<div class="city-plan-row"><div class="city-plan-row-main"><div class="city-plan-row-title">${d?.icon||'🏗'} ${d?.name||f.type}　Lv.${f.level||1}</div><div class="city-plan-row-sub">(${Math.round(f.x)}, ${Math.round(f.z)})　回収目安：${refund}</div></div><div class="city-plan-actions"><button class="city-plan-chip" onclick="focusFacility('${f.id}')">見る</button><button class="city-plan-chip" onclick="demolishFacility('${f.id}')">即時解体</button></div></div>`}).join('');
+    body.innerHTML=`<div class="city-plan-note">🗑 解体は資材の約45%を回収します。中心地区は保護されています。</div><button class="city-plan-btn warn" onclick="closeCityPlan();startDemolishMode()">🗑 マップから建物を選んで解体</button>${rows||'<div class="overview-empty">解体できる施設がありません。</div>'}`;
+  }
+}
+function focusFacility(id){const f=state.facilities.find(x=>x.id===id);if(!f)return;const dx=f.x-controls.target.x,dz=f.z-controls.target.z;controls.target.x=f.x;controls.target.z=f.z;camera.position.x+=dx;camera.position.z+=dz;camera.zoom=Math.max(.8,Math.min(1.6,camera.zoom||1));camera.updateProjectionMatrix();controls.update();state.selectedFacility=id;renderSide();highlightFacility(id);closeCityPlan();}
+window.focusFacility=focusFacility;
+
+function closePolitics(){document.getElementById('politicsOverlay')?.classList.remove('show');}
+function openPoliticsDetails(){ensurePoliticsState();document.getElementById('politicsOverlay')?.classList.add('show');renderPolitics();}
+window.openPoliticsDetails=openPoliticsDetails;
+function setEconomyPolicy(id){
+  ensurePoliticsState();
+  if(!['market','industrial','welfare','knowledge'].includes(id))return;
+  state.politics.economyPolicy=id;
+  addLog(`経済方針を「${id}」へ変更しました。`);pushNews('politics',`📈 自国の経済方針を変更`,`経済運営を「${id}」へ変更しました。`,['player'],2);
+  renderPolitics();renderAll();
+}
+function setForeignPolicy(id){
+  ensurePoliticsState();
+  if(!['trade','balanced','defensive','isolation'].includes(id))return;
+  state.politics.foreignPolicy=id;
+  addLog(`外交方針を「${id}」へ変更しました。`);pushNews('diplomacy',`🤝 自国の外交方針を変更`,`外交運営を「${id}」へ変更しました。`,['player'],2);
+  renderPolitics();
+}
+function setWelfareBudget(v){ensurePoliticsState();state.politics.welfareBudget=THREE.MathUtils.clamp(Number(v)||0,0,.35);renderPolitics();}
+function setInfrastructureBudget(v){ensurePoliticsState();state.politics.infrastructureBudget=THREE.MathUtils.clamp(Number(v)||0,0,.35);renderPolitics();}
+function launchNationalProject(id){
+  ensurePoliticsState();
+  const defs={
+    housing:{name:'住宅整備計画',cost:500,seconds:80,upkeep:.18,desc:'人口上限と移住を底上げ'},
+    education:{name:'全国教育計画',cost:650,seconds:80,upkeep:.22,desc:'科学と文化を底上げ'},
+    commerce:{name:'大交易回廊',cost:780,seconds:80,upkeep:.28,desc:'金収入と交易を底上げ'},
+    roads:{name:'国家道路網',cost:720,seconds:80,upkeep:.24,desc:'道路インフラを強化'}
+  };
+  const d=defs[id];if(!d)return;
+  if(state.politics.projects[id]){toast(`${d.name}は進行中です`);return;}
+  if(state.politics.treasury<d.cost){toast(`国家予算が足りません。必要：${fmt(d.cost)}`);return;}
+  state.politics.treasury-=d.cost;
+  state.politics.projects[id]={remaining:d.seconds,upkeep:d.upkeep};
+  if(id==='housing')state.popMax+=40;
+  if(id==='roads')state.infrastructure=Math.min(999,state.infrastructure+2.5);
+  addLog(`🏛 国家計画「${d.name}」を開始しました。`);pushNews('politics',`🏛 自国が国家計画を開始`,`「${d.name}」が始まりました。${d.desc}`,['player'],2);
+  showBanner('NATIONAL PROJECT',d.name,d.desc,1400);
+  renderPolitics();renderAll();
+}
+function cancelNationalProject(id){ensurePoliticsState();const p=state.politics;const x=p.projects?.[id];if(!x)return;p.treasury+=Math.round((Number(x.remaining)||0)*.35);delete p.projects[id];renderPolitics();toast('国家計画を中止しました');}
+function simulateNationalProjects(sec){
+  ensurePoliticsState();
+  for(const [id,pj] of Object.entries(state.politics.projects||{})){
+    pj.remaining-=sec;
+    if(pj.remaining<=0){
+      if(id==='education')state.resources.science+=240;
+      if(id==='commerce')state.resources.gold+=180;
+      if(id==='housing')state.happiness=THREE.MathUtils.clamp(state.happiness+3,0,100);
+      if(id==='roads')state.roadMiles+=8;
+      delete state.politics.projects[id];
+      addLog(`✅ 国家計画「${id}」が完了しました。`);pushNews('event',`✅ 自国の国家計画が完成`,`国家計画「${id}」が完成し、国家機能が強化されました。`,['player'],2);
+    }
+  }
 }
 function openPolitics(){ensurePoliticsState();document.getElementById('politicsOverlay')?.classList.add('show');renderPolitics();}
-function closePolitics(){document.getElementById('politicsOverlay')?.classList.remove('show');}
-window.openPolitics=openPolitics;window.closePolitics=closePolitics;window.setTaxRate=setTaxRate;window.setCabinet=setCabinet;window.toggleLaw=toggleLaw;
-function renderPolitics(){
-  const body=document.getElementById('politicsBody');if(!body)return;ensurePoliticsState();const p=state.politics;updatePoliticsSeats();
-  const factionRows=Object.entries(p.factions).map(([k,v])=>{const seat=p.seats[k]||0;return `<div style="margin-top:8px"><div class="politics-stat"><span>${politicsFactionLabel(k)}</span><b>${Math.round(v)}%　${seat}議席</b></div><div class="politics-bar"><i style="width:${Math.round(v)}%"></i></div></div>`}).join('');
-  const laws=[['education','教育振興法','科学+8%。学者支持が上昇。',120],['welfare','公共福祉法','食料+5%。住民生活を優先。',150],['roads','全国道路整備法','道路網の経済効果を強化。',180],['trade','交易自由化令','金収入+11%。商業支持が上昇。',210],['security','国家防衛法','鉄生産+5%。防衛支持が上昇。',190]];
-  const lawHtml=laws.map(x=>`<div class="politics-law"><div><div class="politics-law-name">${x[1]} ${p.laws[x[0]]?'<span class="politics-pill">制定中</span>':''}</div><div class="politics-law-desc">${x[2]}</div></div><button class="politics-btn ${p.laws[x[0]]?'warn':''}" onclick="toggleLaw('${x[0]}')">${p.laws[x[0]]?'廃止':`制定 ${x[3]}`}</button></div>`).join('');
-  const cabinets=[['balanced','均衡内閣'],['growth','成長内閣'],['welfare','生活重視内閣'],['science','学術内閣'],['security','防衛内閣']];
-  const cabinetHtml=cabinets.map(([id,label])=>`<button class="politics-btn ${p.cabinet===id?'active':''}" onclick="setCabinet('${id}')">${label}</button>`).join('');
-  body.innerHTML=`
-    <section class="politics-card"><h3>💰 国家予算・税制</h3><div class="politics-stat"><span>国庫</span><b>${fmt(p.treasury)}</b></div><div class="politics-stat"><span>税収効率</span><b>${((1+(state.facilities.filter(f=>f.type==='courthouse').reduce((a,f)=>a+(f.level||1),0)*.018)+(state.facilities.filter(f=>f.type==='bank').reduce((a,f)=>a+(f.level||1),0)*.025))*100).toFixed(0)}%</b></div><div class="politics-stat"><span>税率</span><b>${Math.round(p.taxRate*100)}%</b></div><div class="politics-actions">${[0,.05,.1,.15,.2,.25,.3].map(v=>`<button class="politics-btn ${Math.abs(p.taxRate-v)<.001?'active':''}" onclick="setTaxRate(${v})">${Math.round(v*100)}%</button>`).join('')}</div></section>
-    <section class="politics-card"><h3>🗳 政治指標</h3><div class="politics-stat"><span>住民支持率</span><b>${Math.round(p.approval)}%</b></div><div class="politics-bar"><i style="width:${Math.round(p.approval)}%"></i></div><div class="politics-stat"><span>正統性</span><b>${Math.round(p.legitimacy)}%</b></div><div class="politics-bar"><i style="width:${Math.round(p.legitimacy)}%"></i></div><div class="politics-stat"><span>次回選挙</span><b>YEAR ${Math.floor(p.nextElectionYear).toLocaleString()}</b></div><div class="politics-stat"><span>最大会派</span><b>${p.rulingBloc}</b></div><div class="politics-actions"><span class="politics-pill">選挙 ${p.electionCount}回</span></div></section>
-    <section class="politics-card"><h3>🏛 内閣方針</h3><div class="politics-actions">${cabinetHtml}</div><div class="politics-law-desc" style="margin-top:8px">${politicsCabinetLabel(p.cabinet)}：政策の重点を変更します。現在の政策と法律は人口・資源・幸福度・政治支持へ連動します。</div></section>
-    <section class="politics-card"><h3>👥 派閥・議会</h3>${factionRows}</section>
-    <section class="politics-card" style="grid-column:1/-1"><h3>📜 法律・政策</h3>${lawHtml}</section>
-  `;
-}
+window.openPolitics=openPolitics;window.closePolitics=closePolitics;window.setTaxRate=setTaxRate;window.setCabinet=setCabinet;window.toggleLaw=toggleLaw;window.setEconomyPolicy=setEconomyPolicy;window.setForeignPolicy=setForeignPolicy;window.setWelfareBudget=setWelfareBudget;window.setInfrastructureBudget=setInfrastructureBudget;window.launchNationalProject=launchNationalProject;window.cancelNationalProject=cancelNationalProject;
+function renderPolitics(){renderNationPanel(selectedNationId||'player');}
 
 function cyclePolicy(){
   const p=['balanced','food','industry','science'];
@@ -5591,10 +5859,6 @@ function upgradeSelected(){
   data.level++;
 
 
-  state.popMax +=
-    d.type==='capital'
-      ? 5
-      : 2;
 
 
   if(d.type==='capital'){
@@ -5832,11 +6096,17 @@ function rates(){
   if(pol.cabinet==='science')out.science*=cabinetMul;
   if(pol.cabinet==='welfare')out.food*=cabinetMul;
   if(pol.cabinet==='security'){out.iron*=1.04;out.gold*=.98;}
+  if(pol.economyPolicy==='market') out.gold*=1.05;
+  if(pol.economyPolicy==='industrial'){out.wood*=1.04;out.stone*=1.04;out.iron*=1.06;}
+  if(pol.economyPolicy==='welfare') out.food*=1.04;
+  if(pol.economyPolicy==='knowledge') out.science*=1.06;
   if(pol.laws?.education)out.science*=1.08;
   if(pol.laws?.welfare){out.food*=1.05;out.gold*=.96;}
   if(pol.laws?.trade)out.gold*=1.11;
   if(pol.laws?.roads){for(const k of ['food','wood','stone','iron','gold'])out[k]*=1+Math.min(.06,(state.roadMiles||0)/2500);}
   if(pol.laws?.security)out.iron*=1.05;
+  if(pol.laws?.commerce)out.gold*=1.045;
+  if(pol.laws?.environment){out.culture*=1.035;out.food*=1.015;}
 
   return out;
 
@@ -5853,6 +6123,8 @@ const PERSONNEL_TYPES={
   sea:{id:'sea',name:'海洋隊',icon:'⚓',desc:'海域へ進出して海上資源を確保'},
   expand:{id:'expand',name:'開拓隊',icon:'🧭',desc:'未開放地域を開拓して新しい領域を作る'}
 };
+// 討伐・駆除は廃止。既存セーブに残っているhuntデータは互換目的で保持するが、新規UI/養成では扱わない。
+delete PERSONNEL_TYPES.hunt;
 
 function ensurePersonnelState(){
   if(!state.personnelByType || typeof state.personnelByType!=='object')state.personnelByType={hunt:0,forest:0,sea:0,expand:0};
@@ -6045,7 +6317,6 @@ function simulate(sec){
 
   /* 施設の人口容量・幸福度・インフラ効果 */
   let facilityHappy=0;
-  let facilityPopMax=0;
   let facilityMigration=0;
   let facilityStorage=0;
   let facilityProduction=0;
@@ -6053,13 +6324,11 @@ function simulate(sec){
     const def=facilityById(f.type); if(!def) continue;
     const lv=f.level||1;
     facilityHappy += (def.effects?.happiness||0)*.008*lv;
-    facilityPopMax += (def.effects?.popMax||0)*lv;
     facilityMigration += (def.effects?.migration||0)*lv;
     facilityStorage += (def.effects?.storage||0)*lv;
     facilityProduction += (def.effects?.production||0)*lv;
   }
   state.happiness=THREE.MathUtils.clamp(state.happiness+sec*facilityHappy,0,100);
-  state.popMax=Math.max(1,state.popMax + sec*facilityPopMax*.0035);
   state.migration += sec*facilityMigration*.08;
   state.storage=Math.max(5000,state.storage+sec*facilityStorage*.00025);
   state.productionTotal += sec*facilityProduction*.2;
@@ -6118,16 +6387,13 @@ function simulate(sec){
   ){
 
     const h=getHousingState();
-    const room=h.capacity>state.pop?1:.25;
-    const growth=.0105+state.happiness*.00008+state.infrastructure*.0005+state.migration*.00022+getRoadCoverageBonus()*.0012;
-    state.pop += sec*growth*room;
-
-
-    state.pop=
-      Math.min(
-        state.popMax,
-        state.pop
-      );
+    // 人口は「実際に建てた住宅」が空いている場合だけ増える。市役所の人口上限も同時に適用。
+    if(h.capacity>state.pop){
+      const room=Math.min(1,Math.max(.18,(h.capacity-state.pop)/Math.max(1,h.capacity)));
+      const growth=.0105+state.happiness*.00008+state.infrastructure*.0005+state.migration*.00022+getRoadCoverageBonus()*.0012;
+      state.pop += sec*growth*room;
+    }
+    state.pop=Math.min(Math.max(1,Number(state.popMax)||1),state.pop);
 
   }
 
@@ -6176,9 +6442,12 @@ function simulate(sec){
   state.stats.largestPopulation=Math.max(Number(state.stats.largestPopulation)||0,state.pop);
   updateMilestones();
 
+  const oldYear=Math.floor(state.year);
   state.year +=
     sec/7;
+  if(Math.floor(state.year)>oldYear && Math.floor(state.year)%10===0){pushNews('event',`📅 自国がYEAR ${Math.floor(state.year)}へ`,`文明の節目を迎えました。人口・経済・政治の変化が続いています。`,['player'],1);}
 
+  simulateNationalProjects(sec);
   simulatePolitics(sec,r);
 
   state.worldTime=(state.worldTime||0)+sec;
@@ -6214,6 +6483,7 @@ function simulate(sec){
   }
 
   simulateExpeditions(sec);
+  simulateNations(sec);
 
 }
 
@@ -6291,9 +6561,6 @@ function evolve(){
     );
 
 
-  state.popMax +=
-    10+
-    state.era*5;
 
 
   state.storage +=
@@ -6303,6 +6570,7 @@ function evolve(){
   addLog(
     `文明が「${ERA[state.era].name}」へ進化しました。`
   );
+  pushNews('science',`✨ 自国が${ERA[state.era].name}へ進化`,`人口・研究・都市開発の条件を満たし、文明段階が上昇しました。`,['player'],3);
 
 
   startEraTransition(oldEra,state.era);
@@ -6464,7 +6732,7 @@ function randomEvent(){
 
 
   state._event=e;
-
+  pushNews('event',`${e[0]}：自国イベント`,e[1],['player'],2);
 
   const buttons=
     e[2]
@@ -6545,6 +6813,9 @@ function beginSpecialTraining(type,count){
   if(n<=0){toast('養成人数を1人以上にしてください');return;}
   const available=personnelAvailableForAssignment();
   if(n>available){toast(`未所属人員が足りません。現在 ${available}人です`);return;}
+  const trainingFee={food:Math.ceil(n*1.5),gold:Math.ceil(n*(2.5+state.era*.35))};
+  if(!canAfford(trainingFee)){toast(`専門養成には ${formatCost(trainingFee)} が必要です`);return;}
+  pay(trainingFee);
   state.unassignedPersonnel=Math.max(0,state.unassignedPersonnel-n);
   state.trainedPersonnel=state.unassignedPersonnel;
   state.specialTrainingQueue[type]=(state.specialTrainingQueue[type]||0)+n;
@@ -6598,7 +6869,7 @@ function renderFacilitySide(){
     </div>
     <div class="section"><div class="section-head"><div class="section-title">効果</div><div class="muted" style="font-size:9px">現在Lv.${f.level||1}</div></div>
       <div class="prod">${Object.entries(def.effects||{}).filter(([k])=>!['happiness','popMax','migration','storage','production','ocean'].includes(k)).map(([k,v])=>`<div>${resourceIcon(k)} <b>+${fmt(v*(f.level||1))}</b>/秒</div>`).join('') || '<div>都市全体への基盤効果</div>'}</div>
-      <div class="muted" style="font-size:10px;margin-top:8px;line-height:1.6">${def.effects?.popMax?`人口容量 +${def.effects.popMax*(f.level||1)}`:''}${def.effects?.happiness?`<br>幸福度 +${def.effects.happiness*(f.level||1)}`:''}${def.effects?.migration?`<br>人口流入 +${def.effects.migration*(f.level||1)}`:''}${def.effects?.production?`<br>都市生産 +${Math.round(def.effects.production*(f.level||1)*100)}%`:''}${def.effects?.ocean?`<br>制海力効率 +${def.effects.ocean*(f.level||1)}`:''}${def.effects?.trainingRate?`<br>教育速度 +${(def.effects.trainingRate*(f.level||1)*60).toFixed(2)}人/分`:''}${def.effects?.trainingCap?`<br>同時養成 +${fmt(def.effects.trainingCap*(f.level||1))}人`:''}${def.effects?.personnelCap?`<br>訓練済み人員上限 +${fmt(def.effects.personnelCap*(f.level||1))}人`:''}${def.effects?.garrisonSlots?`<br>同時派遣枠 +${fmt(def.effects.garrisonSlots*(f.level||1))}隊`:''}${def.effects?.rangeBonus?`<br>派遣範囲 +${fmt(def.effects.rangeBonus*(f.level||1))}`:''}</div>
+      <div class="muted" style="font-size:10px;margin-top:8px;line-height:1.6">${def.id==='cityHall'&&def.effects?.popMax?`行政人口上限 +${def.effects.popMax*(f.level||1)}`:''}${['house','townhouse','apartment'].includes(def.id)?`<br>住宅容量 +${fmt(residentialCapacityForType(def.id,f.level||1))}`:''}${def.effects?.happiness?`<br>幸福度 +${def.effects.happiness*(f.level||1)}`:''}${def.effects?.migration?`<br>人口流入 +${def.effects.migration*(f.level||1)}`:''}${def.effects?.production?`<br>都市生産 +${Math.round(def.effects.production*(f.level||1)*100)}%`:''}${def.effects?.ocean?`<br>制海力効率 +${def.effects.ocean*(f.level||1)}`:''}${def.effects?.trainingRate?`<br>教育速度 +${(def.effects.trainingRate*(f.level||1)*60).toFixed(2)}人/分`:''}${def.effects?.trainingCap?`<br>同時養成 +${fmt(def.effects.trainingCap*(f.level||1))}人`:''}${def.effects?.personnelCap?`<br>訓練済み人員上限 +${fmt(def.effects.personnelCap*(f.level||1))}人`:''}${def.effects?.garrisonSlots?`<br>同時派遣枠 +${fmt(def.effects.garrisonSlots*(f.level||1))}隊`:''}${def.effects?.rangeBonus?`<br>派遣範囲 +${fmt(def.effects.rangeBonus*(f.level||1))}`:''}</div>
     </div>
     <div class="section">
       <div class="section-head"><div class="section-title">大型設備を成長させる</div><div class="muted" style="font-size:9px">上限 Lv.${max}</div></div>
@@ -6642,10 +6913,10 @@ function updateMilestones(){
 function overviewStats(){
   const done=state.unlockedMilestones?.length||0;
   return `<div class="overview-grid">
-    <div class="overview-card"><h3>人口</h3><div class="overview-big">${fmt(state.pop)} / ${fmt(state.popMax)}</div><p>過去最高 ${fmt(state.stats?.largestPopulation||state.pop)}</p></div>
+    <div class="overview-card"><h3>人口</h3><div class="overview-big">${fmt(state.pop)} / ${fmt(state.popMax)}</div><p>住宅容量 ${fmt(Math.round(getHousingState().capacity))}　過去最高 ${fmt(state.stats?.largestPopulation||state.pop)}</p></div>
     <div class="overview-card"><h3>幸福度</h3><div class="overview-big">${Math.floor(state.happiness)}%</div><p>時代 ${ERA[state.era].name}</p></div>
     <div class="overview-card"><h3>都市</h3><div class="overview-big">${fmt(state.facilities.length)}施設</div><p>建設完了 ${fmt(state.stats?.buildingsCompleted||0)}件　建設中 ${fmt(state.constructionQueue.length)}件</p></div>
-    <div class="overview-card"><h3>遠征</h3><div class="overview-big">${fmt(state.expeditions.length)}隊</div><p>累計完了 ${fmt(state.stats?.expeditionsCompleted||0)}回</p></div>
+    <div class="overview-card"><h3>国家</h3><div class="overview-big">${fmt(state.nations?.length||30)}か国</div><p>世界5km×5km。自国＋AI国家29か国が自動発展。</p></div>
     <div class="overview-card"><h3>領域</h3><div class="overview-big">Lv.${fmt(state.mapExpansion)}</div><p>海域 ${fmt(state.seaClaims||0)}　制海力 ${fmt(state.oceanPower||0)}</p></div>
     <div class="overview-card"><h3>やり込み</h3><div class="overview-big">${done} / ${MILESTONES.length}</div><p>達成項目は🏅タブから確認できます。</p></div>
   </div>
@@ -6668,8 +6939,17 @@ function renderOverviewTab(tab){
     body.innerHTML=`${built?`<div class="overview-list">${built}</div>`:'<div class="overview-empty">完成済み施設はありません。</div>'}<div class="section" style="margin-top:10px"><div class="section-head"><div class="section-title">建設中</div></div>${queue?`<div class="overview-list">${queue}</div>`:'<div class="overview-empty">なし</div>'}</div>`;return;
   }
   if(tab==='build'){
-    sub.textContent='建物を選んでからマップの空き地をタップ';
-    body.innerHTML=`<div class="build-grid">${FACILITIES.map(def=>{const unlocked=state.era>=def.minEra;const cost=facilityCost(def);const ok=unlocked&&canAfford(cost)&&!(def.unique&&(state.facilities.some(f=>f.type===def.id)||isFacilityQueued(def.id)));return `<div class="build-card"><div class="build-card-top"><div class="build-icon">${def.icon}</div><div><div class="build-name">${def.name}</div><div class="build-meta">${unlocked?'解禁済み':'🔒 '+ERA[def.minEra].name}</div></div></div><p>${def.desc}<br>建設時間：約${constructionDuration(def)}秒</p><div class="build-meta" style="margin-bottom:6px">${formatCost(cost)}</div><button class="build-btn" onclick="startBuildFacility('${def.id}');closeOverview()" ${ok?'':'disabled'}>${state.constructionQueue.some(c=>c.type===def.id)?'建設中':(def.unique&&state.facilities.some(f=>f.type===def.id)?'建設済み':'建築モード')}</button></div>`}).join('')}</div>`;return;
+    sub.textContent='建物と道路を同じ建築メニューから管理';
+    body.innerHTML=`
+      <div class="build-grid">
+        <div class="build-card" style="grid-column:1/-1;border-color:rgba(231,194,104,.24);background:linear-gradient(135deg,rgba(231,194,104,.055),rgba(255,255,255,.02))">
+          <div class="build-card-top"><div class="build-icon">🛣</div><div><div class="build-name">道路建設</div><div class="build-meta">建築システムへ統合</div></div></div>
+          <p>始点→終点の順にマップをタップして道路を敷設します。道路は都市のインフラ・人口成長・経済へ継続的に影響します。</p>
+          <div class="build-meta" style="margin-bottom:6px">1本最大18m　／　既存道路への接続可</div>
+          <button class="build-btn" onclick="startRoadBuildMode();closeOverview()">🛣 道路を建設する</button>
+        </div>
+        ${FACILITIES.map(def=>{const unlocked=state.era>=def.minEra;const cost=facilityCost(def);const ok=unlocked&&canAfford(cost)&&!(def.unique&&(state.facilities.some(f=>f.type===def.id)||isFacilityQueued(def.id)));return `<div class="build-card"><div class="build-card-top"><div class="build-icon">${def.icon}</div><div><div class="build-name">${def.name}</div><div class="build-meta">${unlocked?'解禁済み':'🔒 '+ERA[def.minEra].name}</div></div></div><p>${def.desc}<br>建設時間：約${constructionDuration(def)}秒</p><div class="build-meta" style="margin-bottom:6px">購入費：${formatCost(cost)}</div><button class="build-btn" onclick="startBuildFacility('${def.id}');closeOverview()" ${ok?'':'disabled'}>${state.constructionQueue.some(c=>c.type===def.id)?'建設中':(def.unique&&state.facilities.some(f=>f.type===def.id)?'建設済み':'建築モード')}</button></div>`}).join('')}
+      </div>`;return;
   }
   if(tab==='milestones'){
     sub.textContent='長期プレイ向けの達成項目';
@@ -7261,6 +7541,7 @@ function saveGameSilent(){
   state.roads=(state.roads||[]).filter(r=>r && Number.isFinite(Number(r.x1)) && Number.isFinite(Number(r.z1)) && Number.isFinite(Number(r.x2)) && Number.isFinite(Number(r.z2)));
   state.roadMiles=(state.roads||[]).reduce((a,r)=>a+Math.hypot(Number(r.x2)-Number(r.x1),Number(r.z2)-Number(r.z1)),0);
   ensurePoliticsState();
+  ensureNewsState();
   if(Array.isArray(state.territoryClaims)){
     state.territoryClaims=state.territoryClaims.map(c=>{
       const workers=getExpansionClaimWorkers(c);
@@ -7303,6 +7584,7 @@ function loadGame(){
       state,
       saved
     );
+    if(!Object.prototype.hasOwnProperty.call(saved,'nationAIModelVersion')) state.nationAIModelVersion='legacy';
 
     state.era=Math.max(0,Math.min(ERA.length-1,Math.floor(Number(state.era)||0)));
 
@@ -7358,6 +7640,13 @@ function loadGame(){
     state.roadMiles=Math.max(0,Number(saved.roadMiles)||state.roads.reduce((a,r)=>a+Math.hypot(r.x2-r.x1,r.z2-r.z1),0));
     state.politics=Object.assign({},state.politics,saved.politics||{});
     ensurePoliticsState();
+    state.news=Array.isArray(saved.news)?saved.news.slice(0,NEWS_MAX):[];
+    state.newsUnread=Math.max(0,Number(saved.newsUnread)||0);
+    state.newsSeq=Math.max(0,Number(saved.newsSeq)||state.news.reduce((m,n)=>Math.max(m,Number(n.id)||0),0));
+    state.newsFilter=saved.newsFilter||'all';
+    state.wars=Array.isArray(saved.wars)?saved.wars:[];
+    state.nationAIModelVersion=saved.nationAIModelVersion || 'legacy';
+    ensureNewsState();
     state.wonders=Math.max(0,Number(saved.wonders)||0);
     state.selectedFacility=null;
     state.huntClaims=Array.isArray(saved.huntClaims)?saved.huntClaims:[];
@@ -7545,6 +7834,13 @@ renderer.domElement
       const mx=mapPoint.x;
       const mz=mapPoint.z;
 
+      /* 解体モード */
+      if(demolishMode){
+        const demolitionHits=raycaster.intersectObjects(facilityObjects,true);
+        if(demolitionHits.length){let q=demolitionHits[0].object;while(q && !q.userData?.facilityId)q=q.parent;if(q?.userData?.facilityId){demolishFacility(q.userData.facilityId);return;}}
+        toast('解体できる建物をタップしてください');return;
+      }
+
       /* 道路敷設モード */
       if(roadBuildState.active){
         if(!roadBuildState.start){
@@ -7618,19 +7914,108 @@ renderer.domElement
    RESIZE
 ========================================================= */
 
+let resizeRAF=0;
+let lastResizeW=0;
+let lastResizeH=0;
+let resizeBusy=false;
+
 function resize(){
-  const rect=mapEl.getBoundingClientRect();
-  const w=Math.max(2,Math.round(rect.width));
-  const h=Math.max(2,Math.round(rect.height));
-  const aspect=w/Math.max(1,h),viewH=52,viewW=viewH*aspect;
-  camera.left=-viewW/2;camera.right=viewW/2;camera.top=viewH/2;camera.bottom=-viewH/2;
-  camera.near=.1;
-  const far=Math.max(1200,Math.min(6000,(getWorldExtentRadius()+180)*4.5));
-  camera.far=far;camera.updateProjectionMatrix();
-  renderer.setSize(w,h,false);
+  if(resizeBusy)return;
+  resizeBusy=true;
+  try{
+    const rect=mapEl.getBoundingClientRect();
+    const w=Math.max(2,Math.round(Number.isFinite(rect.width)?rect.width:2));
+    const h=Math.max(2,Math.round(Number.isFinite(rect.height)?rect.height:2));
+    if(w===lastResizeW && h===lastResizeH){
+      resizeBusy=false;
+      return;
+    }
+    lastResizeW=w;lastResizeH=h;
+
+    const aspect=w/Math.max(1,h),viewH=52,viewW=viewH*aspect;
+    camera.left=-viewW/2;camera.right=viewW/2;camera.top=viewH/2;camera.bottom=-viewH/2;
+    camera.near=.1;
+    const rawExtent=(()=>{try{return Number(getWorldExtentRadius())||0;}catch(_){return 0;}})();
+    const far=Math.max(1200,Math.min(6000,(rawExtent+180)*4.5));
+    camera.far=far;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w,h,false);
+  }catch(err){
+    console.error('Safe resize failed:',err);
+  }finally{
+    resizeBusy=false;
+  }
 }
-window.addEventListener('resize',resize,{passive:true});
-if('ResizeObserver' in window){const ro=new ResizeObserver(()=>resize());ro.observe(mapEl);}
+
+function scheduleResize(){
+  if(resizeRAF)return;
+  resizeRAF=requestAnimationFrame(()=>{
+    resizeRAF=0;
+    resize();
+  });
+}
+
+window.addEventListener('resize',scheduleResize,{passive:true});
+window.addEventListener('orientationchange',()=>setTimeout(scheduleResize,60),{passive:true});
+if(window.visualViewport){window.visualViewport.addEventListener('resize',scheduleResize,{passive:true});}
+if('ResizeObserver' in window){
+  const ro=new ResizeObserver(()=>scheduleResize());
+  ro.observe(mapEl);
+}
+
+
+/* =========================================================
+   NEWS / WORLD EVENTS
+========================================================= */
+const NEWS_MAX=120;
+const NEWS_CATEGORIES={politics:'政治',war:'戦争',diplomacy:'外交',economy:'経済',science:'科学',event:'事件',important:'重要'};
+function ensureNewsState(){
+  if(!Array.isArray(state.news))state.news=[];
+  if(!Number.isFinite(Number(state.newsUnread)))state.newsUnread=0;
+  if(!Number.isFinite(Number(state.newsSeq)))state.newsSeq=0;
+  if(!state.newsFilter)state.newsFilter='all';
+  if(!Array.isArray(state.wars))state.wars=[];
+}
+function newsNationName(id){return state.nations?.find(n=>n.id===id)?.name || (id==='player'?'中央文明国':'国家');}
+function pushNews(category,title,text,nationIds=[],importance=1,actionId=null){
+  ensureNewsState();
+  const cat=NEWS_CATEGORIES[category]?category:'event';
+  const item={id:++state.newsSeq,year:Math.floor(state.year||1),category:cat,title:String(title||''),text:String(text||''),nationIds:Array.from(new Set((nationIds||[]).filter(Boolean))).slice(0,3),importance:Math.max(1,Math.min(3,Number(importance)||1)),read:false,ts:Date.now(),actionId};
+  state.news.unshift(item);state.news=state.news.slice(0,NEWS_MAX);state.newsUnread=Math.min(99,(state.newsUnread||0)+1);
+  updateNewsBadge();
+  if(document.getElementById('newsOverlay')?.classList.contains('show'))renderNews();
+  return item;
+}
+function updateNewsBadge(){const el=document.getElementById('newsBadge');if(el)el.textContent=state.newsUnread>0?String(Math.min(99,state.newsUnread)):'';}
+function newsMarkRead(){ensureNewsState();state.newsUnread=0;for(const n of state.news.slice(0,25))n.read=true;updateNewsBadge();}
+function setNewsFilter(filter){ensureNewsState();state.newsFilter=filter||'all';document.querySelectorAll('[data-news-filter]').forEach(b=>b.classList.toggle('active',b.dataset.newsFilter===state.newsFilter));renderNews();}
+window.setNewsFilter=setNewsFilter;
+function closeNews(){document.getElementById('newsOverlay')?.classList.remove('show');}
+window.closeNews=closeNews;
+function openNews(){ensureNewsState();newsMarkRead();document.getElementById('newsOverlay')?.classList.add('show');renderNews();}
+window.openNews=openNews;
+function renderNews(){
+  ensureNewsState();
+  const body=document.getElementById('newsBody');if(!body)return;
+  document.querySelectorAll('[data-news-filter]').forEach(b=>b.classList.toggle('active',b.dataset.newsFilter===state.newsFilter));
+  const filter=state.newsFilter||'all';
+  const list=state.news.filter(n=>filter==='all'||(filter==='important'?n.importance>=2:n.category===filter));
+  if(!list.length){body.innerHTML='<div class="overview-empty">このカテゴリのニュースはまだありません。</div>';return;}
+  body.innerHTML=list.map(n=>{
+    const cat=NEWS_CATEGORIES[n.category]||'事件';
+    const pills=(n.nationIds||[]).map(id=>`<button class="news-nation-btn" onclick="travelToNation('${id}')">${id==='player'?'★ ':''}${newsNationName(id)}</button>`).join('');
+    return `<article class="news-item ${n.importance>=2?'important ':''}${n.read?'':'unread'}"><div><div class="news-time">YEAR ${fmt(n.year)}</div><div class="news-chip ${n.category}">${cat}</div></div><div class="news-main"><div class="news-item-title">${n.title}</div><div class="news-item-text">${n.text}</div>${pills?`<div class="news-nations">${pills}</div>`:''}</div><div class="news-item-action">${n.importance>=3?'BREAKING':'REPORT'}</div></article>`;
+  }).join('');
+}
+function newsBootstrap(){
+  ensureNewsState();
+  if(state.news.length)return;
+  pushNews('important','新しい時代の始まり','30か国が暮らす5km × 5kmの世界が動き始めました。すべての国家が同じ初期条件から独自の文明を築きます。',['player'],3);
+  const ai=state.nations?.filter(n=>n.id!=='player')?.slice(0,2)||[];
+  if(ai.length)pushNews('diplomacy',`${ai[0].name}が国際情勢を注視`,`周辺諸国との交易路と外交関係の構築を開始しました。`,[ai[0].id],1);
+  if(ai[1])pushNews('economy',`${ai[1].name}で経済活動が始動`,`市場と生産基盤が整備され、国庫の成長が始まりました。`,[ai[1].id],1);
+}
+function newsAboutNation(category,title,text,id,importance=1){pushNews(category,title,text,[id],importance);}
 
 /* =========================================================
    ADMIN / DEBUG MODE
@@ -7678,7 +8063,7 @@ function adminCompleteExpeditions(){const list=[...(state.expeditions||[])];if(!
 window.adminCompleteExpeditions=adminCompleteExpeditions;
 function adminAddYear(amount){const n=Math.max(0,Number(amount)||0);state.year+=n;renderAll();adminUpdatePanel();toast(`YEAR +${fmt(n)}`);}
 window.adminAddYear=adminAddYear;
-function adminSetEra(target){const next=Math.max(0,Math.min(ERA.length-1,Math.floor(Number(target)||0)));if(next===state.era){renderAll();adminUpdatePanel();return;}const old=state.era;if(next>old){for(let e=old+1;e<=next;e++){state.happiness=Math.min(100,state.happiness+7);state.popMax+=10+e*5;state.storage+=3000;}}state.era=next;for(const d of DISTRICTS){if(state.era>=d.unlock&&d.id!=='space'&&state.districts[d.id].level===0)state.districts[d.id].level=1;}rebuildMap();rebuildWorldChunks(true);renderAll();adminUpdatePanel();if(next>old)startEraTransition(old,next);toast(`時代を「${ERA[next].name}」に変更しました`);}
+function adminSetEra(target){const next=Math.max(0,Math.min(ERA.length-1,Math.floor(Number(target)||0)));if(next===state.era){renderAll();adminUpdatePanel();return;}const old=state.era;if(next>old){for(let e=old+1;e<=next;e++){state.happiness=Math.min(100,state.happiness+7);state.storage+=3000;}}state.era=next;for(const d of DISTRICTS){if(state.era>=d.unlock&&d.id!=='space'&&state.districts[d.id].level===0)state.districts[d.id].level=1;}rebuildMap();rebuildWorldChunks(true);renderAll();adminUpdatePanel();if(next>old)startEraTransition(old,next);toast(`時代を「${ERA[next].name}」に変更しました`);}
 window.adminSetEra=adminSetEra;
 function adminNextEra(){if(state.era>=ERA.length-1){toast('すでに最終時代です');return;}adminSetEra(state.era+1);}
 window.adminNextEra=adminNextEra;
@@ -7692,7 +8077,584 @@ function adminSaveNow(){saveGameSilent();toast('管理者モードからセー�
 window.adminSaveNow=adminSaveNow;
 function adminResetSettings(){adminState.speed=1;adminState.paused=false;adminUpdatePanel();toast('管理者設定を1×へ戻しました');}
 window.adminResetSettings=adminResetSettings;
-window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){e.preventDefault();adminState.open?closeAdminPanel():openAdminPanel();}if(e.key==='Escape'){if(adminState.open)closeAdminPanel();closePolitics();closeOverview();cancelDispatch();cancelRoadBuildMode();}});
+window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){e.preventDefault();adminState.open?closeAdminPanel():openAdminPanel();}if(e.key==='Escape'){if(adminState.open)closeAdminPanel();closeNationTravel();closePolitics();closeOverview();closeCityPlan();cancelDispatch();cancelRoadBuildMode();stopDemolishMode();}});
+
+
+/* =========================================================
+   WORLD NATIONS / 5km WORLD SYSTEM + AI / NEWS
+   世界5km×5kmの中に30か国（自国1 + AI29）を配置。
+   地形チャンクそのものは従来方式のまま。遠景だけ10kmの
+   背景面と国家レイヤーを重ねるので、通常マップの見た目を壊さない。
+========================================================= */
+const WORLD_MAP_SIZE=5000;
+const WORLD_MAP_HALF=WORLD_MAP_SIZE/2;
+const WORLD_MAP_BORDER_PAD=34;
+let worldMapBase=null;
+let worldMapBorder=null;
+let nationHitMeshes=[];
+let selectedNationId='player';
+let nationSimulationAccumulator=0;
+let nationVisualDirty=true;
+
+const NATION_NAMES=[
+  '中央文明国','アルヴェル王国','ノルディア連邦','エルドリア公国','ヴァルカン同盟',
+  'セレノア共和国','ミレシア王国','グランセル帝国','オルフェン自治国','リュミエール王国',
+  'ダルメイン連合','フェルシア王国','カレドア共和国','ネヴァリス帝国','アステリア公国',
+  'ベルガント王国','ローディン連邦','イシュタル共和国','グレノア王国','サルディア自治領',
+  'エストラ共和国','マルヴェイン王国','トレヴィア連邦','ハルシオン王国','ヴェルデン公国',
+  'セレスト連合','ノアティス共和国','ファルネア王国','オルディス帝国','イリオス文明圏'
+];
+
+function nationColor(index){
+  const c=new THREE.Color();
+  if(index===0){c.setHex(0xe4b960);return c.getHex();}
+  c.setHSL((((index*0.61803398875)%1)+.04)%1,.46,.50);
+  return c.getHex();
+}
+function nationClamp(v){return THREE.MathUtils.clamp(Number(v)||0,-WORLD_MAP_HALF+WORLD_MAP_BORDER_PAD,WORLD_MAP_HALF-WORLD_MAP_BORDER_PAD);}
+function nationDistance(a,b){return Math.hypot((a.x||0)-(b.x||0),(a.z||0)-(b.z||0));}
+function nationDefaultPolicy(i){return ['balanced','growth','trade','science','welfare'][i%5];}
+function nationGovernment(i){return ['王政','共和国','連邦制','評議会制','立憲国家'][i%5];}
+function nationBuildKinds(){return ['hall','house','market','farm','workshop','tower','academy','harbor'];}
+
+function getNationWorldSlots(){
+  const xs=[-2000,-1200,-400,400,1200,2000];
+  const zs=[-1600,-800,0,800,1600];
+  const slots=[];
+  for(const z of zs) for(const x of xs) slots.push({x,z});
+  const ci=slots.findIndex(p=>p.x===0&&p.z===0);
+  if(ci>=0)slots.splice(ci,1);
+  slots.unshift({x:0,z:0});
+  return slots.slice(0,30);
+}
+
+function remapNationLayoutIfNeeded(){
+  if(!Array.isArray(state.nations)||state.nations.length!==30)return;
+  if(state.nationWorldLayout==='5km-v2')return;
+  const slots=getNationWorldSlots();
+  state.nations.forEach((n,i)=>{
+    const slot=slots[i]||{x:0,z:0};
+    n.x=slot.x;n.z=slot.z;
+    n.territoryHalf=220;
+  });
+  state.nationWorldLayout='5km-v2';
+  nationVisualDirty=true;
+}
+
+function ensureNationState(){
+  if(!Array.isArray(state.nations) || state.nations.length!==30 || !state.nations.every(n=>n && typeof n==='object')){
+    state.nations=[];
+    const positions=[];
+    // 5km×5kmに30か国。6列×5行の固定スロットで均等配置。
+    const xs=[-2000,-1200,-400,400,1200,2000];
+    const zs=[-1600,-800,0,800,1600];
+    for(const z of zs) for(const x of xs) positions.push({x,z});
+    const centerIndex=positions.findIndex(p=>p.x===0 && p.z===0);
+    if(centerIndex>=0) positions.splice(centerIndex,1);
+    positions.unshift({x:0,z:0});
+    for(let i=0;i<30;i++){
+      const p=positions[i]||{x:0,z:0};
+      const isPlayer=i===0;
+      const half=isPlayer?Math.max(44,Number(state.mapRadius)||44):420+(i%4)*34;
+      state.nations.push({
+        id:isPlayer?'player':`nation_${i}`,
+        name:isPlayer?'中央文明国':NATION_NAMES[i],
+        short:isPlayer?'自国':NATION_NAMES[i],
+        x:nationClamp(p.x),z:nationClamp(p.z),
+        population:isPlayer?Number(state.pop)||28:70,
+        popMax:isPlayer?Number(state.popMax)||40:100,
+        happiness:isPlayer?Number(state.happiness)||82:72,
+        treasury:isPlayer?600:600,
+        territoryHalf:isPlayer?half:220,
+        government:isPlayer?'共和国':'共和国',
+        policy:isPlayer?'balanced':'balanced',
+        taxRate:isPlayer?0.10:0.10,
+        approval:isPlayer?68:68,
+        stability:isPlayer?72:72,
+        tradeVolume:isPlayer?0:0,
+        roads:isPlayer?Math.max(0,state.roadsBuilt||0):4,
+        buildings:isPlayer?Math.max(1,state.facilities.length+DISTRICTS.filter(d=>(state.districts[d.id]?.level||0)>0).length):6,
+        science:isPlayer?Number(state.resources.science)||45:45,
+        culture:isPlayer?Number(state.resources?.culture)||25:25,
+        expansionLevel:0,
+        nextAction:8+(i%11),
+        nextTrade:3+(i%9),
+        nextPolitics:6+(i%13),
+        age:1,
+        cityLevel:1,
+        era:0,
+        research:45,
+        military:24,
+        militaryMax:60,
+        warWeariness:0,
+        warCooldown:18,
+        buildingCooldown:8,
+        roadCooldown:6,
+        newsCooldown:12,
+        relations:{},
+        color:nationColor(i),
+        buildingsData:[],
+        roadsData:[]
+      });
+    }
+  }
+  // Preserve the user's live city as nation 0.
+  const me=state.nations.find(n=>n.id==='player')||state.nations[0];
+  if(me){me.id='player';me.name='中央文明国';me.short='自国';me.x=0;me.z=0;me.color=nationColor(0);}
+  state.nations.forEach((n,i)=>{
+    n.x=nationClamp(n.x);n.z=nationClamp(n.z);n.color=n.color||nationColor(i);
+    n.territoryHalf=Math.max(i===0?180:220,Math.min(1100,Number(n.territoryHalf)||220));
+    n.population=Math.max(1,Number(n.population)||60);n.popMax=Math.max(n.population+20,Number(n.popMax)||200);
+    n.happiness=THREE.MathUtils.clamp(Number(n.happiness)||60,0,100);
+    n.treasury=Math.max(0,Number(n.treasury)||400);n.approval=THREE.MathUtils.clamp(Number(n.approval)||60,0,100);
+    n.stability=THREE.MathUtils.clamp(Number(n.stability)||60,0,100);
+    n.tradeVolume=Math.max(0,Number(n.tradeVolume)||0);n.roads=Math.max(0,Number(n.roads)||0);n.buildings=Math.max(1,Number(n.buildings)||6);
+    n.government=n.government||nationGovernment(i);n.policy=n.policy||nationDefaultPolicy(i);
+    n.nextAction=Math.max(.2,Number(n.nextAction)||8);n.nextTrade=Math.max(.2,Number(n.nextTrade)||4);n.nextPolitics=Math.max(.2,Number(n.nextPolitics)||8);
+    n.expansionLevel=Math.max(0,Number(n.expansionLevel)||0);n.age=Math.max(1,Number(n.age)||1);
+    n.buildingsData=Array.isArray(n.buildingsData)?n.buildingsData:[];n.roadsData=Array.isArray(n.roadsData)?n.roadsData:[];
+    n.era=Math.max(0,Math.min(ERA.length-1,Number(n.era)||0));
+    n.research=Math.max(0,Number(n.research??n.science)||0);
+    n.military=Math.max(0,Number(n.military)||24); n.militaryMax=Math.max(24,Number(n.militaryMax)||60);
+    n.warWeariness=Math.max(0,Number(n.warWeariness)||0); n.warCooldown=Math.max(.5,Number(n.warCooldown)||18);
+    n.buildingCooldown=Math.max(.5,Number(n.buildingCooldown)||8); n.roadCooldown=Math.max(.5,Number(n.roadCooldown)||6); n.newsCooldown=Math.max(1,Number(n.newsCooldown)||12);
+    n.relations=(n.relations&&typeof n.relations==='object')?n.relations:{};
+  });
+  remapNationLayoutIfNeeded();
+  normalizeAINationBaseline();
+  syncPlayerNation();
+  nationVisualDirty=true;
+}
+
+function normalizeAINationBaseline(){
+  ensureNewsState();
+  if(state.nationAIModelVersion==='v3')return;
+  for(const n of (state.nations||[])){
+    if(n.id==='player')continue;
+    n.population=70;n.popMax=100;n.happiness=72;n.treasury=600;n.territoryHalf=220;
+    n.government='共和国';n.policy='balanced';n.taxRate=.10;n.approval=68;n.stability=72;
+    n.tradeVolume=0;n.roads=4;n.buildings=6;n.science=45;n.culture=25;n.expansionLevel=0;n.age=1;n.cityLevel=1;n.era=0;n.research=45;
+    n.military=24;n.militaryMax=60;n.warWeariness=0;n.warCooldown=18;n.buildingCooldown=8;n.roadCooldown=6;n.newsCooldown=12;n.relations={};
+    n.buildingsData=[];n.roadsData=[];
+  }
+  state.wars=[];state.nationAIModelVersion='v3';
+  nationVisualDirty=true;
+  pushNews('important','🌍 世界AIを新世代仕様へ更新','29のAI国家が同一の初期条件へ統一され、政治・経済・外交・戦争・文明発展が独立して進むようになりました。',['player'],3);
+}
+function syncPlayerNation(){
+  const n=state.nations?.find(x=>x.id==='player');
+  if(!n)return;
+  n.population=Math.max(1,Number(state.pop)||1);
+  n.popMax=Math.max(n.population+1,Number(state.popMax)||40);
+  n.happiness=THREE.MathUtils.clamp(Number(state.happiness)||82,0,100);
+  n.treasury=Math.max(0,Number(state.politics?.treasury)||0);
+  n.taxRate=THREE.MathUtils.clamp(Number(state.politics?.taxRate)||.10,0,.3);
+  n.approval=THREE.MathUtils.clamp(Number(state.politics?.approval)||68,0,100);
+  n.stability=THREE.MathUtils.clamp(Number(state.politics?.legitimacy)||72,0,100);
+  n.territoryHalf=Math.max(180,Math.min(520,(Number(state.mapRadius)||44)*5));
+  n.roads=Math.max(0,Number(state.roadsBuilt)||0);
+  n.buildings=Math.max(1,(state.facilities?.length||0)+(DISTRICTS.filter(d=>(state.districts[d.id]?.level||0)>0).length));
+  n.science=Math.max(0,Number(state.resources?.science)||0);
+  n.culture=Math.max(0,Number(state.resources?.culture)||0);
+  n.era=Math.max(0,Math.min(ERA.length-1,Number(state.era)||0));
+  n.research=Math.max(0,Number(state.scienceTotal)||n.science||0);
+}
+
+
+function nationHasOverlap(a,b,gap=120){return nationDistance(a,b) < (Number(a.territoryHalf)||420)+(Number(b.territoryHalf)||420)+gap;}
+function nearestOtherNation(n){
+  let best=null,dist=Infinity;
+  for(const q of state.nations){if(q.id===n.id)continue;const d=nationDistance(n,q);if(d<dist){dist=d;best=q;}}
+  return best;
+}
+function nationAddBuilding(n){
+  const idx=n.buildingsData.length;
+  if(idx>=14)return;
+  const a=idx*2.399963 + (Number(n.x)||0)*.003;
+  const ring=idx<5?18+idx*5:42+((idx-5)%8)*8;
+  n.buildingsData.push({type:nationBuildKinds()[idx%nationBuildKinds().length],dx:Math.cos(a)*ring,dz:Math.sin(a)*ring,level:1+Math.floor(idx/5)});
+  n.buildings=Math.max(n.buildings,n.buildingsData.length+4);
+}
+function nationAddRoad(n,a,b){
+  if(n.roadsData.length>=18)return;
+  n.roadsData.push({x1:a.x,z1:a.z,x2:b.x,z2:b.z});
+  n.roads=Math.max(n.roads,n.roadsData.length);
+}
+function nationRelation(a,b){
+  if(!a||!b||a.id===b.id)return 100;
+  const existing=Number(a.relations?.[b.id]);
+  if(Number.isFinite(existing))return existing;
+  const seed=((a.name.length*31+b.name.length*17+Math.round(nationDistance(a,b)))%37)-18;
+  const v=THREE.MathUtils.clamp(56-seed*.25,18,86);
+  a.relations=a.relations||{};a.relations[b.id]=v;
+  return v;
+}
+function setNationRelation(a,b,value){
+  if(!a||!b||a.id===b.id)return;
+  a.relations=a.relations||{};b.relations=b.relations||{};
+  const v=THREE.MathUtils.clamp(Number(value)||50,-100,100);a.relations[b.id]=v;b.relations[a.id]=v;
+}
+function nationWarPower(n){return Math.max(1,(n.military||0)*(1+(n.era||0)*.11)*(0.72+(n.stability||60)/150));}
+function nationPickWarTarget(n){
+  const candidates=state.nations.filter(q=>q.id!==n.id).sort((a,b)=>{
+    const sa=nationDistance(n,a)*.0025+nationWarPower(a)*.01+nationRelation(n,a)*.015;
+    const sb=nationDistance(n,b)*.0025+nationWarPower(b)*.01+nationRelation(n,b)*.015;
+    return sa-sb;
+  });
+  if(!candidates.length)return null;
+  return candidates.find(q=>nationRelation(n,q)<44) || (Math.random()<.12?candidates[0]:null);
+}
+function nationStartWar(a,b){
+  if(!a||!b||a.id===b.id)return false;
+  const exists=state.wars.some(w=>(w.a===a.id&&w.b===b.id)||(w.a===b.id&&w.b===a.id));
+  if(exists)return false;
+  const war={id:`war_${Date.now()}_${Math.floor(Math.random()*100000)}`,a:a.id,b:b.id,remaining:45+Math.random()*85,scoreA:0,scoreB:0,rounds:0};
+  state.wars.push(war);
+  setNationRelation(a,b,Math.min(nationRelation(a,b),18));
+  a.warCooldown=70+Math.random()*40;b.warCooldown=Math.max(Number(b.warCooldown)||0,36+Math.random()*24);
+  a.warWeariness=(a.warWeariness||0)+2;b.warWeariness=(b.warWeariness||0)+2;
+  pushNews('war',`⚔ ${a.name}、${b.name}へ宣戦`,`国境を巡る緊張が限界に達し、両国は戦争状態に入りました。`,[a.id,b.id],3);
+  return true;
+}
+function nationTryExpand(n){
+  if(n.id==='player')return false;
+  const oldHalf=Number(n.territoryHalf)||220;
+  const proposed=Math.min(1050,oldHalf+30+(n.era||0)*4);
+  for(const q of state.nations){
+    if(q.id===n.id)continue;
+    const dx=Math.abs(n.x-q.x),dz=Math.abs(n.z-q.z);
+    const limit=proposed+(Number(q.territoryHalf)||220)+38;
+    if(dx<limit && dz<limit)return false;
+  }
+  n.territoryHalf=proposed;n.expansionLevel=(n.expansionLevel||0)+1;
+  const a=(n.expansionLevel*1.87)% (Math.PI*2);
+  const anchor={x:nationClamp(n.x+Math.cos(a)*Math.min(proposed*.68,520)),z:nationClamp(n.z+Math.sin(a)*Math.min(proposed*.68,520))};
+  nationAddRoad(n,{x:n.x,z:n.z},anchor);
+  if(n.buildingsData.length<14)nationAddBuilding(n);
+  nationVisualDirty=true;
+  if(Math.random()<.26)newsAboutNation('event',`🗺 ${n.name}が領土を拡大`,`開拓隊が新しい土地を確保し、国境線が外側へ広がりました。`,n.id,2);
+  return true;
+}
+function nationTrade(n){
+  if(n.id==='player')return;
+  const others=state.nations.filter(q=>q.id!==n.id).sort((a,b)=>nationDistance(n,a)-nationDistance(n,b));
+  const other=others.find(q=>nationRelation(n,q)>34)||others[0];if(!other)return;
+  const routeQuality=(n.infrastructure||1)*(1+(n.roads||0)*.018)*(1+(n.era||0)*.08);
+  const volume=Math.max(10,Math.round((16+n.population*.022)*routeQuality));
+  const revenue=volume*(0.48+(n.stability/100)*.34)*(n.policy==='trade'?1.12:1);
+  n.tradeVolume+=volume;n.treasury+=revenue;other.treasury=Math.max(0,(other.treasury||0)+volume*.09);
+  n.happiness=THREE.MathUtils.clamp(n.happiness+.14,0,100);n.stability=THREE.MathUtils.clamp(n.stability+.06,0,100);
+  setNationRelation(n,other,Math.min(95,nationRelation(n,other)+.8));
+  if(Math.random()<.18)pushNews('economy',`🤝 ${n.name}で交易が活況`,`交易路を通じて${other.name}との物流が伸び、国庫と市場が活性化しました。`,[n.id,other.id],2);
+}
+function nationPolitics(n){
+  if(n.id==='player')return;
+  const pressure=(50-n.happiness)*.07 + (50-n.approval)*.05 + (n.warWeariness||0)*.02;
+  n.approval=THREE.MathUtils.clamp(n.approval + (n.stability-55)*.009 - pressure + (n.policy==='welfare'?0.14:0),20,97);
+  n.stability=THREE.MathUtils.clamp(n.stability + (n.happiness-60)*.008 - Math.max(0,50-n.approval)*.012 - (n.warWeariness||0)*.006,18,99);
+  const oldGov=n.government,oldPolicy=n.policy;
+  if(n.stability<38 && Math.random()<.32){
+    n.government=['共和国','連邦制','評議会制'][Math.floor(Math.random()*3)];
+    n.approval=Math.min(94,n.approval+3);n.age+=.3;
+  }else if(n.approval>84 && Math.random()<.20){
+    n.policy=n.policy==='growth'?'trade':n.policy==='trade'?'science':n.policy==='science'?'welfare':'growth';
+  }else if(n.approval<45 && Math.random()<.18){
+    n.policy=n.policy==='welfare'?'balanced':'welfare';
+  }
+  if(Math.random()<.10)n.taxRate=THREE.MathUtils.clamp(n.taxRate+(Math.random()-.5)*.025,.04,.28);
+  if(oldGov!==n.government)newsAboutNation('politics',`🏛 ${n.name}で政権交代`,`政治状況の変化により、政府体制が「${n.government}」へ移行しました。`,n.id,3);
+  if(oldPolicy!==n.policy)newsAboutNation('politics',`📜 ${n.name}が政策転換`,`国家運営の重点が「${n.policy}」へ変更されました。`,n.id,2);
+}
+function nationResearchAndEra(n){
+  const era=n.era||0;
+  n.research=(n.research||0)+(.26+(n.buildings||0)*.010)*(n.policy==='science'?1.28:1);
+  const reqPop=[100,145,210,310,450,650,920,1300,1900][Math.min(8,era+1)];
+  const reqResearch=[100,260,620,1400,3200,7000,15000,32000,70000][Math.min(8,era+1)];
+  const reqBuildings=[8,10,13,16,20,24,28,32,38][Math.min(8,era+1)];
+  if(era<ERA.length-1 && n.population>=reqPop && n.research>=reqResearch && (n.buildings||0)>=reqBuildings){
+    n.era=era+1;n.cityLevel=Math.max(n.cityLevel||1,2+n.era);n.age+=8;n.popMax+=45+ n.era*18;n.happiness=Math.min(99,n.happiness+2.2);n.militaryMax+=12;n.military=Math.min(n.militaryMax,n.military+8);
+    nationVisualDirty=true;
+    newsAboutNation('science',`✨ ${n.name}が${ERA[n.era].name}へ進歩`,`研究と人口の成長を背景に、新しい文明段階へ移行しました。`,n.id,3);
+  }
+}
+function nationMaybeBuild(n){
+  if(n.treasury<120 || n.buildingsData.length>=14)return false;
+  if(n.buildingCooldown>0)return false;
+  nationAddBuilding(n);
+  n.treasury=Math.max(0,n.treasury-(55+n.era*20));
+  n.buildingCooldown=18+Math.random()*34;
+  n.popMax+=5+n.era*2;
+  nationVisualDirty=true;
+  if(Math.random()<.20)newsAboutNation('event',`🏗 ${n.name}で都市建設が進行`,`新しい建造物が完成し、都市機能が一段階拡張されました。`,n.id,2);
+  return true;
+}
+function nationMaybeRoad(n){
+  if(n.treasury<90 || n.roadsData.length>=18 || n.roadCooldown>0)return false;
+  const angle=Math.random()*Math.PI*2;const len=18+n.era*5+Math.random()*20;
+  const a={x:n.x+Math.cos(angle)*(10+Math.random()*25),z:n.z+Math.sin(angle)*(10+Math.random()*25)};
+  const b={x:n.x+Math.cos(angle)*len,z:n.z+Math.sin(angle)*len};
+  nationAddRoad(n,a,b);n.roads=Math.max(n.roads,n.roadsData.length);n.roadCooldown=14+Math.random()*30;n.treasury-=45;
+  nationVisualDirty=true;return true;
+}
+function simulateWars(){
+  ensureNationState();
+  for(const w of [...state.wars]){
+    const a=state.nations.find(n=>n.id===w.a),b=state.nations.find(n=>n.id===w.b);
+    if(!a||!b){state.wars=state.wars.filter(x=>x.id!==w.id);continue;}
+    w.remaining-=1;w.rounds=(w.rounds||0)+1;
+    const powerA=nationWarPower(a)*(0.86+Math.random()*.28),powerB=nationWarPower(b)*(0.86+Math.random()*.28);
+    if(powerA>powerB){w.scoreA+=1;a.treasury=Math.max(0,a.treasury-1.3);b.treasury=Math.max(0,b.treasury-2.4);b.population=Math.max(1,b.population-.22);}
+    else{w.scoreB+=1;b.treasury=Math.max(0,b.treasury-1.3);a.treasury=Math.max(0,a.treasury-2.4);a.population=Math.max(1,a.population-.22);}
+    a.warWeariness=(a.warWeariness||0)+.008;b.warWeariness=(b.warWeariness||0)+.008;
+    if((w.rounds%16)===0){
+      pushNews('war',`⚔ 戦況報告：${a.name} vs ${b.name}`,`${a.name} ${Math.round(w.scoreA)} - ${Math.round(w.scoreB)} ${b.name}。戦線が動いています。`,[a.id,b.id],2);
+    }
+    if(w.remaining<=0){
+      const win=w.scoreA===w.scoreB?null:(w.scoreA>w.scoreB?a:b);const lose=win?(win.id===a.id?b:a):null;
+      if(win&&lose){win.territoryHalf=Math.min(1100,win.territoryHalf+22);lose.territoryHalf=Math.max(180,lose.territoryHalf-12);win.treasury+=110;lose.treasury=Math.max(0,lose.treasury-75);setNationRelation(win,lose,Math.min(68,nationRelation(win,lose)+18));
+        pushNews('war',`🕊 ${win.name}が戦争で優勢`,`停戦協定が成立し、${win.name}側が戦果を得ました。国境と勢力圏がわずかに変化しました。`,[win.id,lose.id],3);
+      }else pushNews('diplomacy',`🕊 ${a.name}と${b.name}が停戦`,`決着のつかないまま停戦が成立し、両国は復興へ向かいます。`,[a.id,b.id],2);
+      a.warWeariness=Math.max(0,(a.warWeariness||0)-2.4);b.warWeariness=Math.max(0,(b.warWeariness||0)-2.4);
+      state.wars=state.wars.filter(x=>x.id!==w.id);nationVisualDirty=true;
+    }
+  }
+}
+function nationMaybeWar(n){
+  if(n.id==='player'||n.warCooldown>0||n.treasury<800||n.military<28||n.stability<46)return false;
+  if(state.wars.some(w=>w.a===n.id||w.b===n.id))return false;
+  const target=nationPickWarTarget(n);if(!target)return false;
+  if(nationRelation(n,target)>42 && Math.random()<.84)return false;
+  return nationStartWar(n,target);
+}
+function simulateNations(sec){
+  ensureNationState();
+  nationSimulationAccumulator+=sec;
+  if(nationSimulationAccumulator<1)return;
+  const steps=Math.min(4,Math.floor(nationSimulationAccumulator));
+  nationSimulationAccumulator-=steps;
+  for(let step=0;step<steps;step++){
+    // 戦争は独立した小さなシミュレーション。毎秒全要素を再生成しないので軽量。
+    simulateWars();
+    for(const n of state.nations){
+      if(n.id==='player')continue;
+      const policyMul={balanced:1,growth:1.10,trade:1.08,science:1.05,welfare:1.01}[n.policy]||1;
+      const warPenalty=state.wars.some(w=>w.a===n.id||w.b===n.id)?Math.max(.70,1-(n.warWeariness||0)*.009):1;
+      const growth=(.20+n.happiness*.0017+n.stability*.0008+n.buildings*.0026+n.era*.008)*policyMul*warPenalty;
+      if(n.population<n.popMax)n.population=Math.min(n.popMax,n.population+growth);
+      if(n.population>n.popMax*.80)n.popMax+=.16+n.buildings*.003+n.era*.018;
+      const researchGain=(.32+n.buildings*.016+n.era*.05)*(n.policy==='science'?1.32:1);
+      n.science+=researchGain*.24;n.research+=researchGain;
+      n.culture+=(.16+n.happiness*.0025)*(n.policy==='welfare'?1.08:1);
+      n.treasury+=(.72+n.population*.0028+n.era*.06)*(1+n.taxRate*1.12)*(n.happiness/100)*warPenalty;
+      n.military=Math.min(n.militaryMax,n.military+(0.045+n.buildings*.0012+n.era*.006)*(n.policy==='growth'?1.08:1));
+      n.happiness=THREE.MathUtils.clamp(n.happiness+(n.policy==='welfare'?.07:.028)-(n.warWeariness||0)*.003,28,98);
+      n.age+=.012+ n.era*.0008;
+      n.nextAction-=1;n.nextTrade-=1;n.nextPolitics-=1;n.warCooldown=Math.max(0,n.warCooldown-1);n.buildingCooldown=Math.max(0,n.buildingCooldown-1);n.roadCooldown=Math.max(0,n.roadCooldown-1);n.newsCooldown=Math.max(0,n.newsCooldown-1);
+      if(n.nextAction<=0){
+        if(n.treasury>200) nationMaybeBuild(n);
+        if(n.treasury>150) nationMaybeRoad(n);
+        if(n.territoryHalf<1050 && n.treasury>280) {if(nationTryExpand(n))n.treasury=Math.max(0,n.treasury-70);}
+        n.nextAction=20+Math.random()*42;
+      }
+      if(n.nextTrade<=0){nationTrade(n);n.nextTrade=10+Math.random()*28;}
+      if(n.nextPolitics<=0){nationPolitics(n);n.nextPolitics=15+Math.random()*35;}
+      nationResearchAndEra(n);
+      nationMaybeWar(n);
+      if(n.newsCooldown<=0 && Math.random()<.05){
+        const r=Math.random();
+        if(r<.25)newsAboutNation('event',`🌧 ${n.name}で異常気象`,`一時的な天候不順が発生し、生産活動に小さな影響が出ています。`,n.id,1);
+        else if(r<.50)newsAboutNation('economy',`📈 ${n.name}で市場が活性化`,`商業都市の需要が伸び、交易量が上昇しています。`,n.id,1);
+        else if(r<.75)newsAboutNation('diplomacy',`🤝 ${n.name}が外交攻勢`,`近隣国へ新しい交易・協力提案を送りました。`,n.id,1);
+        else newsAboutNation('science',`🔬 ${n.name}で研究成果`,`研究機関が新しい技術的発見を報告しました。`,n.id,1);
+        n.newsCooldown=24+Math.random()*36;
+      }
+    }
+  }
+  syncPlayerNation();
+}
+
+function clearNationVisuals(){
+  nationHitMeshes.length=0;
+  for(const child of [...nationGroup.children]){disposeObject3D(child);nationGroup.remove(child);}
+  worldMapBase=null;worldMapBorder=null;
+}
+function makeNationLabel(textString,color=0xffffff,small=false){
+  const c=document.createElement('canvas');c.width=512;c.height=96;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
+  ctx.font=small?'bold 22px system-ui':'900 28px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='rgba(4,8,12,.72)';ctx.fillRect(26,16,460,64);
+  ctx.fillStyle='#ffffff';ctx.fillText(textString,256,48);
+  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false,depthWrite:false});
+  const sp=new THREE.Sprite(mat);sp.scale.set(small?24:30,small?4.5:5.2,1);return sp;
+}
+function nationBuildingMesh(kind,level=1,scale=1,era=0){
+  const g=new THREE.Group();
+  const w=(kind==='hall'?5.2:kind==='tower'?2.8:3.4)*scale;
+  const h=(kind==='tower'?8.5:kind==='hall'?6.2:2.5+level*.55)*scale;
+  const d=(kind==='hall'?4.6:3.2)*scale;
+  const eraWall = era>=6 ? 0x7f8f9c : era>=4 ? 0x9b9a8c : era>=2 ? 0xb29a77 : 0x948477;
+  const eraRoof = era>=6 ? 0x394b5a : era>=4 ? 0x4e5e69 : era>=2 ? 0x5f5348 : 0x4d5e52;
+  const wall=makeMaterial(kind==='market'?0xc59b70:kind==='farm'?0x8fa16b:kind==='academy'?0x7b88a0:eraWall,.90);
+  const roof=makeMaterial(kind==='tower'?eraRoof:kind==='hall'?(era>=5?0x5f4b42:0x655247):eraRoof,.84);
+  g.add(box(w,.22,d,makeMaterial(0x555b58,.88),0,.11,0));
+  g.add(box(w,h,d,wall,0,h/2+.14,0));
+  if(kind!=='farm' && kind!=='market'){
+    const roofGeo=kind==='tower'?new THREE.ConeGeometry(w*.7,1.2*scale,5):new THREE.ConeGeometry(w*.78,1.1*scale,4);
+    const rt=new THREE.Mesh(roofGeo,roof);rt.position.y=h+.60*scale;rt.rotation.y=.78;g.add(rt);
+  } else {
+    g.add(box(w*1.04,.18,d*1.05,roof,0,h+.16,0));
+  }
+  if(kind==='hall'){
+    for(const sx of [-1,1]){const flag=box(.08,1.6*scale,.04,makeMaterial(0xd8b65d,.65),sx*w*.35,h+1.1*scale,0);g.add(flag);}
+  }
+  return g;
+}
+function buildNationVisual(n,index){
+  const g=new THREE.Group();g.position.set(n.x,0,n.z);g.userData.nationId=n.id;
+  const col=new THREE.Color(n.color||nationColor(index));
+  // 領土面：透明度は薄く、既存の地形をそのまま見せる。
+  const fill=new THREE.Mesh(new THREE.PlaneGeometry(n.territoryHalf*2,n.territoryHalf*2),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:n.id==='player'?.05:.065,side:THREE.DoubleSide,depthWrite:false}));
+  fill.rotation.x=-Math.PI/2;fill.position.y=.24;fill.renderOrder=3;fill.userData.nationId=n.id;g.add(fill);
+  const border=makeSquareOutline(n.territoryHalf,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:n.id==='player'?.88:.48,depthTest:false}),.30);border.renderOrder=12;g.add(border);
+  const core=new THREE.Mesh(new THREE.CylinderGeometry(8,8,.16,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.24,depthWrite:false}));core.position.y=.33;g.add(core);
+  const data=Array.isArray(n.buildingsData)?n.buildingsData:[];
+  // 初期の建物を見せるため、保存に無ければ最低限生成。
+  if(n.id!=='player' && data.length<6){for(let i=data.length;i<6;i++)nationAddBuilding(n);}
+  if(n.id!=='player' && n.roadsData.length<4){for(let ri=n.roadsData.length;ri<4;ri++){const a=ri*Math.PI/2;const len=26; n.roadsData.push({x1:n.x,z1:n.z,x2:n.x+Math.cos(a)*len,z2:n.z+Math.sin(a)*len});}}
+  const roadMat=new THREE.MeshStandardMaterial({color:0x746b5d,roughness:.92});
+  const roads=Array.isArray(n.roadsData)?n.roadsData:[];
+  for(const r of roads){
+    const dx=r.x2-r.x1,dz=r.z2-r.z1,len=Math.hypot(dx,dz);if(len<1)continue;
+    const road=box(len,.06,1.25,roadMat,(r.x1+r.x2)/2,.34,(r.z1+r.z2)/2);road.rotation.y=Math.atan2(dz,dx);g.add(road);
+  }
+  for(const b of data){
+    const visualScale=1+Math.min(4,n.era||0)*.025+Math.min(6,(b.level||1)-1)*.014;
+    const bm=nationBuildingMesh(b.type,b.level||1,visualScale,n.era||0);
+    bm.position.set(Number(b.dx)||0,.02,Number(b.dz)||0);bm.userData.nationId=n.id;g.add(bm);
+  }
+  const label=makeNationLabel(`${n.id==='player'?'★ ':''}${n.name}`,col,false);label.position.set(0,Math.max(18,10+n.buildings*.12),0);g.add(label);
+  const sub=makeNationLabel(`${fmt(Math.round(n.population))}人 · ${n.government} · ${ERA[Math.max(0,Math.min(ERA.length-1,n.era||0))].label}`,col,true);sub.scale.set(.72,.72,1);sub.position.set(0,Math.max(24,16+n.buildings*.14),0);g.add(sub);
+  // 透明ヒット面で国をタップ選択できるようにする。
+  const hit=new THREE.Mesh(new THREE.PlaneGeometry(n.territoryHalf*2,n.territoryHalf*2),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+  hit.rotation.x=-Math.PI/2;hit.position.y=.42;hit.userData.nationId=n.id;g.add(hit);nationHitMeshes.push(hit);
+  nationGroup.add(g);
+}
+function rebuildNationVisuals(){
+  if(!nationVisualDirty)return;
+  ensureNationState();
+  clearNationVisuals();
+  // 5km square base: existing plains texture, tiled. Streamed terrain is layered above it.
+  const source=getTerrainTexture('plains',0);
+  const tex=source.clone();tex.needsUpdate=true;tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(40,40);tex.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  const baseMat=new THREE.MeshStandardMaterial({map:tex,color:0xffffff,roughness:.96,metalness:0,depthWrite:true});
+  worldMapBase=new THREE.Mesh(new THREE.PlaneGeometry(WORLD_MAP_SIZE,WORLD_MAP_SIZE,1,1),baseMat);worldMapBase.rotation.x=-Math.PI/2;worldMapBase.position.set(0,-.10,0);worldMapBase.receiveShadow=true;worldMapBase.renderOrder=-5;nationGroup.add(worldMapBase);
+  const border=makeSquareOutline(WORLD_MAP_HALF,new THREE.LineBasicMaterial({color:0x252d31,transparent:true,opacity:.82,depthTest:false}),.05);border.renderOrder=30;nationGroup.add(border);worldMapBorder=border;
+  state.nations.forEach(buildNationVisual);
+  nationVisualDirty=false;
+}
+function nationalPanelNation(id){return state.nations?.find(n=>n.id===id)||state.nations?.[0];}
+function renderNationPanel(id=selectedNationId){
+  const body=document.getElementById('politicsBody');if(!body)return;ensureNationState();selectedNationId=id||'player';const me=state.nations[0];const selected=nationalPanelNation(selectedNationId)||me;const sorted=[...state.nations].sort((a,b)=>b.population-a.population);
+  const playerPolitics=state.politics||{};
+  const countryRows=sorted.map((n,i)=>`<div class="overview-row" style="cursor:pointer" onclick="travelToNation('${n.id}')"><div class="overview-row-main"><div class="overview-row-title">${n.id==='player'?'★ ':''}${n.name}</div><div class="overview-row-sub">${n.government} · ${n.policy} · 領土 ${Math.round(n.territoryHalf*2)}m · 安定 ${Math.round(n.stability)}%</div></div><div class="overview-badge">#${i+1}　${fmt(Math.round(n.population))}人</div></div>`).join('');
+  const selectedInfo=`<section class="politics-card" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🗺 ${selected.id==='player'?'あなたの国家':selected.name}</h3><button class="politics-btn active" onclick="focusNation('${selected.id}')">📍 この国を見る</button></div><div class="politics-stat"><span>人口</span><b>${fmt(Math.round(selected.population))} / ${fmt(Math.round(selected.popMax))}</b></div><div class="politics-bar"><i style="width:${Math.min(100,Math.round(selected.population/Math.max(1,selected.popMax)*100))}%"></i></div><div class="politics-stat"><span>領土</span><b>${fmt(Math.round(selected.territoryHalf*2))}m × ${fmt(Math.round(selected.territoryHalf*2))}m</b></div><div class="politics-stat"><span>幸福度</span><b>${Math.round(selected.happiness)}%</b></div><div class="politics-stat"><span>政治安定</span><b>${Math.round(selected.stability)}%</b></div><div class="politics-stat"><span>支持率</span><b>${Math.round(selected.approval)}%</b></div><div class="politics-stat"><span>政府</span><b>${selected.government}</b></div><div class="politics-stat"><span>政策</span><b>${selected.policy}</b></div><div class="politics-stat"><span>税率</span><b>${Math.round((selected.taxRate||0)*100)}%</b></div><div class="politics-stat"><span>国庫</span><b>${fmt(Math.round(selected.treasury))}</b></div><div class="politics-stat"><span>交易量</span><b>${fmt(Math.round(selected.tradeVolume))}</b></div><div class="politics-stat"><span>研究 / 文化</span><b>${fmt(Math.round(selected.science))} / ${fmt(Math.round(selected.culture))}</b></div><div class="politics-stat"><span>建造物 / 道路</span><b>${fmt(Math.round(selected.buildings))} / ${fmt(Math.round(selected.roads))}本</b></div><div class="politics-stat"><span>文明段階</span><b>Lv.${Math.round(selected.cityLevel||1)} · ${ERA[Math.max(0,Math.min(ERA.length-1,selected.era||0))].name} · YEAR ${fmt(Math.round(selected.age||1))}</b></div><div class="politics-stat"><span>軍事力</span><b>${fmt(Math.round(selected.military||0))} / ${fmt(Math.round(selected.militaryMax||0))}</b></div><div class="politics-stat"><span>戦争状態</span><b>${state.wars?.some(w=>w.a===selected.id||w.b===selected.id)?'⚔ 戦争中':'平時'}</b></div></section>`;
+  const p0=playerPolitics;
+  const lawDefs=[['education','教育振興法'],['welfare','公共福祉法'],['roads','全国道路整備法'],['trade','交易自由化令'],['security','国家防衛法'],['housing','住宅安定法'],['health','公衆衛生法'],['commerce','商業振興法'],['environment','環境保全法']];
+  const lawHtml=lawDefs.map(([id,name])=>`<button class="politics-btn ${p0.laws?.[id]?'active':''}" onclick="toggleLaw('${id}')">${p0.laws?.[id]?'✓ ':''}${name}</button>`).join('');
+  const economyBtns=[['market','自由市場'],['industrial','産業優先'],['welfare','生活重視'],['knowledge','知識経済']].map(([id,label])=>`<button class="politics-btn ${p0.economyPolicy===id?'active':''}" onclick="setEconomyPolicy('${id}')">${label}</button>`).join('');
+  const foreignBtns=[['trade','交易開放'],['balanced','均衡外交'],['defensive','防衛重視'],['isolation','内向重視']].map(([id,label])=>`<button class="politics-btn ${p0.foreignPolicy===id?'active':''}" onclick="setForeignPolicy('${id}')">${label}</button>`).join('');
+  const projectDefs=[['housing','住宅整備計画',500],['education','全国教育計画',650],['commerce','大交易回廊',780],['roads','国家道路網',720]];
+  const projectBtns=projectDefs.map(([id,label,cost])=>{const active=p0.projects?.[id];return `<button class="politics-btn ${active?'active':''}" onclick="${active?`cancelNationalProject('${id}')`:`launchNationalProject('${id}')`}">${label}${active?'（進行中）':` ${cost}`}</button>`}).join('');
+  const myPanel=`<section class="politics-card"><h3>🏛 自国：政治・政策・国家計画</h3><div class="politics-stat"><span>税率</span><b>${Math.round((p0.taxRate||.10)*100)}%</b></div><div class="politics-stat"><span>支持率 / 正統性</span><b>${Math.round(p0.approval||68)}% / ${Math.round(p0.legitimacy||72)}%</b></div><div class="politics-stat"><span>財政</span><b>${fmt(Math.round(p0.treasury||0))}　${p0.fiscalStatus||'健全'}</b></div><div class="politics-stat"><span>政府</span><b>${p0.cabinet?politicsCabinetLabel(p0.cabinet):'均衡内閣'}</b></div><div class="politics-actions">${[.05,.10,.15,.20,.25,.30].map(v=>`<button class="politics-btn ${Math.abs((p0.taxRate||.10)-v)<.001?'active':''}" onclick="setTaxRate(${v})">${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-actions">${['balanced','growth','science','welfare','security'].map(id=>`<button class="politics-btn ${p0.cabinet===id?'active':''}" onclick="setCabinet('${id}')">${politicsCabinetLabel(id)}</button>`).join('')}</div><div class="politics-stat"><span>経済方針</span><b>${p0.economyPolicy||'market'}</b></div><div class="politics-actions">${economyBtns}</div><div class="politics-stat"><span>外交方針</span><b>${p0.foreignPolicy||'trade'}</b></div><div class="politics-actions">${foreignBtns}</div><div class="politics-stat"><span>福祉 / インフラ予算</span><b>${Math.round((p0.welfareBudget||.1)*100)}% / ${Math.round((p0.infrastructureBudget||.1)*100)}%</b></div><div class="politics-actions">${[.05,.1,.15,.2,.25].map(v=>`<button class="politics-btn ${Math.abs((p0.welfareBudget||.1)-v)<.001?'active':''}" onclick="setWelfareBudget(${v})">福祉${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-actions">${[.05,.1,.15,.2,.25].map(v=>`<button class="politics-btn ${Math.abs((p0.infrastructureBudget||.1)-v)<.001?'active':''}" onclick="setInfrastructureBudget(${v})">道路${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-stat"><span>法律</span><b>${Object.values(p0.laws||{}).filter(Boolean).length}件施行</b></div><div class="politics-actions">${lawHtml}</div><div class="politics-stat"><span>国家計画</span><b>${Object.keys(p0.projects||{}).length}件進行中</b></div><div class="politics-actions">${projectBtns}</div><div class="politics-actions"><button class="politics-btn active" onclick="openNews()">📰 最新の重大ニュースを見る</button></div></section>`;
+  const worldInfo=`<section class="politics-card"><h3>🌍 世界情勢</h3><div class="politics-stat"><span>国家数</span><b>30</b></div><div class="politics-stat"><span>世界地図</span><b>5km × 5km</b></div><div class="politics-stat"><span>最多人口</span><b>${sorted[0]?.name||'—'}　${fmt(Math.round(sorted[0]?.population||0))}</b></div><div class="politics-stat"><span>最多交易</span><b>${[...state.nations].sort((a,b)=>b.tradeVolume-a.tradeVolume)[0]?.name||'—'}</b></div><div class="politics-stat"><span>戦争</span><b>${fmt(state.wars?.length||0)}件</b></div><div class="politics-law-desc" style="margin-top:8px">他国は放置しても勝手に領土を広げ、建物を増やし、道路を伸ばし、人口・国庫・研究・文化・交易を成長させます。政治体制も変化し、条件が揃えば戦争と停戦も発生します。</div></section>`;
+  body.innerHTML=`${selectedInfo}${myPanel}${worldInfo}<section class="politics-card" style="grid-column:1/-1"><h3>🏳 世界30か国</h3><div class="overview-list" style="max-height:440px;overflow:auto">${countryRows}</div></section>`;
+}
+function closeNationTravel(){document.getElementById('nationTravelOverlay')?.classList.remove('show');}
+window.closeNationTravel=closeNationTravel;
+
+function openNationTravel(){
+  ensureNationState();
+  const body=document.getElementById('nationTravelBody');
+  if(!body)return;
+  const sorted=[...state.nations].sort((a,b)=>{if(a.id==='player')return -1;if(b.id==='player')return 1;return String(a.name).localeCompare(String(b.name),'ja');});
+  body.innerHTML=sorted.map(n=>{
+    const isPlayer=n.id==='player';
+    return `<div class="nation-travel-card ${n.id===selectedNationId?'selected':''}" role="button" tabindex="0" onclick="travelToNation('${n.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();travelToNation('${n.id}')}">
+      <div class="nation-travel-top"><span class="nation-travel-dot" style="background:#${new THREE.Color(n.color||nationColor(1)).getHexString()}"></span><span class="nation-travel-name">${isPlayer?'★ ':''}${n.name}</span><span class="nation-travel-badge">${isPlayer?'自国':'他国'}</span></div>
+      <div class="nation-travel-meta"><span>人口 <b>${fmt(Math.round(n.population))}</b></span><span>領土 <b>${fmt(Math.round(n.territoryHalf*2))}m</b></span><span>政府 <b>${n.government}</b></span><span>安定 <b>${Math.round(n.stability)}%</b></span></div>
+    </div>`;
+  }).join('');
+  document.getElementById('nationTravelOverlay')?.classList.add('show');
+}
+window.openNationTravel=openNationTravel;
+
+function travelToNation(id='player'){
+  ensureNationState();
+  const n=state.nations.find(x=>x.id===id);
+  if(!n)return;
+  selectedNationId=n.id;
+  closeNationTravel();
+  focusNation(n.id,.42);
+  openNationPanel(n.id);
+}
+window.travelToNation=travelToNation;
+
+function openNationPanel(id='player'){ensureNationState();selectedNationId=id;document.getElementById('politicsOverlay')?.classList.add('show');renderNationPanel(id);}
+window.openPolitics=openNationPanel;
+window.openNationPanel=openNationPanel;
+
+function focusNation(id='player',zoom=0.42){
+  ensureNationState();
+  const n=nationalPanelNation(id);
+  if(!n)return;
+  selectedNationId=n.id;
+  const dx=Number(n.x)||0-controls.target.x;
+  const dz=Number(n.z)||0-controls.target.z;
+  controls.target.x=Number(n.x)||0;
+  controls.target.z=Number(n.z)||0;
+  camera.position.x+=dx;
+  camera.position.z+=dz;
+  camera.zoom=THREE.MathUtils.clamp(Number(zoom)||0.42,0.009,1.8);
+  camera.updateProjectionMatrix();
+  controls.update();
+  worldStreamKey='';
+  try{rebuildWorldChunks(false);}catch(err){console.warn('Nation focus world rebuild skipped',err);}
+  return n;
+}
+window.focusNation=focusNation;
+
+function viewNation(id='player'){
+  focusNation(id,.42);
+  openNationPanel(id);
+}
+window.viewNation=viewNation;
+
+// 5km overview info + camera bounds.
+function clampWorldCamera(){
+  const lim=WORLD_MAP_HALF-WORLD_MAP_BORDER_PAD;
+  const ox=controls.target.x,oz=controls.target.z;
+  const nx=THREE.MathUtils.clamp(ox,-lim,lim),nz=THREE.MathUtils.clamp(oz,-lim,lim);
+  if(nx!==ox){const dx=nx-ox;controls.target.x=nx;camera.position.x+=dx;}
+  if(nz!==oz){const dz=nz-oz;controls.target.z=nz;camera.position.z+=dz;}
+  const minZoom=0.009;
+  if(camera.zoom<minZoom){camera.zoom=minZoom;camera.updateProjectionMatrix();}
+  if(camera.zoom>1.8){camera.zoom=1.8;camera.updateProjectionMatrix();}
+}
+
+// 国の選択を通常タップへ追加。
+const __nationOriginalPointerUp=renderer.domElement.__nationPointerMarker;
+if(!__nationOriginalPointerUp){
+  renderer.domElement.addEventListener('click',e=>{
+    // pointerup側の標準処理より先後は問わない。ヒット面の時だけ国家を開く。
+    const rect=renderer.domElement.getBoundingClientRect();if(rect.width<=0||rect.height<=0)return;
+    pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);
+    const hits=raycaster.intersectObjects(nationHitMeshes,false);
+    if(!hits.length)return;
+    const id=hits[0].object.userData?.nationId;if(id){selectedNationId=id;focusNation(id,.42);openNationPanel(id);}
+  },{passive:true});
+  renderer.domElement.__nationPointerMarker=true;
+}
 
 /* =========================================================
    START
@@ -7701,9 +8663,13 @@ window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCas
 resize();
 loadGame();
 ensurePersonnelState();
+ensureNationState();
+ensureNewsState();
+newsBootstrap();
 state.selectedFacility=null;
 rebuildMap();
 rebuildWorldChunks(true);
+rebuildNationVisuals();
 renderAll();
 updateMilestones();
 resize();
@@ -7823,12 +8789,14 @@ let missionViewState=null;
 
 /* =========================================================
    EXPANSION GRID
-   1区画 = 4m四方 / 4人。大グリッドは24m四方の中に
+   1区画 = 6m四方 / 4人。大グリッドは36m四方の中に
    6×6配置から四隅4区画を除いた32区画を持つ。
 ========================================================= */
-const EXPANSION_CELL_SIZE=4;
-const EXPANSION_CELL_HALF=2;
+const EXPANSION_CELL_SIZE=6;
+const EXPANSION_CELL_HALF=3;
 const EXPANSION_GRID_RADIUS_CELLS=3;
+const EXPANSION_GRID_OUTER_HALF=EXPANSION_CELL_SIZE*3;
+const EXPANSION_GRID_INNER_HALF=EXPANSION_CELL_SIZE*2;
 const EXPANSION_GRID_OFFSETS=[];
 // 中心を含む6×6グリッド。四隅だけ除いて32区画。
 for(let row=0;row<6;row++)for(let col=0;col<6;col++){
@@ -7891,7 +8859,7 @@ function expansionGridMaxCells(){
 function expansionDispatchRange(workers){
   const w=Math.max(4,Number(workers)||4);
   /* 開拓は通常遠征より広く扱い、1区画グリッド全体を安全に選べるようにする。
-     4人でも最低64m、以降は4人ごとに16m伸びる。 */
+     4人でも最低64mを確保し、拡大グリッド全体を安全に含める。 */
   return Math.max(64,w*4,w/4*16);
 }
 
@@ -7899,7 +8867,7 @@ function clampExpansionAnchor(x,z,origin,range){
   const ox=Number(origin?.x)||0,oz=Number(origin?.z)||0;
   const dx=(Number(x)||0)-ox,dz=(Number(z)||0)-oz;
   const d=Math.hypot(dx,dz);
-  const gridReach=Math.hypot(12,12)+2;
+  const gridReach=Math.hypot(EXPANSION_GRID_OUTER_HALF,EXPANSION_GRID_OUTER_HALF)+2;
   const maxCenter=Math.max(1,(Number(range)||64)-gridReach);
   if(d<=Math.max(0,maxCenter))return {x:Number(x)||0,z:Number(z)||0};
   const a=Math.atan2(dz,dx)||0;
@@ -7942,9 +8910,9 @@ function drawExpansionGrid(anchorX,anchorZ){
     expansionGridGroup.add(line);
   }
 
-  const outer=makeSquareOutline(12,new THREE.LineBasicMaterial({color:0xe9c86d,transparent:true,opacity:.95,depthTest:false}),.80);
+  const outer=makeSquareOutline(EXPANSION_GRID_OUTER_HALF,new THREE.LineBasicMaterial({color:0xe9c86d,transparent:true,opacity:.95,depthTest:false}),.80);
   outer.position.set(anchorX,0,anchorZ);outer.renderOrder=125;expansionGridGroup.add(outer);
-  const inner=makeSquareOutline(8,new THREE.LineBasicMaterial({color:0xffe5a0,transparent:true,opacity:.22,depthTest:false}),.79);
+  const inner=makeSquareOutline(EXPANSION_GRID_INNER_HALF,new THREE.LineBasicMaterial({color:0xffe5a0,transparent:true,opacity:.22,depthTest:false}),.79);
   inner.position.set(anchorX,0,anchorZ);inner.renderOrder=124;expansionGridGroup.add(inner);
   effectGroup.add(expansionGridGroup);
   updateExpansionGridVisuals();
@@ -7993,7 +8961,7 @@ function drawHuntGrid(anchorX,anchorZ){
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(EXPANSION_CELL_SIZE-.16,EXPANSION_CELL_SIZE-.16),huntGridCellMaterial(info.blocked?'blocked':'available'));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.74,z);mesh.userData.huntCellIndex=i;mesh.userData.huntCell={index:i,x,z,row:o.row,col:o.col,workers:4,blocked:info.blocked,reason:info.reason,selected:false};mesh.renderOrder=131;huntGridGroup.add(mesh);huntGridHitMeshes.push(mesh);huntGridCells.push(mesh.userData.huntCell);
     const line=makeSquareOutline(EXPANSION_CELL_HALF-.04,new THREE.LineBasicMaterial({color:info.blocked?0x666d75:0xcce3d7,transparent:true,opacity:info.blocked?.16:.65,depthTest:false}),.77);line.position.set(x,0,z);line.userData.huntCellIndex=i;line.renderOrder=132;huntGridGroup.add(line);
   }
-  const outer=makeSquareOutline(12,new THREE.LineBasicMaterial({color:0xef9a69,transparent:true,opacity:.95,depthTest:false}),.81);outer.position.set(anchorX,0,anchorZ);outer.renderOrder=135;huntGridGroup.add(outer);effectGroup.add(huntGridGroup);updateHuntGridVisuals();
+  const outer=makeSquareOutline(EXPANSION_GRID_OUTER_HALF,new THREE.LineBasicMaterial({color:0xef9a69,transparent:true,opacity:.95,depthTest:false}),.81);outer.position.set(anchorX,0,anchorZ);outer.renderOrder=135;huntGridGroup.add(outer);effectGroup.add(huntGridGroup);updateHuntGridVisuals();
 }
 function updateHuntGridVisuals(){if(!huntGridGroup)return;const selectedSet=new Set((pendingMission?.type==='hunt'?(pendingMission.cells||[]):[]).map(c=>missionCellKey(c.x,c.z)));for(const mesh of huntGridHitMeshes){const c=mesh.userData.huntCell;c.selected=selectedSet.has(missionCellKey(c.x,c.z));const info=huntCellBlocked(c.x,c.z);c.blocked=info.blocked;c.reason=info.reason;mesh.material.dispose();mesh.material=huntGridCellMaterial(info.blocked?'blocked':(c.selected?'selected':'available'));}}
 function toggleHuntGridCell(index){
@@ -8625,36 +9593,66 @@ function updateWorldMood(dt,t){
   }
 }
 
+let worldChunkTick=0;
+let nationVisualCooldown=0;
+let lastRuntimeErrorKey='';
+function logRuntimeError(label,err){
+  const key=label+':'+String(err?.message||err);
+  if(key!==lastRuntimeErrorKey){
+    lastRuntimeErrorKey=key;
+    console.error(label,err);
+  }
+}
+
 function loop(t){
-  const dt=Math.min(1,(t-last)/1000);last=t;
-  const simDt=adminState.paused?0:Math.min(60,dt*adminState.speed);
-  if(simDt>0)simulate(simDt);
-  updateWorldMood(adminState.paused?0:simDt,t);
-  if(adminState.open)adminUpdatePanel();
+  try{
+    const dt=Math.min(1,(t-last)/1000);last=t;
+    const simDt=adminState.paused?0:Math.min(60,dt*adminState.speed);
+    if(simDt>0)simulate(simDt);
+    updateWorldMood(adminState.paused?0:simDt,t);
+    if(adminState.open)adminUpdatePanel();
 
-  saveTick+=dt;renderTick+=dt;
-  if(saveTick>=120){
-    state.last=Date.now();
-    localStorage.setItem('civilization_city_idle',JSON.stringify(state));
-    saveTick=0;
-  }
-  if(renderTick>.35){
-    const hc=getHousingState().houses;
-    const cq=state.constructionQueue.length;
-    const fc=state.facilities.length;
-    if(window.__lastHouseCount!==hc || window.__lastConstructionCount!==cq || window.__lastFacilityCount!==fc){
-      rebuildMap();
-      window.__lastHouseCount=hc;window.__lastConstructionCount=cq;window.__lastFacilityCount=fc;
+    saveTick+=dt;renderTick+=dt;
+    if(saveTick>=120){
+      state.last=Date.now();
+      localStorage.setItem('civilization_city_idle',JSON.stringify(state));
+      saveTick=0;
     }
-    renderAll();renderTick=0;
-  }
+    if(renderTick>.35){
+      const hc=getHousingState().houses;
+      const cq=state.constructionQueue.length;
+      const fc=state.facilities.length;
+      if(window.__lastHouseCount!==hc || window.__lastConstructionCount!==cq || window.__lastFacilityCount!==fc){
+        try{rebuildMap();}catch(err){logRuntimeError('rebuildMap failed:',err);}
+        window.__lastHouseCount=hc;window.__lastConstructionCount=cq;window.__lastFacilityCount=fc;
+      }
+      renderAll();renderTick=0;
+    }
 
-  controls.update();
-  rebuildWorldChunks(false);
-  renderer.clear();renderer.render(scene,camera);
+    try{clampWorldCamera();}catch(err){logRuntimeError('World camera clamp failed:',err);}
+    try{controls.update();}catch(err){logRuntimeError('OrbitControls update failed:',err);}
+    worldChunkTick+=dt;
+    if(worldChunkTick>=.24){
+      try{rebuildWorldChunks(false);}catch(err){logRuntimeError('World chunk rebuild failed:',err);}
+      worldChunkTick=0;
+    }
+    try{renderer.clear();renderer.render(scene,camera);}catch(err){logRuntimeError('Renderer failed:',err);}
+  }catch(err){
+    logRuntimeError('Main loop recovered from error:',err);
+    last=t;
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/* JSFiddle / Safari で「Script error.」だけになった場合でも、
+   同じエラーをconsoleへ一度だけ残し、アニメーション自体は継続する。 */
+window.addEventListener('error',e=>{
+  console.error('Global script error:',e.error||e.message||e);
+});
+window.addEventListener('unhandledrejection',e=>{
+  console.error('Unhandled promise rejection:',e.reason||e);
+});
 
 </script>
 

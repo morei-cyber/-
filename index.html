@@ -1749,7 +1749,7 @@ const FACILITIES = [
   {id:'forge',name:'小鍛冶場',icon:'🔥',minEra:1,category:'資源',placement:'nearQuarry',cost:{wood:90,stone:70,iron:8},desc:'序盤の鉄加工。採掘した鉄を加工し、鉄の生産を増やす。',effects:{iron:.26,production:.03}},
   {id:'ironworks',name:'製鉄所',icon:'⚒️',minEra:2,category:'資源',placement:'nearMine',unique:true,cost:{wood:150,stone:180,iron:45,gold:40},desc:'鉄鉱山と物流を結ぶ大型製鉄施設。高レベルほど鉄生産が増える。',effects:{iron:1.15,production:.07}},
   {id:'market',name:'市場',icon:'🏪',minEra:2,category:'商業',placement:'nearCity',cost:{wood:110,stone:90,gold:45},desc:'交易商が集まり、金と文化と人口流入を生む。',effects:{gold:.32,culture:.18,migration:.03}},
-  {id:'cityHall',name:'市役所',icon:'🏛️',minEra:2,category:'行政',placement:'nearCity',unique:true,cost:{wood:180,stone:260,iron:40,gold:120,science:90},desc:'都市行政の中枢。人口容量・幸福度・建設効率を引き上げ、レベルに応じて庁舎が大きく発展する。',effects:{popMax:24,happiness:1.6,production:.055}},
+  {id:'cityHall',name:'市役所',icon:'🏛️',minEra:2,category:'行政',placement:'nearCity',unique:true,cost:{wood:180,stone:260,iron:40,gold:120,science:90},desc:'都市行政の中枢。人口容量・幸福度・建設効率を引き上げ、レベルに応じて庁舎が大きく発展する。',effects:{popMax:24,happiness:1.6,production:.055,migration:.018}},
   {id:'harbor',name:'港湾',icon:'⚓',minEra:3,category:'水運',placement:'nearWater',unique:true,cost:{wood:220,stone:180,gold:100},desc:'巨大な湖や大河の水運を活用する大型港。物流と金収入を上げる。',effects:{gold:.55,production:.05}},
   {id:'bath',name:'公衆浴場',icon:'♨️',minEra:3,category:'生活',placement:'nearCity',cost:{stone:160,iron:20,gold:75},desc:'衛生設備。幸福度と人口容量を増やす。',effects:{happiness:1.7}},
   {id:'fortress',name:'要塞',icon:'🏰',minEra:4,category:'防衛',placement:'hillsOrEdge',unique:true,cost:{stone:420,iron:55,gold:120},desc:'外縁部を守る大型防衛施設。討伐隊の成功報酬と領域維持を支える。',effects:{happiness:.7,production:.045}},
@@ -1844,6 +1844,7 @@ const state = {
   infrastructure:1,
   housingBonus:0,
   cityHallAdminCap:40,
+  populationSystemVersion:2,
   migration:0,
   festivals:0,
   policy:'balanced',
@@ -3459,11 +3460,35 @@ function residentialCapacityForType(type,level=1){
 function getResidentialFacilities(){
   return (state.facilities||[]).filter(f=>['house','townhouse','apartment'].includes(f.type));
 }
+
+/*
+ * 人口システムの整合性修復。
+ * 以前は市役所のLvを上げても表示上のpopMaxと実際の行政上限が
+ * 古いセーブ/計算順によって食い違うことがあったため、毎シミュレーション時に
+ * 「基礎40 + 市役所Lv×24」を最低行政人口上限として再同期する。
+ */
+function repairPopulationSystem(){
+  state.pop=THREE.MathUtils.clamp(Number(state.pop)||1,1,1000000000);
+  state.popMax=Math.max(1,Number(state.popMax)||40);
+  state.happiness=THREE.MathUtils.clamp(Number(state.happiness)||0,0,100);
+  state.migration=Number.isFinite(Number(state.migration))?Number(state.migration):0;
+  const halls=(state.facilities||[]).filter(f=>f && f.type==='cityHall');
+  let hallBonus=0;
+  for(const f of halls) hallBonus+=24*Math.max(1,Number(f.level)||1);
+  const administrativeCap=40+hallBonus;
+  state.cityHallAdminCap=administrativeCap;
+  state.popMax=Math.max(state.popMax,administrativeCap,state.pop+0.001);
+  state.populationSystemVersion=2;
+}
+
 function getHousingState(){
   const pop=Math.max(0,Math.floor(state.pop));
   const homes=getResidentialFacilities();
-  const capacity=homes.reduce((sum,f)=>sum+residentialCapacityForType(f.type,f.level||1),0);
-  const adminCap=Math.max(1,Number(state.popMax)||1);
+  /* 初期集落にも40人分の基礎居住容量を持たせる。以前は住宅施設が0件だと
+     popMax=40でも実効容量が0になり、人口が一切増えない不整合が起きていた。 */
+  const residentialBonus=homes.reduce((sum,f)=>sum+residentialCapacityForType(f.type,f.level||1),0);
+  const capacity=40+residentialBonus;
+  const adminCap=Math.max(1,Number(state.popMax)||40);
   const effectiveCapacity=Math.min(adminCap,capacity);
   return {population:pop,perHouse:0,houses:homes.length,capacity,adminCap,effectiveCapacity,shortage:Math.max(0,pop-effectiveCapacity),homes};
 }
@@ -3643,6 +3668,7 @@ function completeConstruction(c){
   const f={id:c.id,type:def.id,x:c.x,z:c.z,level:c.level||1,maxLevel};
   state.facilities.push(f);
   if(def.id==='cityHall') state.popMax=Math.max(1,state.popMax+(def.effects?.popMax||0));
+  repairPopulationSystem();
   state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
   state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
   state.stats.buildingsCompleted=(state.stats.buildingsCompleted||0)+1;
@@ -3783,6 +3809,7 @@ function upgradeFacility(id){
   const cost=facilityUpgradeCost(f); if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
   pay(cost); f.level=(f.level||1)+1;
   if(def.id==='cityHall' && def.effects?.popMax)state.popMax=Math.max(1,state.popMax+(def.effects.popMax||0));
+  repairPopulationSystem();
   addLog(`${def.icon}${def.name}をLv.${f.level}へ強化しました。`);
   state.stats.totalFacilityUpgrades=(state.stats.totalFacilityUpgrades||0)+1;
   queueFacilityVisualRefresh(f.id);
@@ -6507,7 +6534,9 @@ function getMissionStats(type,workers,x,z){
 
 function simulate(sec){
 
+  repairPopulationSystem();
   simulateConstruction(sec);
+  repairPopulationSystem();
   const r=
     rates();
 
@@ -6633,8 +6662,11 @@ function simulate(sec){
     const h=getHousingState();
     // 人口は「実際に建てた住宅」が空いている場合だけ増える。市役所の人口上限も同時に適用。
     if(h.capacity>state.pop){
-      const room=Math.min(1,Math.max(.18,(h.capacity-state.pop)/Math.max(1,h.capacity)));
-      const growth=.0105+state.happiness*.00008+state.infrastructure*.0005+state.migration*.00022+getRoadCoverageBonus()*.0012;
+      const room=Math.min(1,Math.max(.22,(h.capacity-state.pop)/Math.max(1,h.capacity)));
+      const cityHallLv=totalFacilityLevel('cityHall');
+      const cityHallGrowth=1+cityHallLv*.14;
+      const growthBase=.018+state.happiness*.00013+state.infrastructure*.00065+state.migration*.00030+getRoadCoverageBonus()*.0016;
+      const growth=growthBase*cityHallGrowth;
       state.pop += sec*growth*room;
     }
     state.pop=Math.min(Math.max(1,Number(state.popMax)||1),state.pop);
@@ -10638,6 +10670,11 @@ function logRuntimeError(label,err){
 }
 
 function normalizeCriticalRuntimeState(){
+  try{repairPopulationSystem();}catch(err){
+    state.pop=Math.max(1,Number(state.pop)||1);
+    state.popMax=Math.max(state.pop+1,Number(state.popMax)||40);
+    state.happiness=THREE.MathUtils.clamp(Number(state.happiness)||70,0,100);
+  }
   if(!state.resources||typeof state.resources!=='object')state.resources=cloneNationStarterResources();
   for(const k of ['food','wood','stone','iron','gold','science','culture'])state.resources[k]=Math.max(0,Number(state.resources[k])||0);
   if(!state.politics||typeof state.politics!=='object')state.politics=cloneNationDefaultPolitics();

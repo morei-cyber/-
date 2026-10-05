@@ -1246,7 +1246,7 @@ body::selection{background:rgba(231,194,104,.26)}
     <div class="nation-travel-head">
       <div>
         <div class="nation-travel-title">🌍 他国へ移動</div>
-        <div class="nation-travel-sub">国を選ぶと、その国へカメラが移動して詳細情報を表示します。</div>
+        <div class="nation-travel-sub">国を選ぶと、すぐその国の3D都市へ切り替わります。</div>
       </div>
       <button class="overview-close" type="button" onclick="closeNationTravel()">×</button>
     </div>
@@ -1279,7 +1279,7 @@ body::selection{background:rgba(231,194,104,.26)}
       <button class="news-filter" data-news-filter="event" onclick="setNewsFilter('event')">事件</button>
     </div>
     <div class="news-body" id="newsBody"></div>
-    <div class="news-footer">最新120件を保持。ニュースはゲーム内時間に応じて自動生成されます。</div>
+    <div class="news-footer">重大ニュースのみ最大60件を保持。戦争・国土変動・政変・時代進歩など国家運営に影響する出来事だけを表示します。</div>
   </div>
 </div>
 
@@ -1784,7 +1784,7 @@ const adminState={speed:1,paused:false,open:false};
 
 const state = {
 
-  version:15,
+  version:16,
 
   last:Date.now(),
 
@@ -1903,7 +1903,7 @@ const state = {
   newsSeq:0,
   wars:[],
   diplomacyTick:0,
-  nationAIModelVersion:'v5-shared-player-systems'
+  nationAIModelVersion:'v6-territory-war-visual-politics'
 };
 
 
@@ -2671,8 +2671,9 @@ function chunkType(cx,cz){
   /* 海は20kmマクロ海岸だけに限定する。
      以前のランダム海判定が遠景で大量の海チャンクを生み、
      大陸が海だらけに見えていた。 */
-  if(h<.47) return 'forest';
-  if(h<.61) return 'hills';
+  if(h<.16) return 'mountain';
+  if(h<.44) return 'forest';
+  if(h<.62) return 'hills';
   return 'plains';
 }
 
@@ -2696,6 +2697,7 @@ function getTerrainTexture(biome,variant=0){
     plains:['#567a43','#6d914f','#8baa61'],
     forest:['#285d39','#3b7644','#5a8f4e'],
     hills:['#5e6d61','#71816a','#8c987e'],
+    mountain:['#4d5954','#67726d','#9a9d91'],
     sea:['#1d6f91','#245f83','#3b9bb3'],
     river:['#247fa0','#2a7190','#54b0c0'],
     lake:['#2c86a5','#2d7193','#61b8c9']
@@ -2731,21 +2733,31 @@ function getTerrainTexture(biome,variant=0){
   return tex;
 }
 
+function terrainHeightAt(biome,vx,vz,variant=0){
+  const edgeFade=Math.min(1,Math.max(0,(Math.hypot(vx,vz)-24)/160));
+  if(biome==='mountain'){
+    const a=Math.sin(vx*.055+variant*1.7)*.5+Math.cos(vz*.061-variant*1.2)*.45+Math.sin((vx+vz)*.025)*.28;
+    const b=.5+.5*a;
+    return Math.max(0,(b-.32))*30*edgeFade + Math.max(0,Math.sin(vx*.11-vz*.06))*2.5*edgeFade;
+  }
+  if(biome==='hills') return (Math.sin(vx*.075+variant)*1.8+Math.cos(vz*.09-variant)*1.35+Math.sin((vx-vz)*.035)*.7)*edgeFade;
+  if(biome==='forest') return (Math.sin(vx*.12)*.16+Math.cos(vz*.10)*.13)*edgeFade;
+  return 0;
+}
 function makeTerrainGround(biome,x,z,variant=0){
-  const geo=new THREE.PlaneGeometry(WORLD_CHUNK+0.5,WORLD_CHUNK+0.5,4,4);
+  const seg=biome==='mountain'?12:biome==='hills'?8:4;
+  const geo=new THREE.PlaneGeometry(WORLD_CHUNK+0.5,WORLD_CHUNK+0.5,seg,seg);
   geo.rotateX(-Math.PI/2);
   const pos=geo.attributes.position;
-  const centerR=Math.hypot(x,z);
   for(let i=0;i<pos.count;i++){
     const vx=pos.getX(i)+x, vz=pos.getZ(i)+z;
-    let h=0;
-    if(biome==='hills' && centerR>state.cityReach+10) h=(Math.sin(vx*.075+variant)*.6+Math.cos(vz*.09-variant)*.45)*.45;
-    else if(biome==='forest' && centerR>state.cityReach+18) h=(Math.sin(vx*.12)*.08+Math.cos(vz*.10)*.08);
-    pos.setY(i,h);
+    pos.setY(i,terrainHeightAt(biome,vx,vz,variant));
   }
   pos.needsUpdate=true;geo.computeVertexNormals();
-  const material=new THREE.MeshStandardMaterial({map:getTerrainTexture(biome,variant),color:0xffffff,roughness:biome==='sea'?.32:.95,metalness:biome==='sea'?.05:0});
-  const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,0,z);mesh.receiveShadow=true;return mesh;
+  const material=new THREE.MeshStandardMaterial({map:getTerrainTexture(biome,variant),color:0xffffff,roughness:biome==='mountain'?.98:.95,metalness:0,flatShading:biome==='mountain'});
+  const mesh=new THREE.Mesh(geo,material);mesh.position.set(x,0,z);mesh.receiveShadow=true;
+  if(biome==='mountain')mesh.castShadow=true;
+  return mesh;
 }
 
 function addGrassTuft(parent,x,z,scale=1,variant=0){
@@ -2759,6 +2771,25 @@ function addGrassTuft(parent,x,z,scale=1,variant=0){
 }
 
 function addWildAnimal(cx,cz,biome){if(!['plains','forest'].includes(biome))return;const seed=hash2(cx*113+17,cz*73-11);if(seed<.58)return;const x=cx*WORLD_CHUNK+32+(hash2(cx+91,cz-53)-.5)*30,z=cz*WORLD_CHUNK+32+(hash2(cx-37,cz+47)-.5)*30;if(isHuntClearedAt(x,z,.35))return;const g=new THREE.Group();g.position.set(x,.02,z);g.userData.wildAnimal=true;const bodyMat=makeMaterial(biome==='forest'?0x7d654f:0x8b7454,.88),dark=makeMaterial(0x41372d,.9),body=new THREE.Mesh(new THREE.SphereGeometry(.38,8,6),bodyMat);body.scale.set(1.35,.72,.8);body.position.y=.48;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.22,6,5),bodyMat);head.position.set(.48,.58,0);g.add(head);for(const sx of [-.22,.22])for(const sz of [-.18,.18]){const leg=new THREE.Mesh(new THREE.CylinderGeometry(.045,.055,.30,5),dark);leg.position.set(sx,.20,sz);g.add(leg);}if(biome==='forest'){const snout=new THREE.Mesh(new THREE.SphereGeometry(.07,5,4),dark);snout.position.set(.65,.54,0);g.add(snout);}worldGroup.add(g);}
+
+function addMountainPatch(cx,cz){
+  const x=cx*WORLD_CHUNK+32,z=cz*WORLD_CHUNK+32;
+  const seed=hash2(cx*83+7,cz*97-11);
+  if(seed<.18)return;
+  const stone=makeMaterial(0x66706b,.98);
+  const snow=makeMaterial(0xd7d9d3,.92);
+  for(let i=0;i<2+(seed>.72?1:0);i++){
+    const a=hash2(cx*31+i*19,cz*43-i*17)*Math.PI*2;
+    const rr=9+hash2(cx+i*5,cz-i*7)*16;
+    const h=11+hash2(cx+i*11,cz-i*13)*13;
+    const r=3.8+hash2(i*29+cx,cz*7-i)*2.2;
+    const peak=new THREE.Mesh(new THREE.ConeGeometry(r*.72,r*.42,8,2),stone);
+    peak.scale.y=h/(r*.42);
+    peak.position.set(x+Math.cos(a)*rr,h*.21,z+Math.sin(a)*rr);
+    peak.rotation.y=a;worldGroup.add(peak);
+    if(h>18){const cap=new THREE.Mesh(new THREE.ConeGeometry(r*.34,Math.max(1.8,h*.10),8),snow);cap.position.set(peak.position.x,h*.44,peak.position.z);worldGroup.add(cap);}
+  }
+}
 
 function addWorldLandmark(cx,cz,biome){
   const r=hash2(cx*71+17,cz*43-9);
@@ -2782,6 +2813,16 @@ function addWorldLandmark(cx,cz,biome){
     const stump=new THREE.Mesh(new THREE.CylinderGeometry(.32,.42,.38,7),makeMaterial(0x6b4e34,.98));stump.position.set(x,.19,z);worldGroup.add(stump);
   }else if(biome==='hills'){
     const stone=makeMaterial(0x858984,.95);const a=new THREE.Mesh(new THREE.DodecahedronGeometry(1.1,1),stone);a.position.set(x,.72,z);a.scale.y=1.25;worldGroup.add(a);
+  }else if(biome==='mountain'){
+    const stone=makeMaterial(0x767b75,.97);
+    const snow=makeMaterial(0xd6d8d2,.92);
+    for(let i=0;i<3;i++){
+      const rr=3.5+i*1.6,ang=hash2(cx*19+i*7,cz*23-i*5)*Math.PI*2;
+      const peak=new THREE.Mesh(new THREE.ConeGeometry(3.2-i*.45,10+i*4,7,2),stone);
+      peak.position.set(x+Math.cos(ang)*rr,5+i*2,z+Math.sin(ang)*rr);peak.rotation.y=ang*.35;worldGroup.add(peak);
+      const cap=new THREE.Mesh(new THREE.ConeGeometry(1.15-i*.08,1.8+i*.3,7),snow);
+      cap.position.set(peak.position.x,peak.position.y+(8+i*4)*.36,peak.position.z);worldGroup.add(cap);
+    }
   }else if(biome==='sea'){
     const buoy=new THREE.Group();buoy.position.set(x,.4,z);
     buoy.add(new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,.9,7),makeMaterial(0x7c6b4f,.9)));
@@ -2795,7 +2836,7 @@ function addBiomeBoundaryDetail(cx,cz){
   for(const [dx,dz] of dirs){
     if(chunkType(cx+dx,cz+dz)===biome)continue;
     const x=cx*WORLD_CHUNK+32+dx*27,z=cz*WORLD_CHUNK+32+dz*27;
-    if((biome==='forest'&&chunkType(cx+dx,cz+dz)==='plains')||(biome==='plains'&&chunkType(cx+dx,cz+dz)==='forest')){
+    if((biome==='forest'&&['plains','hills'].includes(chunkType(cx+dx,cz+dz)))||(biome==='plains'&&['forest','hills'].includes(chunkType(cx+dx,cz+dz)))||(biome==='mountain'&&chunkType(cx+dx,cz+dz)!=='mountain')){
       for(let i=0;i<5;i++){const t=.12+.19*i;addGrassTuft(worldGroup,x+(dx===0?(-24+t*48):dx*1.5),z+(dz===0?(-24+t*48):dz*1.5),.75,(i+cx+cz)&1);}
     }
   }
@@ -3155,6 +3196,7 @@ function rebuildWorldChunks(force=false){
         if(biome==='sea'){ addSeaChunk(cx,cz); addShoreDetail(cx,cz); }
         else if(biome==='forest') addForestPatch(cx,cz);
         else if(biome==='hills') addHillPatch(cx,cz);
+        else if(biome==='mountain') addMountainPatch(cx,cz);
         else if(hash2(cx*7,cz*11)<.23) addLake(cx,cz);
         if(biome==='plains') addPlainsDetail(cx,cz);
         addRiverChunk(cx,cz);
@@ -7846,7 +7888,7 @@ function loadGame(){
     state.newsUnread=Math.max(0,Number(saved.newsUnread)||0);
     state.newsSeq=Math.max(0,Number(saved.newsSeq)||state.news.reduce((m,n)=>Math.max(m,Number(n.id)||0),0));
     state.newsFilter=saved.newsFilter||'all';
-    state.wars=Array.isArray(saved.wars)?saved.wars:[];
+    state.wars=Array.isArray(saved.wars)?saved.wars.map(w=>({rounds:0,remaining:120,scoreA:0,scoreB:0,front:.5,supplyTimer:5,supplyShortageA:0,supplyShortageB:0,supplyUsedA:0,supplyUsedB:0,...w})):[];
     state.nationAIModelVersion=saved.nationAIModelVersion || 'legacy';
     ensureNewsState();
     state.wonders=Math.max(0,Number(saved.wonders)||0);
@@ -8209,7 +8251,7 @@ if('ResizeObserver' in window){const ro=new ResizeObserver(()=>scheduleResize())
 /* =========================================================
    NEWS / WORLD EVENTS
 ========================================================= */
-const NEWS_MAX=120;
+const NEWS_MAX=60;
 const NEWS_CATEGORIES={politics:'政治',war:'戦争',diplomacy:'外交',economy:'経済',science:'科学',event:'事件',important:'重要'};
 /* =========================================================
    GRIND / MASTERY SYSTEM
@@ -8274,6 +8316,8 @@ window.renderGrind=renderGrind;
 
 function ensureNewsState(){
   if(!Array.isArray(state.news))state.news=[];
+  /* 過去セーブに残った「どうでもいいニュース」もここで掃除する。 */
+  state.news=state.news.filter(n=>Number(n?.importance||0)>=2).slice(0,NEWS_MAX);
   if(!Number.isFinite(Number(state.newsUnread)))state.newsUnread=0;
   if(!Number.isFinite(Number(state.newsSeq)))state.newsSeq=0;
   if(!state.newsFilter)state.newsFilter='all';
@@ -8282,8 +8326,14 @@ function ensureNewsState(){
 function newsNationName(id){return state.nations?.find(n=>n.id===id)?.name || (id==='player'?'中央文明国':'国家');}
 function pushNews(category,title,text,nationIds=[],importance=1,actionId=null){
   ensureNewsState();
+  const imp=Math.max(1,Math.min(3,Number(importance)||1));
+  if(imp<2)return null;
   const cat=NEWS_CATEGORIES[category]?category:'event';
-  const item={id:++state.newsSeq,year:Math.floor(state.year||1),category:cat,title:String(title||''),text:String(text||''),nationIds:Array.from(new Set((nationIds||[]).filter(Boolean))).slice(0,3),importance:Math.max(1,Math.min(3,Number(importance)||1)),read:false,ts:Date.now(),actionId};
+  const ids=Array.from(new Set((nationIds||[]).filter(Boolean))).slice(0,3);
+  const nowYear=Math.floor(state.year||1);
+  const duplicate=state.news.slice(0,18).some(x=>x.title===String(title||'') || (x.category===cat && x.nationIds?.some(id=>ids.includes(id)) && Math.abs((x.year||nowYear)-nowYear)<3 && x.importance>=2));
+  if(duplicate)return null;
+  const item={id:++state.newsSeq,year:nowYear,category:cat,title:String(title||''),text:String(text||''),nationIds:ids,importance:imp,read:false,ts:Date.now(),actionId};
   state.news.unshift(item);state.news=state.news.slice(0,NEWS_MAX);state.newsUnread=Math.min(99,(state.newsUnread||0)+1);
   ensureGrindState();
   if(cat==='war')state.grind.warsObserved=(state.grind.warsObserved||0)+1;
@@ -8316,9 +8366,6 @@ function newsBootstrap(){
   ensureNewsState();
   if(state.news.length)return;
   pushNews('important','新しい時代の始まり','30か国が暮らす20km × 20kmの世界が動き始めました。すべての国家が同じ初期条件から独自の文明を築きます。',['player'],3);
-  const ai=state.nations?.filter(n=>n.id!=='player')?.slice(0,2)||[];
-  if(ai.length)pushNews('diplomacy',`${ai[0].name}が国際情勢を注視`,`周辺諸国との交易路と外交関係の構築を開始しました。`,[ai[0].id],1);
-  if(ai[1])pushNews('economy',`${ai[1].name}で経済活動が始動`,`市場と生産基盤が整備され、国庫の成長が始まりました。`,[ai[1].id],1);
 }
 function newsAboutNation(category,title,text,id,importance=1){pushNews(category,title,text,[id],importance);}
 
@@ -8459,7 +8506,7 @@ function ensureNationState(){
     for(let i=0;i<30;i++){
       const p=positions[i]||{x:0,z:0};
       const isPlayer=i===0;
-      const half=isPlayer?Math.max(520,Number(state.mapRadius)||520):780;
+      const half=Math.max(180,Number(state.mapRadius)||44)*5;
       state.nations.push({
         id:isPlayer?'player':`nation_${i}`,
         name:isPlayer?'中央文明国':NATION_NAMES[i],
@@ -8481,9 +8528,9 @@ function ensureNationState(){
         science:isPlayer?Number(state.resources.science)||45:45,
         culture:isPlayer?Number(state.resources?.culture)||25:25,
         expansionLevel:0,
-        nextAction:8+(i%11),
-        nextTrade:3+(i%9),
-        nextPolitics:6+(i%13),
+        nextAction:10,
+        nextTrade:10,
+        nextPolitics:12,
         age:1,
         cityLevel:1,
         era:0,
@@ -8522,9 +8569,9 @@ function ensureNationState(){
     n.happiness=THREE.MathUtils.clamp(Number(n.happiness)||60,0,100);
     n.treasury=Math.max(0,Number(n.treasury)||400);n.approval=THREE.MathUtils.clamp(Number(n.approval)||60,0,100);
     n.stability=THREE.MathUtils.clamp(Number(n.stability)||60,0,100);
-    n.tradeVolume=Math.max(0,Number(n.tradeVolume)||0);n.roads=Math.max(0,Number(n.roads)||0);n.buildings=Math.max(1,Number(n.buildings)||6);
+    n.tradeVolume=Math.max(0,Number(n.tradeVolume)||0);n.roads=Math.max(0,Number(n.roads)||0);n.buildings=Math.max(0,Number(n.buildings)||0);
     n.government=n.government||nationGovernment(i);n.policy=n.policy||nationDefaultPolicy(i);
-    n.nextAction=Math.max(.2,Number(n.nextAction)||8);n.nextTrade=Math.max(.2,Number(n.nextTrade)||4);n.nextPolitics=Math.max(.2,Number(n.nextPolitics)||8);
+    n.nextAction=Math.max(.2,Number(n.nextAction)||10);n.nextTrade=Math.max(.2,Number(n.nextTrade)||10);n.nextPolitics=Math.max(.2,Number(n.nextPolitics)||12);
     n.expansionLevel=Math.max(0,Number(n.expansionLevel)||0);n.age=Math.max(1,Number(n.age)||1);
     n.buildingsData=Array.isArray(n.buildingsData)?n.buildingsData:[];n.roadsData=Array.isArray(n.roadsData)?n.roadsData:[];
     n.era=Math.max(0,Math.min(ERA.length-1,Number(n.era)||0));
@@ -8535,7 +8582,9 @@ function ensureNationState(){
     n.relations=(n.relations&&typeof n.relations==='object')?n.relations:{};
   });
   remapNationLayoutIfNeeded();
+  enforceNationTerritorySeparation();
   normalizeAINationBaseline();
+  enforceNationTerritorySeparation();
   syncPlayerNation();
   nationVisualDirty=true;
 }
@@ -8555,27 +8604,66 @@ function nationStarterBuildingTemplate(){
 }
 function resetNationSharedSystem(n){
   const starter=nationStarterBuildingTemplate();
+  delete n.aiProfile;
+  const starterAiProfileSeed=n.id;
   Object.assign(n,{
-    population:70,popMax:100,happiness:72,treasury:600,territoryHalf:780,
+    population:70,popMax:100,happiness:72,treasury:600,territoryHalf:Math.max(180,Number(state.mapRadius)||44)*5,
     government:'共和国',policy:'balanced',taxRate:.10,approval:68,stability:72,
     tradeVolume:0,roads:0,buildings:0,science:45,culture:25,expansionLevel:0,age:1,cityLevel:1,era:0,research:45,
     military:24,militaryMax:60,warWeariness:0,warCooldown:18,buildingCooldown:8,roadCooldown:6,newsCooldown:12,
     resources:cloneNationStarterResources(),politics:cloneNationDefaultPolitics(),constructionQueue:[],facilitiesData:[],
     buildingsData:starter.buildingsData,roadsData:starter.roadsData,
-    sharedSystemVersion:'player-v1',visualTemplate:'player-start-v1'
+    sharedSystemVersion:'player-v2',visualTemplate:'player-start-v2'
   });
 }
+function repairNationRuntimeState(n,i=0){
+  if(!n||typeof n!=='object')return;
+  n.id=n.id||`nation_${i}`;
+  n.name=n.name||NATION_NAMES[i]||`国家${i+1}`;
+  n.short=n.short||n.name;
+  n.x=nationClamp(n.x);n.z=nationClamp(n.z);
+  n.resources=(n.resources&&typeof n.resources==='object')?n.resources:cloneNationStarterResources();
+  for(const k of ['food','wood','stone','iron','gold','science','culture'])n.resources[k]=Math.max(0,Number(n.resources[k])||0);
+  n.politics=Object.assign(cloneNationDefaultPolitics(),n.politics&&typeof n.politics==='object'?n.politics:{});
+  n.politics.laws=Object.assign(cloneNationDefaultPolitics().laws,n.politics.laws&&typeof n.politics.laws==='object'?n.politics.laws:{});
+  n.politics.factions=Object.assign(cloneNationDefaultPolitics().factions,n.politics.factions&&typeof n.politics.factions==='object'?n.politics.factions:{});
+  n.politics.projects=(n.politics.projects&&typeof n.politics.projects==='object')?n.politics.projects:{};
+  n.constructionQueue=Array.isArray(n.constructionQueue)?n.constructionQueue:[];
+  n.facilitiesData=Array.isArray(n.facilitiesData)?n.facilitiesData:(Array.isArray(n.buildingsData)?n.buildingsData:[]);
+  n.buildingsData=n.facilitiesData;
+  n.roadsData=Array.isArray(n.roadsData)?n.roadsData:[];
+  n.buildings=Math.max(0,Number(n.buildings)||n.facilitiesData.length);
+  n.roads=Math.max(0,Number(n.roads)||n.roadsData.length);
+  n.treasury=Math.max(0,Number(n.treasury)||Number(n.politics.treasury)||0);
+  n.politics.treasury=n.treasury;
+  n.taxRate=THREE.MathUtils.clamp(Number(n.taxRate??n.politics.taxRate??.1),.05,.25);
+  n.politics.taxRate=n.taxRate;
+  n.approval=THREE.MathUtils.clamp(Number(n.approval??n.politics.approval??68),20,100);
+  n.politics.approval=n.approval;
+  n.stability=THREE.MathUtils.clamp(Number(n.stability)||Number(n.politics.legitimacy)||60,0,100);
+  n.politics.legitimacy=n.stability;
+  n.territoryHalf=Math.max(180,Math.min(2500,Number(n.territoryHalf)||780));
+  n.relations=(n.relations&&typeof n.relations==='object')?n.relations:{};
+  n.warCooldown=Math.max(0,Number(n.warCooldown)||0);n.buildingCooldown=Math.max(0,Number(n.buildingCooldown)||0);n.roadCooldown=Math.max(0,Number(n.roadCooldown)||0);
+  n.nextAction=Math.max(.1,Number(n.nextAction)||8);n.nextTrade=Math.max(.1,Number(n.nextTrade)||4);n.nextPolitics=Math.max(.1,Number(n.nextPolitics)||8);
+}
+
 function normalizeAINationBaseline(){
   ensureNewsState();
-  if(state.nationAIModelVersion==='v5-shared-player-systems')return;
-  for(const n of (state.nations||[])){
-    if(n.id==='player')continue;
-    resetNationSharedSystem(n);
+  const version=String(state.nationAIModelVersion||'legacy');
+  if(!Array.isArray(state.wars))state.wars=[];
+  if(version==='legacy' || version==='v5-shared-player-systems' || version==='v7-visual-territory-war-runtime' || version==='v6-territory-war-visual-politics'){
+    for(const n of (state.nations||[])){if(n.id!=='player')resetNationSharedSystem(n);}
   }
-  state.wars=[];state.nationAIModelVersion='v5-shared-player-systems';
+  for(let i=0;i<(state.nations||[]).length;i++)repairNationRuntimeState(state.nations[i],i);
+  state.nationAIModelVersion='v8-diverse-ai-direct-view';
   nationVisualDirty=true;
-  pushNews('important','🌍 世界AIを共通国家システムへ更新','29のAI国家を自国と同じ初期条件へ統一。建築・強化・政治・国家計画・道路を同じルールでAIが選択し、その結果が3D都市へ反映されます。',['player'],3);
+  if(version!==state.nationAIModelVersion && !state.__nationV8NewsShown){
+    state.__nationV8NewsShown=true;
+    pushNews('important','🌍 世界国家システムを再同期','29のAI国家を同じ建築・強化・政治・税率・戦争ルールで再同期しました。都市景観は各国のAI行動に合わせて3Dへ反映されます。',['player'],3);
+  }
 }
+
 function nationSharedSync(n){
   n.resources=(n.resources&&typeof n.resources==='object')?n.resources:cloneNationStarterResources();
   for(const k of ['food','wood','stone','iron','gold','science','culture'])n.resources[k]=Math.max(0,Number(n.resources[k])||0);
@@ -8606,6 +8694,8 @@ function syncPlayerNation(){
   n.culture=Math.max(0,Number(state.resources?.culture)||0);
   n.era=Math.max(0,Math.min(ERA.length-1,Number(state.era)||0));
   n.research=Math.max(0,Number(state.scienceTotal)||n.science||0);
+  n.resources=Object.assign(cloneNationStarterResources(),n.resources||{});
+  for(const k of ['food','wood','stone','iron','gold','science','culture'])n.resources[k]=Math.max(0,Number(state.resources?.[k]??n.resources[k])||0);
   /* 自国の実際の建築・道路を30か国共通レイヤーへ同期。 */
   const playerBuildings=(state.facilities||[]).map(f=>({type:f.type,facilityId:f.type,dx:Number(f.x)||0,dz:Number(f.z)||0,level:Math.max(1,Number(f.level)||1),scale:1}));
   n.facilitiesData=playerBuildings;n.buildingsData=playerBuildings;n.buildings=playerBuildings.length;
@@ -8616,6 +8706,47 @@ function syncPlayerNation(){
 }
 
 
+const NATION_TERRITORY_GAP=70;
+function nationChebyshevDistance(a,b){return Math.max(Math.abs((Number(a?.x)||0)-(Number(b?.x)||0)),Math.abs((Number(a?.z)||0)-(Number(b?.z)||0)));}
+function nationMaxTerritoryHalf(n,ignoreId=null){
+  let max=2500;
+  for(const q of (state.nations||[])){
+    if(!q||q.id===n.id||q.id===ignoreId)continue;
+    const dx=Math.abs((Number(n.x)||0)-(Number(q.x)||0));
+    const dz=Math.abs((Number(n.z)||0)-(Number(q.z)||0));
+    const axisDistance=Math.max(dx,dz);
+    const other=Math.max(180,Number(q.territoryHalf)||220);
+    // 同じ行/列なら大きい軸の距離で国境を分離する。斜め隣国も同じ式で安全側へ。
+    const allowed=axisDistance-other-NATION_TERRITORY_GAP;
+    max=Math.min(max,allowed);
+  }
+  return Math.max(180,max);
+}
+function enforceNationTerritorySeparation(){
+  const ns=(state.nations||[]).filter(Boolean);
+  for(let pass=0;pass<24;pass++){
+    let changed=false;
+    for(let i=0;i<ns.length;i++)for(let j=i+1;j<ns.length;j++){
+      const a=ns[i],b=ns[j];
+      const dx=Math.abs((Number(a.x)||0)-(Number(b.x)||0));
+      const dz=Math.abs((Number(a.z)||0)-(Number(b.z)||0));
+      const ha=Math.max(180,Number(a.territoryHalf)||220),hb=Math.max(180,Number(b.territoryHalf)||220);
+      const gap=NATION_TERRITORY_GAP;
+      const overlapX=ha+hb+gap-dx,overlapZ=ha+hb+gap-dz;
+      if(overlapX<=0||overlapZ<=0)continue;
+      // どちらかの軸でぶつかっている。最も余裕の大きい側を削って必ず離す。
+      const overlap=Math.min(overlapX,overlapZ);
+      const roomA=Math.max(0,ha-180),roomB=Math.max(0,hb-180);
+      if(roomA+roomB<=0)continue;
+      const cutA=Math.min(roomA,overlap*(roomA/(roomA+roomB)));
+      const cutB=Math.min(roomB,overlap-cutA);
+      a.territoryHalf=Math.max(180,ha-cutA);
+      b.territoryHalf=Math.max(180,hb-cutB);
+      changed=true;
+    }
+    if(!changed)break;
+  }
+}
 function nationHasOverlap(a,b,gap=120){return nationDistance(a,b) < (Number(a.territoryHalf)||420)+(Number(b.territoryHalf)||420)+gap;}
 function nearestOtherNation(n){
   let best=null,dist=Infinity;
@@ -8642,8 +8773,28 @@ function nationFacilityCanUnlock(n,def){
   if(def.requiresFacility && !nationHasFacility(n,def.requiresFacility))return false;
   return nationCanAffordResources(n,def.cost||{});
 }
+function nationAIProfile(n){
+  if(n.id==='player')return 'player';
+  if(n.aiProfile)return n.aiProfile;
+  /* 初期の資源・人口・税率・幸福度などは全国家で完全同一。
+     違いはゲーム開始後、AIが行動を選ぶための「思考傾向」だけにする。 */
+  const names=['industrial','commerce','science','welfare','military','agriculture','urban','expansion','balanced'];
+  let h=0;for(const ch of String(n.id))h=(h*31+ch.charCodeAt(0))>>>0;
+  n.aiProfile=names[h%names.length];
+  return n.aiProfile;
+}
 function nationFacilityWeight(n,def){
-  const p=n.politics||{};let w=1;
+  const p=n.politics||{};const style=nationAIProfile(n);let w=1;
+  if(style==='industrial' && ['warehouse','sawmill','quarryWorks','workshop','forge','ironworks','factory','power'].includes(def.id))w+=7;
+  if(style==='commerce' && ['market','bank','railhub','harbor'].includes(def.id))w+=7;
+  if(style==='science' && ['school','academy','research','university'].includes(def.id))w+=7;
+  if(style==='welfare' && ['park','bath','clinic','theater','house','townhouse','apartment'].includes(def.id))w+=6;
+  if(style==='military' && ['trainingGround','garrison','fortress','academy'].includes(def.id))w+=7;
+  if(style==='agriculture' && ['farmPlot','granary','bakery','warehouse'].includes(def.id))w+=7;
+  if(style==='urban' && ['house','townhouse','apartment','cityHall','market'].includes(def.id))w+=6;
+  if(style==='expansion' && ['garrison','trainingGround','warehouse','road','cityHall'].includes(def.id))w+=4;
+  if(style==='balanced')w+=0.5;
+
   if(['house','townhouse','apartment'].includes(def.id))w+=(n.population/Math.max(1,n.popMax))>0.78?8:2;
   if(['farmPlot','granary','bakery'].includes(def.id))w+=(n.resources?.food||0)<450?6:1;
   if(['warehouse','sawmill','quarryWorks','workshop','forge','ironworks','factory'].includes(def.id))w+=p.economyPolicy==='industrial'?5:2;
@@ -8705,7 +8856,7 @@ function nationStartConstruction(n,def){
   const pos=nationFindBuildPosition(n,def,nationFacilityCount(n)+n.constructionQueue.length);
   const duration=constructionDuration(def);
   n.constructionQueue.push({id:`${n.id}_c_${Date.now()}_${Math.floor(Math.random()*100000)}`,type:def.id,x:nationClamp(pos.x),z:nationClamp(pos.z),level:1,maxLevel:nationFacilityMaxLevel(n),duration,remaining:duration});
-  n.buildingCooldown=18+Math.random()*34;
+  n.buildingCooldown=10+Math.random()*20;
   return true;
 }
 function nationCompleteConstruction(n,c){
@@ -8715,7 +8866,7 @@ function nationCompleteConstruction(n,c){
   if(def.effects?.happiness)n.happiness=THREE.MathUtils.clamp(n.happiness+def.effects.happiness,0,100);
   n.nationLastBuild=def.id;n.nationLastBuildAt=n.age;
   nationVisualDirty=true;
-  if(Math.random()<.22)newsAboutNation('event',`🏗 ${n.name}で${def.name}完成`,`自国と同じ国家建築システムにより、${def.name}が完成。都市景観と国家機能が更新されました。`,n.id,2);
+  if((n.buildings%10)===0)newsAboutNation('important',`🏗 ${n.name}で都市建設が進展`,`共通建築システムにより${def.name}が完成し、都市機能が更新されました。`,n.id,2);
 }
 function nationSimulateConstruction(n,sec){
   for(const c of [...n.constructionQueue]){
@@ -8725,6 +8876,9 @@ function nationSimulateConstruction(n,sec){
 }
 function nationMaybeBuild(n){
   if(n.treasury<120 || n.buildingCooldown>0)return false;
+  const style=nationAIProfile(n);
+  const chance={industrial:.88,commerce:.86,science:.86,welfare:.82,military:.90,agriculture:.88,urban:.92,expansion:.84,balanced:.72}[style]||.78;
+  if(Math.random()>chance)return false;
   const def=nationChooseFacility(n);if(!def)return false;
   return nationStartConstruction(n,def);
 }
@@ -8743,7 +8897,7 @@ function nationMaybeUpgrade(n){
   pick.b.scale=1+Math.min(1.5,pick.b.level*.06)+(Number(n.era)||0)*.012;
   n.buildings=n.facilitiesData.length;
   nationVisualDirty=true;
-  if(Math.random()<.16){const d=facilityById(pick.b.type);newsAboutNation('event',`⬆️ ${n.name}が${d?.name||pick.b.type}を強化`,`自国と同じ強化ルールに従い、${d?.name||'施設'}がLv.${pick.b.level}へ発展しました。`,n.id,2);}
+  if((pick.b.level%5)===0){const d=facilityById(pick.b.type);newsAboutNation('important',`⬆️ ${n.name}の都市機能が強化`,`${d?.name||'施設'}がLv.${pick.b.level}へ発展しました。`,n.id,2);}
   return true;
 }
 function nationAddBuilding(n){
@@ -8764,40 +8918,143 @@ function nationRelation(a,b){
 function setNationRelation(a,b,value){
   if(!a||!b||a.id===b.id)return;a.relations=a.relations||{};b.relations=b.relations||{};const v=THREE.MathUtils.clamp(Number(value)||50,-100,100);a.relations[b.id]=v;b.relations[a.id]=v;
 }
-function nationWarPower(n){return Math.max(1,(n.military||0)*(1+(n.era||0)*.11)*(0.72+(n.stability||60)/150));}
+function nationWarPower(n){
+  const r=n.resources||{};
+  const supplyRatio=Math.min(Number(r.food||0)/180,Number(r.wood||0)/90,Number(r.iron||0)/16,Number(r.gold||0)/180,1);
+  const supplyMul=.46+.54*THREE.MathUtils.clamp(supplyRatio,0,1);
+  const wearMul=Math.max(.42,1-(Number(n.warWeariness)||0)*.018);
+  return Math.max(1,(n.military||0)*(1+(n.era||0)*.11)*(0.72+(n.stability||60)/150)*supplyMul*wearMul);
+}
 function nationPickWarTarget(n){
-  const candidates=state.nations.filter(q=>q.id!==n.id).sort((a,b)=>nationDistance(n,a)*.0025+nationWarPower(a)*.01+nationRelation(n,a)*.015-(nationDistance(n,b)*.0025+nationWarPower(b)*.01+nationRelation(n,b)*.015));
-  if(!candidates.length)return null;return candidates.find(q=>nationRelation(n,q)<44)||(Math.random()<.12?candidates[0]:null);
+  const candidates=state.nations.filter(q=>q.id!==n.id && nationDistance(n,q)<4200).sort((a,b)=>
+    (nationDistance(n,a)*.003+nationWarPower(a)*.012+nationRelation(n,a)*.018)-
+    (nationDistance(n,b)*.003+nationWarPower(b)*.012+nationRelation(n,b)*.018));
+  if(!candidates.length)return null;
+  return candidates.find(q=>nationRelation(n,q)<40)||(Math.random()<.08?candidates[0]:null);
+}
+function warMobilizationCost(n){
+  return {food:Math.round(95+(n.military||0)*1.05),wood:Math.round(38+(n.military||0)*.42),stone:Math.round(10+(n.military||0)*.10),iron:Math.round(7+(n.military||0)*.16),gold:Math.round(65+(n.military||0)*1.18)};
+}
+function syncPlayerWarEconomy(n){
+  if(n?.id!=='player')return;
+  state.resources=state.resources||{};
+  for(const k of ['food','wood','stone','iron','gold'])state.resources[k]=Math.max(0,Number(n.resources?.[k])||0);
+  if(state.politics){state.politics.treasury=Math.max(0,Number(n.treasury||n.politics?.treasury||0));n.politics.treasury=state.politics.treasury;}
+}
+function nationConsumeWarSupplies(n,war,side){
+  const m=Math.max(18,Number(n.military)||18);
+  const cost={food:Math.round(58+m*1.85+Number(n.era||0)*14),wood:Math.round(22+m*.66),stone:Math.round(9+m*.14),iron:Math.round(7+m*.18),gold:Math.round(46+m*1.32)};
+  const r=n.resources||(n.resources=cloneNationStarterResources());
+  let shortage=0,totalUsed=0;
+  for(const [k,v] of Object.entries(cost)){const before=Number(r[k]||0);r[k]=Math.max(0,before-v);if(before<v)shortage+=(v-before)/Math.max(1,v);totalUsed+=v;}
+  n.politics.treasury=Math.max(0,(n.politics?.treasury||n.treasury||0)-Math.round(28+m*.62));n.treasury=n.politics.treasury;
+  syncPlayerWarEconomy(n);
+  war[`supplyShortage${side}`]=Math.min(10,(war[`supplyShortage${side}`]||0)+shortage);
+  war[`supplyUsed${side}`]=(war[`supplyUsed${side}`]||0)+totalUsed;
+  n.warWeariness=(n.warWeariness||0)+.065;
+  return shortage;
+}
+function nationConquerTerritory(win,lose){
+  enforceNationTerritorySeparation();
+  const cap=Math.max(0,nationMaxTerritoryHalf(win,lose.id)-Number(win.territoryHalf||180));
+  const lossCap=Math.max(0,Number(lose.territoryHalf||180)-180);
+  const amount=Math.min(115+(Number(win.era)||0)*12,cap,lossCap);
+  if(amount<=0)return {amount:0,gold:0};
+  // 前線を押した勝者側だけ拡張し、敗者側の領土を同量削る。重複防止関数が最後に境界を再確認する。
+  win.territoryHalf=Math.min(2500,Number(win.territoryHalf||180)+amount);
+  lose.territoryHalf=Math.max(180,Number(lose.territoryHalf||180)-amount);
+  win.frontPush=(win.frontPush||0)+amount;
+  lose.landLost=(lose.landLost||0)+amount;
+  const loot=Math.min(Math.round(220+amount*3.1),Math.round((lose.resources?.gold||0)+Math.max(0,lose.treasury||0)*.16));
+  const resGold=Math.min(Number(lose.resources?.gold||0),Math.floor(loot*.72));
+  lose.resources.gold=Math.max(0,(lose.resources?.gold||0)-resGold);
+  lose.treasury=Math.max(0,(lose.treasury||0)-Math.max(0,loot-resGold));lose.politics.treasury=lose.treasury;
+  win.resources.gold=(win.resources?.gold||0)+loot;win.treasury=(win.treasury||0)+Math.round(loot*.55);win.politics.treasury=win.treasury;
+  win.conquests=(win.conquests||0)+1;
+  syncPlayerWarEconomy(win);syncPlayerWarEconomy(lose);
+  enforceNationTerritorySeparation();
+  return {amount,gold:loot};
 }
 function nationStartWar(a,b){
-  if(!a||!b||a.id===b.id)return false;const exists=state.wars.some(w=>(w.a===a.id&&w.b===b.id)||(w.a===b.id&&w.b===a.id));if(exists)return false;
-  const war={id:`war_${Date.now()}_${Math.floor(Math.random()*100000)}`,a:a.id,b:b.id,remaining:45+Math.random()*85,scoreA:0,scoreB:0,rounds:0};state.wars.push(war);setNationRelation(a,b,Math.min(nationRelation(a,b),18));a.warCooldown=70+Math.random()*40;b.warCooldown=Math.max(Number(b.warCooldown)||0,36+Math.random()*24);a.warWeariness=(a.warWeariness||0)+2;b.warWeariness=(b.warWeariness||0)+2;pushNews('war',`⚔ ${a.name}、${b.name}へ宣戦`,`国境を巡る緊張が限界に達し、両国は戦争状態に入りました。`,[a.id,b.id],3);return true;
+  if(!a||!b||a.id===b.id)return false;
+  const exists=state.wars.some(w=>(w.a===a.id&&w.b===b.id)||(w.a===b.id&&w.b===a.id));if(exists)return false;
+  const ca=warMobilizationCost(a),cb=warMobilizationCost(b);
+  if(!nationCanAffordResources(a,ca)||!nationCanAffordResources(b,cb))return false;
+  nationPayResources(a,ca);nationPayResources(b,cb);
+  a.treasury=Math.max(0,(a.treasury||0)-ca.gold*.42);a.politics.treasury=a.treasury;
+  b.treasury=Math.max(0,(b.treasury||0)-cb.gold*.42);b.politics.treasury=b.treasury;
+  syncPlayerWarEconomy(a);syncPlayerWarEconomy(b);
+  const war={id:`war_${Date.now()}_${Math.floor(Math.random()*100000)}`,a:a.id,b:b.id,remaining:72+Math.random()*90,scoreA:0,scoreB:0,rounds:0,front:.5,supplyTimer:5,supplyShortageA:0,supplyShortageB:0,supplyUsedA:0,supplyUsedB:0,captured:0};
+  state.wars.push(war);setNationRelation(a,b,Math.min(nationRelation(a,b),8));a.warCooldown=85+Math.random()*45;b.warCooldown=Math.max(Number(b.warCooldown)||0,55+Math.random()*30);a.warWeariness=(a.warWeariness||0)+3;b.warWeariness=(b.warWeariness||0)+3;
+  pushNews('war',`⚔ ${a.name}が${b.name}へ出陣`,`軍を国境へ送り込みました。補給物資を大量に投入し、前線が形成されます。`,[a.id,b.id],3);
+  nationVisualDirty=true;return true;
 }
+function declareWarOnNation(id){
+  const a=state.nations?.find(n=>n.id==='player'),b=state.nations?.find(n=>n.id===id);if(!a||!b||a===b)return false;
+  if(a.military<28){toast('軍事力が足りません。まず軍備を整えてください。');return false;}
+  if(!nationStartWar(a,b)){toast('開戦に必要な資源・国庫が足りません。');return false;}
+  toast(`⚔ ${b.name}へ出陣しました。前線が移動を開始します。`);return true;
+}
+window.declareWarOnNation=declareWarOnNation;
 function nationTryExpand(n){
-  if(n.id==='player')return false;const oldHalf=Number(n.territoryHalf)||220,proposed=Math.min(2500,oldHalf+55+(n.era||0)*8);
-  for(const q of state.nations){if(q.id===n.id)continue;const dx=Math.abs(n.x-q.x),dz=Math.abs(n.z-q.z),limit=proposed+(Number(q.territoryHalf)||220)+38;if(dx<limit&&dz<limit)return false;}
-  n.territoryHalf=proposed;n.expansionLevel=(n.expansionLevel||0)+1;const a=(n.expansionLevel*1.87)%(Math.PI*2),anchor={x:nationClamp(n.x+Math.cos(a)*Math.min(proposed*.68,520)),z:nationClamp(n.z+Math.sin(a)*Math.min(proposed*.68,520))};nationAddRoad(n,{x:n.x,z:n.z},anchor);nationVisualDirty=true;if(Math.random()<.26)newsAboutNation('event',`🗺 ${n.name}が領土を拡大`,`開拓隊が新しい土地を確保し、国境線が外側へ広がりました。`,n.id,2);return true;
+  if(n.id==='player')return false;
+  const oldHalf=Number(n.territoryHalf)||220;
+  const proposed=Math.min(2500,oldHalf+55+(n.era||0)*8,nationMaxTerritoryHalf(n));
+  if(proposed<=oldHalf+.5)return false;
+  n.territoryHalf=proposed;n.expansionLevel=(n.expansionLevel||0)+1;
+  const a=(n.expansionLevel*1.87)%(Math.PI*2),anchor={x:nationClamp(n.x+Math.cos(a)*Math.min(proposed*.68,520)),z:nationClamp(n.z+Math.sin(a)*Math.min(proposed*.68,520))};
+  nationAddRoad(n,{x:n.x,z:n.z},anchor);enforceNationTerritorySeparation();nationVisualDirty=true;
+  if((n.expansionLevel%3)===0)newsAboutNation('important',`🗺 ${n.name}が領土を拡大`,`開拓隊が新しい土地を確保し、国境線が外側へ広がりました。`,n.id,2);
+  return true;
 }
 function nationTrade(n){
   if(n.id==='player')return;const others=state.nations.filter(q=>q.id!==n.id).sort((a,b)=>nationDistance(n,a)-nationDistance(n,b)),other=others.find(q=>nationRelation(n,q)>34)||others[0];if(!other)return;
   const routeQuality=(n.infrastructure||1)*(1+(n.roads||0)*.018)*(1+(n.era||0)*.08),volume=Math.max(10,Math.round((16+n.population*.022)*routeQuality)),revenue=volume*(0.48+(n.stability/100)*.34)*(n.politics?.foreignPolicy==='trade'?1.12:1);
   n.tradeVolume+=volume;n.resources.gold+=revenue*.55;n.treasury=n.politics.treasury=Math.max(0,(n.treasury||0)+revenue);other.treasury=other.politics?Math.max(0,(other.treasury||0)+volume*.09):other.treasury;n.happiness=THREE.MathUtils.clamp(n.happiness+.14,0,100);n.stability=THREE.MathUtils.clamp(n.stability+.06,0,100);setNationRelation(n,other,Math.min(95,nationRelation(n,other)+.8));
-  if(Math.random()<.18)pushNews('economy',`🤝 ${n.name}で交易が活況`,`交易路を通じて${other.name}との物流が伸び、国庫と市場が活性化しました。`,[n.id,other.id],2);
+  
 }
 function nationChoosePolitics(n){
-  const p=n.politics;const cabinets=['balanced','growth','welfare','science','security'],economies=['market','industrial','welfare','knowledge'],foreign=['trade','balanced','defensive','isolation'];
+  const p=n.politics;const cabinets=['balanced','growth','welfare','science','security'];
   const scores={balanced:2,growth:2,welfare:2,science:2,security:2};
-  if(n.resources.food<450||n.happiness<58)scores.welfare+=4;
+  const atWar=state.wars.some(w=>w.a===n.id||w.b===n.id);
+  if(n.resources.food<450||n.happiness<58)scores.welfare+=5;
   if(n.research>180||n.era>=3)scores.science+=4;
   if(n.tradeVolume>150||n.resources.gold>500)scores.growth+=2;
-  if(n.military<40||state.wars.some(w=>w.a===n.id||w.b===n.id))scores.security+=4;
+  if(n.military<40||atWar)scores.security+=5;
   if(n.roads>10)scores.growth+=1;
+  const style=nationAIProfile(n);
+  if(style==='industrial')scores.growth+=6;
+  if(style==='commerce')scores.growth+=5;
+  if(style==='science')scores.science+=7;
+  if(style==='welfare')scores.welfare+=7;
+  if(style==='military')scores.security+=8;
+  if(style==='agriculture')scores.welfare+=3;
+  if(style==='urban')scores.growth+=4;
+  if(style==='expansion')scores.security+=4;
   p.cabinet=cabinets.sort((a,b)=>scores[b]-scores[a])[0];
   p.economyPolicy=p.cabinet==='science'?'knowledge':p.cabinet==='welfare'?'welfare':p.cabinet==='security'?'industrial':p.cabinet==='growth'?'industrial':'market';
-  p.foreignPolicy=n.tradeVolume>300?'trade':p.cabinet==='security'?'defensive':'balanced';
-  p.taxRate=THREE.MathUtils.clamp(p.taxRate+(Math.random()-.5)*.025,.05,.25);
-  p.welfareBudget=p.cabinet==='welfare'?.18:.10;
-  p.infrastructureBudget=(p.cabinet==='growth'||p.cabinet==='industrial')?.18:.10;
+  if(style==='commerce')p.economyPolicy='market';
+  if(style==='industrial')p.economyPolicy='industrial';
+  if(style==='science')p.economyPolicy='knowledge';
+  if(style==='welfare')p.economyPolicy='welfare';
+  p.foreignPolicy=atWar?'defensive':style==='commerce'?'trade':style==='military'||style==='expansion'?'defensive':n.tradeVolume>300?'trade':p.cabinet==='security'?'defensive':'balanced';
+  /* 税率も固定値ではなく、AIが財政・支持率・戦争負担から自律決定する。 */
+  let targetTax=.10;
+  if((n.treasury||0)<260)targetTax+=.045;
+  else if((n.treasury||0)>1400&&n.approval<58)targetTax-=.035;
+  if(p.cabinet==='growth')targetTax+=.018;
+  if(p.cabinet==='welfare')targetTax-=.022;
+  if(p.cabinet==='science')targetTax+=.008;
+  if(p.cabinet==='security'||atWar)targetTax+=.028;
+  if(style==='welfare')targetTax-=.018;
+  if(style==='commerce')targetTax-=.006;
+  if(style==='industrial'||style==='military'||style==='expansion')targetTax+=.016;
+  if(style==='science')targetTax+=.006;
+  if(n.happiness<50||n.approval<48)targetTax-=.025;
+  p.taxRate=THREE.MathUtils.clamp(p.taxRate*.58+targetTax*.42+(Math.random()-.5)*.012,.05,.25);
+  n.taxRate=p.taxRate;
+  p.welfareBudget=p.cabinet==='welfare'?.18:(n.happiness<60?.14:.10);
+  p.infrastructureBudget=(p.cabinet==='growth'||p.cabinet==='security')?.18:(n.roads<6?.14:.10);
   n.policy=p.foreignPolicy==='trade'?'trade':p.cabinet==='science'?'science':p.cabinet==='welfare'?'welfare':p.cabinet==='growth'?'growth':'balanced';
   n.government='共和国';
 }
@@ -8825,7 +9082,7 @@ function nationPolitics(n){
   nationChoosePolitics(n);nationToggleLaw(n);nationStartProject(n);
   p.approval=THREE.MathUtils.clamp(p.approval+(n.happiness-60)*.008+(n.stability-55)*.004-(p.taxRate-.1)*45+(p.laws.welfare?1.1:0),20,97);
   p.legitimacy=THREE.MathUtils.clamp(p.legitimacy+(p.approval-50)*.0025,18,99);n.approval=p.approval;n.stability=p.legitimacy;
-  if(oldCab!==p.cabinet||oldEco!==p.economyPolicy||oldForeign!==p.foreignPolicy){nationVisualDirty=true;pushNews('politics',`🏛 ${n.name}が国家方針を更新`,`内閣「${politicsCabinetLabel(p.cabinet)}」、経済「${p.economyPolicy}」、外交「${p.foreignPolicy}」へ転換しました。`,n.id,2);}
+  if(oldCab!==p.cabinet && (n.age-(n.lastPoliticalNewsAge||-999))>18){n.lastPoliticalNewsAge=n.age;nationVisualDirty=true;pushNews('politics',`🏛 ${n.name}が国家方針を更新`,`内閣「${politicsCabinetLabel(p.cabinet)}」、経済「${p.economyPolicy}」、外交「${p.foreignPolicy}」へ転換しました。`,n.id,2);}
 }
 function nationResearchAndEra(n){
   const era=n.era||0,scienceFacilityBonus=(n.facilitiesData||[]).reduce((a,b)=>{const d=facilityById(b.type);return a+(d?.effects?.science||0)*(b.level||1)},0);
@@ -8852,16 +9109,16 @@ function nationMaybeWar(n){
 function simulateNations(sec){
   ensureNationState();nationSimulationAccumulator+=sec;if(nationSimulationAccumulator<1)return;const steps=Math.min(4,Math.floor(nationSimulationAccumulator));nationSimulationAccumulator-=steps;
   for(let step=0;step<steps;step++){
-    simulateWars();
+    try{simulateWars();}catch(err){window.__lastRuntimeError={label:'Wars simulation',message:String(err?.message||err||'unknown'),stack:String(err?.stack||'')};}
     for(const n of state.nations){
-      nationSharedSync(n);if(n.id==='player')continue;
+      try{nationSharedSync(n);if(n.id==='player')continue;
       nationSimulateConstruction(n,1);nationSimulateProjects(n,1);nationProduceResources(n,1);
       const p=n.politics,policyMul={balanced:1,growth:1.10,trade:1.08,science:1.05,welfare:1.01}[n.policy]||1,warPenalty=state.wars.some(w=>w.a===n.id||w.b===n.id)?Math.max(.70,1-(n.warWeariness||0)*.009):1;
       const facilityPopBonus=(n.facilitiesData||[]).reduce((a,b)=>a+(facilityById(b.type)?.effects?.migration||0)*(b.level||1)*8,0),growth=(.20+n.happiness*.0017+n.stability*.0008+n.buildings*.0026+n.era*.008+facilityPopBonus)*policyMul*warPenalty;
       if(n.population<n.popMax)n.population=Math.min(n.popMax,n.population+growth);
       if(n.population>n.popMax*.80)n.popMax+=.16+n.buildings*.003+n.era*.018;
       const researchGain=(.32+n.buildings*.016+n.era*.05)*(p.cabinet==='science'?1.32:1);n.science=n.resources.science;n.research+=researchGain;n.culture+=.16+n.happiness*.0025;
-      n.treasury=p.treasury;n.military=Math.min(n.militaryMax,n.military+(0.045+n.buildings*.0012+n.era*.006)*(n.policy==='growth'?1.08:1));
+      n.treasury=p.treasury;n.taxRate=THREE.MathUtils.clamp(Number(p.taxRate)||.10,.05,.25);n.military=Math.min(n.militaryMax,n.military+(0.045+n.buildings*.0012+n.era*.006)*(n.policy==='growth'?1.08:1));
       n.happiness=THREE.MathUtils.clamp(n.happiness+(n.policy==='welfare'?.07:.028)-(n.warWeariness||0)*.003,28,98);n.age+=.012+n.era*.0008;
       n.nextAction-=1;n.nextTrade-=1;n.nextPolitics-=1;n.warCooldown=Math.max(0,n.warCooldown-1);n.buildingCooldown=Math.max(0,n.buildingCooldown-1);n.roadCooldown=Math.max(0,n.roadCooldown-1);n.newsCooldown=Math.max(0,n.newsCooldown-1);p.lawCooldown=Math.max(0,(p.lawCooldown||0)-1);
       if(n.nextAction<=0){
@@ -8869,39 +9126,47 @@ function simulateNations(sec){
         if(Math.random()<.55)nationMaybeUpgrade(n);
         if(n.territoryHalf<2500&&n.treasury>280&&nationTryExpand(n))n.treasury=Math.max(0,n.treasury-70);
         if(nationFacilityCount(n)>0&&n.treasury>150&&Math.random()<.55)nationMaybeRoad(n);
-        n.nextAction=16+Math.random()*32;
+        n.nextAction=10+Math.random()*22;
       }
-      if(n.nextTrade<=0){nationTrade(n);n.nextTrade=10+Math.random()*28;}
-      if(n.nextPolitics<=0){nationPolitics(n);n.nextPolitics=15+Math.random()*35;}
+      if(n.nextTrade<=0){nationTrade(n);n.nextTrade=9+Math.random()*22;}
+      if(n.nextPolitics<=0){nationPolitics(n);n.nextPolitics=11+Math.random()*26;}
       nationResearchAndEra(n);nationMaybeWar(n);
-      if(n.newsCooldown<=0&&Math.random()<.05){const r=Math.random();if(r<.33)newsAboutNation('economy',`📈 ${n.name}で市場が活性化`,`共通国家システムによる都市拡張で市場需要が伸びています。`,n.id,1);else if(r<.66)newsAboutNation('diplomacy',`🤝 ${n.name}が外交攻勢`,`近隣国へ新しい交易・協力提案を送りました。`,n.id,1);else newsAboutNation('science',`🔬 ${n.name}で研究成果`,`研究機関が新しい技術的発見を報告しました。`,n.id,1);n.newsCooldown=24+Math.random()*36;}
+      n.newsCooldown=Math.max(n.newsCooldown,8+Math.random()*18);
+      }catch(err){repairNationRuntimeState(n,state.nations.indexOf(n));window.__lastRuntimeError={label:`AI ${n.name}`,message:String(err?.message||err||'unknown'),stack:String(err?.stack||'')};}
     }
   }
-  nationVisualRefreshTimer+=steps;if(nationVisualRefreshTimer>=8){nationVisualRefreshTimer=0;nationVisualDirty=true;}syncPlayerNation();
+  nationVisualRefreshTimer+=steps;if(nationVisualRefreshTimer>=4){nationVisualRefreshTimer=0;nationVisualDirty=true;}syncPlayerNation();enforceNationTerritorySeparation();
 }
 function simulateWars(){
   ensureNationState();
   for(const w of [...state.wars]){
     const a=state.nations.find(n=>n.id===w.a),b=state.nations.find(n=>n.id===w.b);
     if(!a||!b){state.wars=state.wars.filter(x=>x.id!==w.id);continue;}
-    w.remaining-=1;w.rounds=(w.rounds||0)+1;
-    const powerA=nationWarPower(a)*(0.86+Math.random()*.28),powerB=nationWarPower(b)*(0.86+Math.random()*.28);
-    if(powerA>powerB){w.scoreA+=1;a.treasury=Math.max(0,a.treasury-1.3);b.treasury=Math.max(0,b.treasury-2.4);b.population=Math.max(1,b.population-.22);}
-    else{w.scoreB+=1;b.treasury=Math.max(0,b.treasury-1.3);a.treasury=Math.max(0,a.treasury-2.4);a.population=Math.max(1,a.population-.22);}
-    a.warWeariness=(a.warWeariness||0)+.008;b.warWeariness=(b.warWeariness||0)+.008;
-    if((w.rounds%16)===0){
-      pushNews('war',`⚔ 戦況報告：${a.name} vs ${b.name}`,`${a.name} ${Math.round(w.scoreA)} - ${Math.round(w.scoreB)} ${b.name}。戦線が動いています。`,[a.id,b.id],2);
+    w.remaining-=1;w.rounds=(w.rounds||0)+1;w.supplyTimer=(w.supplyTimer||5)-1;
+    if(w.supplyTimer<=0){
+      const sa=nationConsumeWarSupplies(a,w,'A'),sb=nationConsumeWarSupplies(b,w,'B');w.supplyTimer=5;
+      if((sa>.75||sb>.75)&&(w.rounds%12===0))pushNews('war',`⚠️ 戦場補給危機：${a.name} vs ${b.name}`,`前線で食料・木材・石材・鉄・金が大量消費され、補給不足が戦力を圧迫しています。`,[a.id,b.id],2);
     }
+    const powerA=nationWarPower(a)*(0.88+Math.random()*.24),powerB=nationWarPower(b)*(0.88+Math.random()*.24);
+    if(powerA>powerB){w.scoreA+=1;w.front=Math.min(.91,(w.front||.5)+.032*(1-Math.min(.55,w.supplyShortageA*.035)));a.treasury=Math.max(0,a.treasury-5.5);b.treasury=Math.max(0,b.treasury-8.5);b.population=Math.max(1,b.population-.32);}
+    else{w.scoreB+=1;w.front=Math.max(.09,(w.front||.5)-.032*(1-Math.min(.55,w.supplyShortageB*.035)));b.treasury=Math.max(0,b.treasury-5.5);a.treasury=Math.max(0,a.treasury-8.5);a.population=Math.max(1,a.population-.32);}
+    a.politics.treasury=a.treasury;b.politics.treasury=b.treasury;
+    a.warWeariness=(a.warWeariness||0)+.012;b.warWeariness=(b.warWeariness||0)+.012;
+    if((w.rounds%20)===0){pushNews('war',`⚔ 前線移動：${a.name} vs ${b.name}`,`${a.name} ${Math.round(w.scoreA)} - ${Math.round(w.scoreB)} ${b.name}。前線は${Math.round(w.front*100)}%地点まで押し動いています。`,[a.id,b.id],2);nationVisualDirty=true;}
     if(w.remaining<=0){
-      const win=w.scoreA===w.scoreB?null:(w.scoreA>w.scoreB?a:b);const lose=win?(win.id===a.id?b:a):null;
-      if(win&&lose){win.territoryHalf=Math.min(1100,win.territoryHalf+22);lose.territoryHalf=Math.max(180,lose.territoryHalf-12);win.treasury+=110;lose.treasury=Math.max(0,lose.treasury-75);setNationRelation(win,lose,Math.min(68,nationRelation(win,lose)+18));
-        pushNews('war',`🕊 ${win.name}が戦争で優勢`,`停戦協定が成立し、${win.name}側が戦果を得ました。国境と勢力圏がわずかに変化しました。`,[win.id,lose.id],3);
-      }else pushNews('diplomacy',`🕊 ${a.name}と${b.name}が停戦`,`決着のつかないまま停戦が成立し、両国は復興へ向かいます。`,[a.id,b.id],2);
-      a.warWeariness=Math.max(0,(a.warWeariness||0)-2.4);b.warWeariness=Math.max(0,(b.warWeariness||0)-2.4);
+      const win=w.scoreA===w.scoreB?null:(w.scoreA>w.scoreB?a:b),lose=win?(win.id===a.id?b:a):null;
+      if(win&&lose){
+        const result=nationConquerTerritory(win,lose);const goldReward=result.gold;setNationRelation(win,lose,Math.min(68,nationRelation(win,lose)+20));
+        if(result.amount>0)pushNews('war',`🏴 ${win.name}が${lose.name}の領地を占領`,`戦闘に勝利し、国境線を押し上げて${Math.round(result.amount)}m相当の領域を獲得。さらに金${fmt(goldReward)}を戦利品として獲得しました。`,[win.id,lose.id],3);
+        else pushNews('war',`🕊 ${win.name}が${lose.name}に勝利`,`勝者が決まり、戦利品として金${fmt(goldReward)}を獲得しました。国境制約のため領土移転はありませんでした。`,[win.id,lose.id],3);
+      }else pushNews('diplomacy',`🕊 ${a.name}と${b.name}が停戦`,`大規模な消耗戦の末に決着がつかず、両国は兵站を立て直すため停戦しました。`,[a.id,b.id],2);
+      a.warWeariness=Math.max(0,(a.warWeariness||0)-2.8);b.warWeariness=Math.max(0,(b.warWeariness||0)-2.8);a.warCooldown=65+Math.random()*35;b.warCooldown=65+Math.random()*35;
       state.wars=state.wars.filter(x=>x.id!==w.id);nationVisualDirty=true;
     }
   }
+  enforceNationTerritorySeparation();
 }
+
 function clearNationVisuals(){
   nationHitMeshes.length=0;
   for(const child of [...nationGroup.children]){disposeObject3D(child);nationGroup.remove(child);}
@@ -8984,27 +9249,78 @@ function nationBuildingMesh(kind,level=1,scale=1,era=0){
 }
 function nationVisualBuildingLimit(n){
   const z=Number(camera.zoom)||1;
-  if(z<.006)return 5;
-  if(z<.012)return 7;
-  if(z<.024)return 10;
-  if(z<.055)return 18;
-  return Math.min(42,Math.max(10,6+(Number(n.era)||0)*4));
+  if(z<.006)return 12;
+  if(z<.012)return 18;
+  if(z<.024)return 26;
+  if(z<.055)return 38;
+  return Math.min(64,Math.max(16,10+(Number(n.era)||0)*6));
 }
 function nationVisualRoadLimit(n){
   const z=Number(camera.zoom)||1;
-  if(z<.006)return 4;
-  if(z<.012)return 6;
-  if(z<.024)return 10;
-  if(z<.055)return 18;
-  return Math.min(56,Math.max(10,(Number(n.era)||0)*5+12));
+  if(z<.006)return 8;
+  if(z<.012)return 14;
+  if(z<.024)return 22;
+  if(z<.055)return 34;
+  return Math.min(72,Math.max(14,(Number(n.era)||0)*7+16));
 }
 function nationShowLabels(){return (Number(camera.zoom)||1)>=.012;}
 
+function nationWarBetween(n){return (state.wars||[]).find(w=>w.a===n.id||w.b===n.id)||null;}
+function addNationWarVisual(g,n){
+  const w=nationWarBetween(n);if(!w)return;const enemyId=w.a===n.id?w.b:w.a,enemy=state.nations?.find(q=>q.id===enemyId);if(!enemy)return;
+  const t=THREE.MathUtils.clamp(Number(w.front)||.5,.08,.92),dx=enemy.x-n.x,dz=enemy.z-n.z,px=dx*t,pz=dz*t,facing=Math.atan2(dz,dx);
+  const lineMat=new THREE.LineBasicMaterial({color:0xd65f56,transparent:true,opacity:.78,depthTest:false});
+  const pts=[new THREE.Vector3(px-Math.cos(facing)*7,.78,pz-Math.sin(facing)*7),new THREE.Vector3(px+Math.cos(facing)*7,.78,pz+Math.sin(facing)*7)];
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),lineMat);line.renderOrder=30;g.add(line);
+  const army=new THREE.Group();army.position.set(px,.92,pz);army.rotation.y=facing;
+  const body=new THREE.Mesh(new THREE.BoxGeometry(2.4,.45,1.5),new THREE.MeshBasicMaterial({color:n.color||0xe4b960,transparent:true,opacity:.88,depthTest:false}));army.add(body);
+  for(let i=-1;i<=1;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(.12,1.05,.12),new THREE.MeshBasicMaterial({color:0x3f454b,depthTest:false}));s.position.set(i*.72,.62,0);army.add(s);}
+  g.add(army);
+}
+function addNationStarterSettlement(g,n){
+  /* 全国家が同じ初期見た目から始まる共通の「集落コア」。AIの施設数には数えない。 */
+  const scale=1.65;
+  const ground=makeMaterial(0x6e775e,.98);
+  const wood=makeMaterial(0x8c6848,.90);
+  const wall=makeMaterial(0xb69a6d,.90);
+  const roof=makeMaterial(0x65483a,.86);
+  const road=makeMaterial(0x827865,.98);
+  g.add(box(20*scale,.08,20*scale,ground,0,.16,0));
+  g.add(box(1.45*scale,.05,17*scale,road,-4.2*scale,.23,0));
+  g.add(box(17*scale,.05,1.45*scale,road,0,.23,4.2*scale));
+  const spots=[[-6,-6],[6,-6],[-6,6],[6,6]];
+  for(const [x,z] of spots){
+    const h=1.45*scale,w=1.75*scale,d=1.55*scale;
+    g.add(box(w,.12,d,wood,x*scale,.30,z*scale));
+    g.add(box(w,h,d,wall,x*scale,.30+h/2,z*scale));
+    const rt=new THREE.Mesh(new THREE.ConeGeometry(1.25*scale,.78*scale,4),roof);rt.rotation.y=Math.PI/4;rt.position.set(x*scale,.30+h+.30,z*scale);g.add(rt);
+    g.add(box(.34*scale,.36*scale,.045*scale,makeMaterial(0xbfd6dc,.45),x*scale,.92,z*scale-d/2-.02));
+  }
+  const well=new THREE.Mesh(new THREE.CylinderGeometry(1.0*scale,1.15*scale,.34*scale,12),makeMaterial(0x6a6c69,.97));well.position.y=.38;g.add(well);
+  g.add(cyl(.06*scale,1.35*scale,wood,0,1.05*scale,-.72*scale,7));
+  g.add(box(1.3*scale,.08*scale,.08*scale,wood,0,1.60*scale,-.72*scale));
+  const flagPole=cyl(.045*scale,2.8*scale,makeMaterial(0x5e554d,.95),0,1.45*scale,2.2*scale,7);g.add(flagPole);
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.15*scale,.68*scale),makeMaterial(n.color||0xe4b960,.82));flag.position.set(.55*scale,2.35*scale,2.2*scale);flag.rotation.y=-Math.PI/2;g.add(flag);
+  g.userData.sharedStarter=true;
+}
+
+function addNationCityBackdrop(g,n){
+  const data=Array.isArray(n.facilitiesData)?n.facilitiesData:[];if(!data.length)return;
+  const count={housing:0,industry:0,science:0,commerce:0,military:0,welfare:0};
+  for(const b of data){const id=b.type||b.facilityId||'';if(['house','townhouse','apartment'].includes(id))count.housing++;if(['warehouse','workshop','sawmill','quarryWorks','forge','ironworks','factory','power'].includes(id))count.industry++;if(['school','academy','research','university'].includes(id))count.science++;if(['market','bank','railhub','harbor'].includes(id))count.commerce++;if(['trainingGround','garrison','fortress'].includes(id))count.military++;if(['park','bath','clinic','theater'].includes(id))count.welfare++;}
+  const size=Math.max(22,Math.min(70,18+data.length*1.15));
+  const plaza=new THREE.Mesh(new THREE.CircleGeometry(Math.max(6,Math.min(16,size*.16)),24),new THREE.MeshBasicMaterial({color:0xb6a277,transparent:true,opacity:.13,side:THREE.DoubleSide,depthWrite:false}));plaza.rotation.x=-Math.PI/2;plaza.position.y=.27;g.add(plaza);
+  if(count.housing>=3){const ring=new THREE.Mesh(new THREE.RingGeometry(size*.22,size*.235,32),new THREE.MeshBasicMaterial({color:0xe0c277,transparent:true,opacity:.22,side:THREE.DoubleSide,depthWrite:false}));ring.rotation.x=-Math.PI/2;ring.position.y=.32;g.add(ring);}
+  if(count.science>=2){const dome=new THREE.Mesh(new THREE.SphereGeometry(Math.min(5,size*.08),10,8,0,Math.PI*2,0,Math.PI/2),new THREE.MeshBasicMaterial({color:0x79aee3,transparent:true,opacity:.34,depthWrite:false}));dome.position.y=1.1;g.add(dome);}
+  if(count.military>=2){const glow=new THREE.Mesh(new THREE.RingGeometry(size*.34,size*.355,32),new THREE.MeshBasicMaterial({color:0xc35f62,transparent:true,opacity:.16,side:THREE.DoubleSide,depthWrite:false}));glow.rotation.x=-Math.PI/2;glow.position.y=.30;g.add(glow);}
+  if(count.industry>=3){const stack=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.7,6,10),new THREE.MeshBasicMaterial({color:0x5b6268,transparent:true,opacity:.78}));stack.position.set(-size*.18,3.05,size*.18);g.add(stack);}
+  if(count.commerce>=3){const marketGlow=new THREE.Mesh(new THREE.RingGeometry(size*.28,size*.30,32),new THREE.MeshBasicMaterial({color:0xd8b35d,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false}));marketGlow.rotation.x=-Math.PI/2;marketGlow.position.y=.34;g.add(marketGlow);}
+}
 function buildNationVisual(n,index){
   const g=new THREE.Group();g.position.set(n.x,0,n.z);g.userData.nationId=n.id;
   const col=new THREE.Color(n.color||nationColor(index));
   // 領土面：透明度は薄く、既存の地形をそのまま見せる。
-  const fill=new THREE.Mesh(new THREE.PlaneGeometry(n.territoryHalf*2,n.territoryHalf*2),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:n.id==='player'?.035:.045,side:THREE.DoubleSide,depthWrite:false}));
+  const fill=new THREE.Mesh(new THREE.PlaneGeometry(n.territoryHalf*2,n.territoryHalf*2),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:n.id==='player'?.018:.022,side:THREE.DoubleSide,depthWrite:false}));
   fill.rotation.x=-Math.PI/2;fill.position.y=.24;fill.renderOrder=3;fill.userData.nationId=n.id;g.add(fill);
   const border=makeSquareOutline(n.territoryHalf,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:n.id==='player'?.94:.62,depthTest:false}),.30);border.renderOrder=12;g.add(border);
   const core=new THREE.Mesh(new THREE.CylinderGeometry(8,8,.16,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.24,depthWrite:false}));core.position.y=.33;g.add(core);
@@ -9012,6 +9328,12 @@ function buildNationVisual(n,index){
   const govMark=new THREE.Mesh(new THREE.CylinderGeometry(1.55,1.55,.22,12),new THREE.MeshBasicMaterial({color:politicsAccent,transparent:true,opacity:.82,depthWrite:false}));govMark.position.y=.52;g.add(govMark);
   const activeLawCount=Object.values(n.politics?.laws||{}).filter(Boolean).length;
   if(activeLawCount>0){const lawRing=new THREE.Mesh(new THREE.RingGeometry(2.15,2.28,20),new THREE.MeshBasicMaterial({color:politicsAccent,transparent:true,opacity:.42,side:THREE.DoubleSide,depthWrite:false}));lawRing.rotation.x=-Math.PI/2;lawRing.position.y=.56;g.add(lawRing);}
+  addNationStarterSettlement(g,n);
+  /* 初期条件が同じことを3Dでも確認できる共通中心広場。以後のAI建設はこの周囲に増築される。 */
+  const starterRing=new THREE.Mesh(new THREE.RingGeometry(13.8,14.2,32),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.34,side:THREE.DoubleSide,depthWrite:false}));
+  starterRing.rotation.x=-Math.PI/2;starterRing.position.y=.30;g.add(starterRing);
+  addNationCityBackdrop(g,n);
+  addNationWarVisual(g,n);
   const data=Array.isArray(n.buildingsData)?n.buildingsData:[];
   /* 全国家は開始時に同じく「0施設・0道路」。AIが共通システムから選択して建てる。 */
   const roadMat=new THREE.MeshStandardMaterial({color:0x746b5d,roughness:.92});
@@ -9029,7 +9351,7 @@ function buildNationVisual(n,index){
   }
   if(nationShowLabels()){
     const label=makeNationLabel(`${n.id==='player'?'★ ':''}${n.name}`,col,false);label.position.set(0,Math.max(18,10+Math.min(60,n.buildings)*.12),0);g.add(label);
-    const sub=makeNationLabel(`${fmt(Math.round(n.population))}人 · ${n.government} · ${ERA[Math.max(0,Math.min(ERA.length-1,n.era||0))].label}`,col,true);sub.scale.set(.72,.72,1);sub.position.set(0,Math.max(24,16+Math.min(70,n.buildings)*.14),0);g.add(sub);
+    const sub=makeNationLabel(`${fmt(Math.round(n.population))}人 · ${n.government} · 税率${Math.round((n.taxRate||.1)*100)}% · ${ERA[Math.max(0,Math.min(ERA.length-1,n.era||0))].label} · ${n.facilitiesData?.length||0}施設`,col,true);sub.scale.set(.72,.72,1);sub.position.set(0,Math.max(24,16+Math.min(70,n.buildings)*.14),0);g.add(sub);
   }
   // 透明ヒット面で国をタップ選択できるようにする。
   const hit=new THREE.Mesh(new THREE.PlaneGeometry(n.territoryHalf*2,n.territoryHalf*2),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
@@ -9179,7 +9501,7 @@ function renderNationPanel(id=selectedNationId){
   const body=document.getElementById('politicsBody');if(!body)return;ensureNationState();selectedNationId=id||'player';const me=state.nations[0];const selected=nationalPanelNation(selectedNationId)||me;const sorted=[...state.nations].sort((a,b)=>b.population-a.population);
   const playerPolitics=state.politics||{};
   const countryRows=sorted.map((n,i)=>`<div class="overview-row" style="cursor:pointer" onclick="travelToNation('${n.id}')"><div class="overview-row-main"><div class="overview-row-title">${n.id==='player'?'★ ':''}${n.name}</div><div class="overview-row-sub">${n.government} · ${n.policy} · 領土 ${Math.round(n.territoryHalf*2)}m · 安定 ${Math.round(n.stability)}%</div></div><div class="overview-badge">#${i+1}　${fmt(Math.round(n.population))}人</div></div>`).join('');
-  const selectedInfo=`<section class="politics-card" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🗺 ${selected.id==='player'?'あなたの国家':selected.name}</h3><button class="politics-btn active" onclick="focusNation('${selected.id}')">📍 この国を見る</button></div><div class="politics-stat"><span>人口</span><b>${fmt(Math.round(selected.population))} / ${fmt(Math.round(selected.popMax))}</b></div><div class="politics-bar"><i style="width:${Math.min(100,Math.round(selected.population/Math.max(1,selected.popMax)*100))}%"></i></div><div class="politics-stat"><span>領土</span><b>${fmt(Math.round(selected.territoryHalf*2))}m × ${fmt(Math.round(selected.territoryHalf*2))}m</b></div><div class="politics-stat"><span>幸福度</span><b>${Math.round(selected.happiness)}%</b></div><div class="politics-stat"><span>政治安定</span><b>${Math.round(selected.stability)}%</b></div><div class="politics-stat"><span>支持率</span><b>${Math.round(selected.approval)}%</b></div><div class="politics-stat"><span>政府</span><b>${selected.government}</b></div><div class="politics-stat"><span>政策</span><b>${selected.policy}</b></div><div class="politics-stat"><span>税率</span><b>${Math.round((selected.taxRate||0)*100)}%</b></div><div class="politics-stat"><span>内閣 / 経済 / 外交</span><b>${politicsCabinetLabel(selected.politics?.cabinet||'balanced')} / ${selected.politics?.economyPolicy||'market'} / ${selected.politics?.foreignPolicy||'trade'}</b></div><div class="politics-stat"><span>法律 / 国家計画</span><b>${Object.values(selected.politics?.laws||{}).filter(Boolean).length}件 / ${Object.keys(selected.politics?.projects||{}).length}件</b></div><div class="politics-stat"><span>国庫</span><b>${fmt(Math.round(selected.treasury))}</b></div><div class="politics-stat"><span>交易量</span><b>${fmt(Math.round(selected.tradeVolume))}</b></div><div class="politics-stat"><span>研究 / 文化</span><b>${fmt(Math.round(selected.science))} / ${fmt(Math.round(selected.culture))}</b></div><div class="politics-stat"><span>建造物 / 道路</span><b>${fmt(Math.round(selected.buildings))} / ${fmt(Math.round(selected.roads))}本</b></div><div class="politics-stat"><span>文明段階</span><b>Lv.${Math.round(selected.cityLevel||1)} · ${ERA[Math.max(0,Math.min(ERA.length-1,selected.era||0))].name} · YEAR ${fmt(Math.round(selected.age||1))}</b></div><div class="politics-stat"><span>軍事力</span><b>${fmt(Math.round(selected.military||0))} / ${fmt(Math.round(selected.militaryMax||0))}</b></div><div class="politics-stat"><span>戦争状態</span><b>${state.wars?.some(w=>w.a===selected.id||w.b===selected.id)?'⚔ 戦争中':'平時'}</b></div></section>`;
+  const selectedInfo=`<section class="politics-card" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🗺 ${selected.id==='player'?'あなたの国家':selected.name}</h3><button class="politics-btn active" onclick="focusNation('${selected.id}')">📍 この国を見る</button></div><div class="politics-stat"><span>人口</span><b>${fmt(Math.round(selected.population))} / ${fmt(Math.round(selected.popMax))}</b></div><div class="politics-bar"><i style="width:${Math.min(100,Math.round(selected.population/Math.max(1,selected.popMax)*100))}%"></i></div><div class="politics-stat"><span>領土</span><b>${fmt(Math.round(selected.territoryHalf*2))}m × ${fmt(Math.round(selected.territoryHalf*2))}m</b></div><div class="politics-stat"><span>領土状態</span><b>他国領土との重複なし</b></div><div class="politics-stat"><span>幸福度</span><b>${Math.round(selected.happiness)}%</b></div><div class="politics-stat"><span>政治安定</span><b>${Math.round(selected.stability)}%</b></div><div class="politics-stat"><span>支持率</span><b>${Math.round(selected.approval)}%</b></div><div class="politics-stat"><span>政府</span><b>${selected.government}</b></div><div class="politics-stat"><span>政策</span><b>${selected.policy}</b></div><div class="politics-stat"><span>AI国家方針</span><b>${({industrial:'工業立国',commerce:'交易国家',science:'科学国家',welfare:'福祉国家',military:'軍事国家',agriculture:'農業国家',urban:'都市国家',expansion:'拡張国家',balanced:'均衡国家'}[nationAIProfile(selected)]||'均衡国家')}</b></div><div class="politics-stat"><span>税率</span><b>${Math.round((selected.taxRate||0)*100)}%</b></div><div class="politics-stat"><span>内閣 / 経済 / 外交</span><b>${politicsCabinetLabel(selected.politics?.cabinet||'balanced')} / ${selected.politics?.economyPolicy||'market'} / ${selected.politics?.foreignPolicy||'trade'}</b></div><div class="politics-stat"><span>法律 / 国家計画</span><b>${Object.values(selected.politics?.laws||{}).filter(Boolean).length}件 / ${Object.keys(selected.politics?.projects||{}).length}件</b></div><div class="politics-stat"><span>国庫</span><b>${fmt(Math.round(selected.treasury))}</b></div><div class="politics-stat"><span>交易量</span><b>${fmt(Math.round(selected.tradeVolume))}</b></div><div class="politics-stat"><span>研究 / 文化</span><b>${fmt(Math.round(selected.science))} / ${fmt(Math.round(selected.culture))}</b></div><div class="politics-stat"><span>建造物 / 道路</span><b>${fmt(Math.round(selected.buildings))} / ${fmt(Math.round(selected.roads))}本</b></div><div class="politics-stat"><span>文明段階</span><b>Lv.${Math.round(selected.cityLevel||1)} · ${ERA[Math.max(0,Math.min(ERA.length-1,selected.era||0))].name} · YEAR ${fmt(Math.round(selected.age||1))}</b></div><div class="politics-stat"><span>軍事力</span><b>${fmt(Math.round(selected.military||0))} / ${fmt(Math.round(selected.militaryMax||0))}</b></div><div class="politics-stat"><span>戦争状態</span><b>${state.wars?.some(w=>w.a===selected.id||w.b===selected.id)?'⚔ 戦争中':'平時'}</b></div>${(()=>{const ww=state.wars?.find(w=>w.a===selected.id||w.b===selected.id);return ww?`<div class="politics-stat"><span>前線 / 消耗</span><b>${Math.round((ww.front||.5)*100)}% / ${fmt(Math.round((ww.supplyUsedA||0)+(ww.supplyUsedB||0)))}資源</b></div>`:''})()}${selected.id!=='player'&&!state.wars?.some(w=>(w.a===selected.id||w.b===selected.id))?`<div class="politics-actions"><button class="politics-btn warn" onclick="declareWarOnNation('${selected.id}')">⚔ 出陣する</button></div>`:''}</section>`;
   const p0=playerPolitics;
   const lawDefs=[['education','教育振興法'],['welfare','公共福祉法'],['roads','全国道路整備法'],['trade','交易自由化令'],['security','国家防衛法'],['housing','住宅安定法'],['health','公衆衛生法'],['commerce','商業振興法'],['environment','環境保全法']];
   const lawHtml=lawDefs.map(([id,name])=>`<button class="politics-btn ${p0.laws?.[id]?'active':''}" onclick="toggleLaw('${id}')">${p0.laws?.[id]?'✓ ':''}${name}</button>`).join('');
@@ -9188,7 +9510,7 @@ function renderNationPanel(id=selectedNationId){
   const projectDefs=[['housing','住宅整備計画',500],['education','全国教育計画',650],['commerce','大交易回廊',780],['roads','国家道路網',720]];
   const projectBtns=projectDefs.map(([id,label,cost])=>{const active=p0.projects?.[id];return `<button class="politics-btn ${active?'active':''}" onclick="${active?`cancelNationalProject('${id}')`:`launchNationalProject('${id}')`}">${label}${active?'（進行中）':` ${cost}`}</button>`}).join('');
   const myPanel=`<section class="politics-card"><h3>🏛 自国：政治・政策・国家計画</h3><div class="politics-stat"><span>税率</span><b>${Math.round((p0.taxRate||.10)*100)}%</b></div><div class="politics-stat"><span>支持率 / 正統性</span><b>${Math.round(p0.approval||68)}% / ${Math.round(p0.legitimacy||72)}%</b></div><div class="politics-stat"><span>財政</span><b>${fmt(Math.round(p0.treasury||0))}　${p0.fiscalStatus||'健全'}</b></div><div class="politics-stat"><span>政府</span><b>${p0.cabinet?politicsCabinetLabel(p0.cabinet):'均衡内閣'}</b></div><div class="politics-actions">${[.05,.10,.15,.20,.25,.30].map(v=>`<button class="politics-btn ${Math.abs((p0.taxRate||.10)-v)<.001?'active':''}" onclick="setTaxRate(${v})">${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-actions">${['balanced','growth','science','welfare','security'].map(id=>`<button class="politics-btn ${p0.cabinet===id?'active':''}" onclick="setCabinet('${id}')">${politicsCabinetLabel(id)}</button>`).join('')}</div><div class="politics-stat"><span>経済方針</span><b>${p0.economyPolicy||'market'}</b></div><div class="politics-actions">${economyBtns}</div><div class="politics-stat"><span>外交方針</span><b>${p0.foreignPolicy||'trade'}</b></div><div class="politics-actions">${foreignBtns}</div><div class="politics-stat"><span>福祉 / インフラ予算</span><b>${Math.round((p0.welfareBudget||.1)*100)}% / ${Math.round((p0.infrastructureBudget||.1)*100)}%</b></div><div class="politics-actions">${[.05,.1,.15,.2,.25].map(v=>`<button class="politics-btn ${Math.abs((p0.welfareBudget||.1)-v)<.001?'active':''}" onclick="setWelfareBudget(${v})">福祉${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-actions">${[.05,.1,.15,.2,.25].map(v=>`<button class="politics-btn ${Math.abs((p0.infrastructureBudget||.1)-v)<.001?'active':''}" onclick="setInfrastructureBudget(${v})">道路${Math.round(v*100)}%</button>`).join('')}</div><div class="politics-stat"><span>法律</span><b>${Object.values(p0.laws||{}).filter(Boolean).length}件施行</b></div><div class="politics-actions">${lawHtml}</div><div class="politics-stat"><span>国家計画</span><b>${Object.keys(p0.projects||{}).length}件進行中</b></div><div class="politics-actions">${projectBtns}</div><div class="politics-actions"><button class="politics-btn active" onclick="openNews()">📰 最新の重大ニュースを見る</button></div></section>`;
-  const worldInfo=`<section class="politics-card"><h3>🌍 世界情勢</h3><div class="politics-stat"><span>国家数</span><b>30</b></div><div class="politics-stat"><span>世界地図</span><b>20km × 20km</b></div><div class="politics-stat"><span>最多人口</span><b>${sorted[0]?.name||'—'}　${fmt(Math.round(sorted[0]?.population||0))}</b></div><div class="politics-stat"><span>最多交易</span><b>${[...state.nations].sort((a,b)=>b.tradeVolume-a.tradeVolume)[0]?.name||'—'}</b></div><div class="politics-stat"><span>戦争</span><b>${fmt(state.wars?.length||0)}件</b></div><div class="politics-law-desc" style="margin-top:8px">他国は自国と同じ建築・強化・政治・国家計画ルールを使い、AIが選択して発展します。建設・強化・政策の結果は3D都市へ反映されます。</div></section>`;
+  const worldInfo=`<section class="politics-card"><h3>🌍 世界情勢</h3><div class="politics-stat"><span>国家数</span><b>30</b></div><div class="politics-stat"><span>世界地図</span><b>20km × 20km</b></div><div class="politics-stat"><span>最多人口</span><b>${sorted[0]?.name||'—'}　${fmt(Math.round(sorted[0]?.population||0))}</b></div><div class="politics-stat"><span>最多交易</span><b>${[...state.nations].sort((a,b)=>b.tradeVolume-a.tradeVolume)[0]?.name||'—'}</b></div><div class="politics-stat"><span>戦争</span><b>${fmt(state.wars?.length||0)}件</b></div><div class="politics-law-desc" style="margin-top:8px">戦争中は数秒ごとに食料・木材・石材・鉄・金を大量消費。前線を押し込み、勝利すると相手の領土と戦利金を獲得します。</div><div class="politics-law-desc" style="margin-top:8px">他国は自国と同じ建築・強化・政治・国家計画ルールを使い、AIが選択して発展します。建設・強化・政策の結果は3D都市へ反映されます。</div></section>`;
   body.innerHTML=`${selectedInfo}${myPanel}${worldInfo}<section class="politics-card" style="grid-column:1/-1"><h3>🏳 世界30か国</h3><div class="overview-list" style="max-height:440px;overflow:auto">${countryRows}</div></section>`;
 }
 function closeNationTravel(){document.getElementById('nationTravelOverlay')?.classList.remove('show');}
@@ -9220,7 +9542,7 @@ function travelToNation(id='player'){
   state.grind.nationsVisited=Math.min(30,state.grind.nationsVisitedSet.length);
   closeNationTravel();
   focusNation(n.id);
-  openNationPanel(n.id);
+  toast(`${n.name}へ移動しました`);
 }
 window.travelToNation=travelToNation;
 
@@ -9230,6 +9552,9 @@ window.openNationPanel=openNationPanel;
 
 function focusNation(id='player',zoom=null){
   ensureNationState();
+  /* 「この国を見る」は詳細画面を閉じ、即座にその国の3D画面へ切り替える。 */
+  document.getElementById('nationTravelOverlay')?.classList.remove('show');
+  document.getElementById('politicsOverlay')?.classList.remove('show');
   const n=nationalPanelNation(id);
   if(!n)return;
   selectedNationId=n.id;
@@ -10307,15 +10632,29 @@ function logRuntimeError(label,err){
   const key=label+':'+String(err?.message||err);
   if(key!==lastRuntimeErrorKey){
     lastRuntimeErrorKey=key;
-    console.error(label,err);
+    window.__lastRuntimeError={label,message:String(err?.message||err||'unknown'),stack:String(err?.stack||'')};
+    if(!/Main loop recovered/.test(label))console.warn(label,err);
   }
+}
+
+function normalizeCriticalRuntimeState(){
+  if(!state.resources||typeof state.resources!=='object')state.resources=cloneNationStarterResources();
+  for(const k of ['food','wood','stone','iron','gold','science','culture'])state.resources[k]=Math.max(0,Number(state.resources[k])||0);
+  if(!state.politics||typeof state.politics!=='object')state.politics=cloneNationDefaultPolitics();
+  ensurePoliticsState();
+  ensureNewsState();
+  if(!Array.isArray(state.wars))state.wars=[];
+  if(!Array.isArray(state.nations))state.nations=[];
+  for(let i=0;i<state.nations.length;i++)repairNationRuntimeState(state.nations[i],i);
+  enforceNationTerritorySeparation();
 }
 
 function loop(t){
   try{
+    normalizeCriticalRuntimeState();
     const dt=Math.min(1,(t-last)/1000);last=t;
     const simDt=adminState.paused?0:Math.min(60,dt*adminState.speed);
-    if(simDt>0)simulate(simDt);
+    if(simDt>0){try{simulate(simDt);}catch(err){normalizeCriticalRuntimeState();window.__lastRuntimeError={label:'Simulation',message:String(err?.message||err||'unknown'),stack:String(err?.stack||'')};}}
     updateWorldMood(adminState.paused?0:simDt,t);
     if(adminState.open)adminUpdatePanel();
 

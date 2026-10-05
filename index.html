@@ -1843,8 +1843,7 @@ const state = {
   facilities:[],
   infrastructure:1,
   housingBonus:0,
-  cityHallAdminCap:40,
-  populationSystemVersion:2,
+  cityHallAdminCap:40,   populationSystemVersion:3,
   migration:0,
   festivals:0,
   policy:'balanced',
@@ -3468,29 +3467,39 @@ function getResidentialFacilities(){
  * 「基礎40 + 市役所Lv×24」を最低行政人口上限として再同期する。
  */
 function repairPopulationSystem(){
+  /* 人口容量の唯一の基準。行政・住宅・法律を同じ計算へ統合する。 */
   state.pop=THREE.MathUtils.clamp(Number(state.pop)||1,1,1000000000);
-  state.popMax=Math.max(1,Number(state.popMax)||40);
   state.happiness=THREE.MathUtils.clamp(Number(state.happiness)||0,0,100);
   state.migration=Number.isFinite(Number(state.migration))?Number(state.migration):0;
-  const halls=(state.facilities||[]).filter(f=>f && f.type==='cityHall');
-  let hallBonus=0;
-  for(const f of halls) hallBonus+=24*Math.max(1,Number(f.level)||1);
-  const administrativeCap=40+hallBonus;
+  if(!Array.isArray(state.facilities))state.facilities=[];
+  if(!state.districts||typeof state.districts!=='object')state.districts={};
+  if(!state.districts.capital||typeof state.districts.capital!=='object')state.districts.capital={level:1};
+  const capitalLevel=Math.max(1,Number(state.districts.capital.level)||1);
+  const capitalBonus=Math.max(0,capitalLevel-1)*20;
+  const halls=state.facilities.filter(f=>f&&f.type==='cityHall');
+  const hallBonus=halls.reduce((sum,f)=>sum+24*Math.max(1,Number(f.level)||1),0);
+  const administrativeCap=40+capitalBonus+hallBonus;
+  const residentialBonus=state.facilities.filter(f=>f&&['house','townhouse','apartment'].includes(f.type)).reduce((sum,f)=>sum+residentialCapacityForType(f.type,f.level||1),0);
+  const policyHousingBonus=(state.politics?.laws?.housing?18:0)+Math.max(0,Number(state.housingBonus)||0);
+  const actualCapacity=administrativeCap+residentialBonus+policyHousingBonus;
   state.cityHallAdminCap=administrativeCap;
-  state.popMax=Math.max(state.popMax,administrativeCap,state.pop+0.001);
-  state.populationSystemVersion=2;
+  state.popMax=Math.max(40,Number(state.popMax)||40,actualCapacity,state.pop+0.001);
+  state.populationSystemVersion=3;
+  state.populationCapacityBreakdown={base:40,capitalBonus,hallBonus,residentialBonus,policyHousingBonus,actualCapacity};
 }
 
 function getHousingState(){
-  const pop=Math.max(0,Math.floor(state.pop));
+  const pop=Math.max(0,Number(state.pop)||0);
   const homes=getResidentialFacilities();
-  /* 初期集落にも40人分の基礎居住容量を持たせる。以前は住宅施設が0件だと
-     popMax=40でも実効容量が0になり、人口が一切増えない不整合が起きていた。 */
   const residentialBonus=homes.reduce((sum,f)=>sum+residentialCapacityForType(f.type,f.level||1),0);
-  const capacity=40+residentialBonus;
-  const adminCap=Math.max(1,Number(state.popMax)||40);
-  const effectiveCapacity=Math.min(adminCap,capacity);
-  return {population:pop,perHouse:0,houses:homes.length,capacity,adminCap,effectiveCapacity,shortage:Math.max(0,pop-effectiveCapacity),homes};
+  const capitalLevel=Math.max(1,Number(state.districts?.capital?.level)||1);
+  const capitalBonus=Math.max(0,capitalLevel-1)*20;
+  const halls=(state.facilities||[]).filter(f=>f&&f.type==='cityHall');
+  const hallBonus=halls.reduce((sum,f)=>sum+24*Math.max(1,Number(f.level)||1),0);
+  const policyHousingBonus=(state.politics?.laws?.housing?18:0)+Math.max(0,Number(state.housingBonus)||0);
+  const capacity=40+capitalBonus+hallBonus+residentialBonus+policyHousingBonus;
+  const effectiveCapacity=Math.max(capacity,Math.max(40,Number(state.popMax)||40));
+  return {population:pop,perHouse:0,houses:homes.length,capacity,effectiveCapacity,adminCap:40+capitalBonus+hallBonus,shortage:Math.max(0,pop-effectiveCapacity),homes,capitalLevel,capitalBonus,hallBonus,residentialBonus,policyHousingBonus};
 }
 
 function drawHouseVisual(lot,occupied,p){
@@ -3667,7 +3676,6 @@ function completeConstruction(c){
   const maxLevel=facilityMaxLevel(def);
   const f={id:c.id,type:def.id,x:c.x,z:c.z,level:c.level||1,maxLevel};
   state.facilities.push(f);
-  if(def.id==='cityHall') state.popMax=Math.max(1,state.popMax+(def.effects?.popMax||0));
   repairPopulationSystem();
   state.happiness=Math.min(100,state.happiness+(def.effects?.happiness||0));
   state.stats=(state.stats&&typeof state.stats==='object')?state.stats:{buildingsCompleted:0,expeditionsCompleted:0,largestPopulation:state.pop,totalConstructionTime:0};
@@ -3808,7 +3816,6 @@ function upgradeFacility(id){
   if((f.level||1)>=max){toast(`現在の時代ではLv.${max}が上限です。時代が進むとさらに強化できます`);return;}
   const cost=facilityUpgradeCost(f); if(!canAfford(cost)){toast('設備強化の資源が足りません');return;}
   pay(cost); f.level=(f.level||1)+1;
-  if(def.id==='cityHall' && def.effects?.popMax)state.popMax=Math.max(1,state.popMax+(def.effects.popMax||0));
   repairPopulationSystem();
   addLog(`${def.icon}${def.name}をLv.${f.level}へ強化しました。`);
   state.stats.totalFacilityUpgrades=(state.stats.totalFacilityUpgrades||0)+1;
@@ -5870,7 +5877,7 @@ function toggleLaw(id){
   if(p.lawCooldown>0){toast(`新しい法案はあと${Math.ceil(p.lawCooldown)}秒待つ必要があります`);return;}
   if(p.treasury<data[1]){toast(`国家予算が足りません。必要：${fmt(data[1])}`);return;}
   p.treasury-=data[1];p.laws[id]=true;p.lawCooldown=18;
-  if(id==='housing')state.popMax+=18;
+  if(id==='housing'){state.housingBonus=Math.max(0,Number(state.housingBonus)||0)+18;repairPopulationSystem();}
   if(id==='health')state.happiness=THREE.MathUtils.clamp(state.happiness+2,0,100);
   addLog(`📜 「${data[0]}」を制定しました。`);pushNews('politics',`📜 自国で新法成立`,`「${data[0]}」が制定されました。${data[2]}`,['player'],2);showBanner('LAW ENACTED',data[0],data[2],1450);renderPolitics();renderAll();
 }
@@ -6143,6 +6150,7 @@ function upgradeSelected(){
   }
 
 
+  repairPopulationSystem();
   state.productionTotal+=1;
 
 
@@ -6653,24 +6661,19 @@ function simulate(sec){
   }
 
   /* Population */
-
-  if(
-    r.food>=0 &&
-    state.pop<state.popMax
-  ){
-
+  repairPopulationSystem();
+  if(r.food>=0){
     const h=getHousingState();
-    // 人口は「実際に建てた住宅」が空いている場合だけ増える。市役所の人口上限も同時に適用。
-    if(h.capacity>state.pop){
-      const room=Math.min(1,Math.max(.22,(h.capacity-state.pop)/Math.max(1,h.capacity)));
+    /* 40人の基礎容量を実際の居住可能人数として扱い、市役所・首都広場・住宅の強化を即時反映する。 */
+    if(h.effectiveCapacity>state.pop){
+      const room=Math.min(1,Math.max(.22,(h.effectiveCapacity-state.pop)/Math.max(1,h.effectiveCapacity)));
       const cityHallLv=totalFacilityLevel('cityHall');
-      const cityHallGrowth=1+cityHallLv*.14;
+      const capitalLv=Math.max(1,Number(state.districts?.capital?.level)||1);
+      const cityAdminGrowth=1+Math.max(0,capitalLv-1)*.08+cityHallLv*.14;
       const growthBase=.018+state.happiness*.00013+state.infrastructure*.00065+state.migration*.00030+getRoadCoverageBonus()*.0016;
-      const growth=growthBase*cityHallGrowth;
-      state.pop += sec*growth*room;
+      state.pop+=sec*growthBase*cityAdminGrowth*room;
     }
     state.pop=Math.min(Math.max(1,Number(state.popMax)||1),state.pop);
-
   }
 
 
@@ -7780,10 +7783,7 @@ function renderAll(){
     ERA[state.era].desc;
 
 
-  document.getElementById(
-    'hudPop'
-  ).textContent=
-    `${fmt(state.pop)} / ${fmt(state.popMax)}`;
+  document.getElementById('hudPop').textContent=`${fmt(state.pop)} / ${fmt(Math.max(state.popMax,getHousingState().effectiveCapacity))}`;
 
 
   document.getElementById(
@@ -9718,13 +9718,7 @@ function trySelectNationFromPointer(){
    START
 ========================================================= */
 
-resize();
-loadGame();
-ensurePersonnelState();
-ensureNationState();
-ensureGrindState();
-ensureNewsState();
-newsBootstrap();
+resize(); loadGame(); normalizeCriticalRuntimeState(); ensurePersonnelState(); ensureNationState(); ensureGrindState(); ensureNewsState(); newsBootstrap();
 grindUpdate();
 state.selectedFacility=null;
 updateBuildModeBadge();
@@ -10682,13 +10676,29 @@ function normalizeCriticalRuntimeState(){
   ensureNewsState();
   if(!Array.isArray(state.wars))state.wars=[];
   if(!Array.isArray(state.nations))state.nations=[];
-  for(let i=0;i<state.nations.length;i++)repairNationRuntimeState(state.nations[i],i);
-  enforceNationTerritorySeparation();
+  if(!Array.isArray(state.facilities))state.facilities=[];
+  if(!Array.isArray(state.constructionQueue))state.constructionQueue=[];
+  if(!Array.isArray(state.roads))state.roads=[];
+  if(!Number.isFinite(Number(state.roadMiles)))state.roadMiles=0;
+  for(const k of ['food','wood','stone','iron','gold','science','culture']){const v=Number(state.resources?.[k]);state.resources[k]=Number.isFinite(v)?Math.max(0,v):0;}
+  for(let i=0;i<state.nations.length;i++){try{repairNationRuntimeState(state.nations[i],i);}catch(_){const n=state.nations[i];if(n&&typeof n==='object'){n.population=Math.max(1,Number(n.population)||28);n.popMax=Math.max(n.population+1,Number(n.popMax)||40);n.treasury=Math.max(0,Number(n.treasury)||600);}}}
+  try{enforceNationTerritorySeparation();}catch(_){ }
+}
+
+function runStateSanityCheck(){
+  if(!Number.isFinite(Number(state.pop))||Number(state.pop)<1)state.pop=1;
+  if(!Number.isFinite(Number(state.popMax))||Number(state.popMax)<40)state.popMax=40;
+  if(!Number.isFinite(Number(state.happiness)))state.happiness=70;
+  if(!Array.isArray(state.facilities))state.facilities=[];
+  if(!Array.isArray(state.constructionQueue))state.constructionQueue=[];
+  if(!Array.isArray(state.nations))state.nations=[];
+  if(!Array.isArray(state.wars))state.wars=[];
 }
 
 function loop(t){
   try{
     normalizeCriticalRuntimeState();
+    runStateSanityCheck();
     const dt=Math.min(1,(t-last)/1000);last=t;
     const simDt=adminState.paused?0:Math.min(60,dt*adminState.speed);
     if(simDt>0){try{simulate(simDt);}catch(err){normalizeCriticalRuntimeState();window.__lastRuntimeError={label:'Simulation',message:String(err?.message||err||'unknown'),stack:String(err?.stack||'')};}}

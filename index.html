@@ -773,7 +773,6 @@ button{
 .personnel-section{margin-top:10px;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.018)}
 .personnel-section-title{font-size:11px;font-weight:1000}.personnel-section-sub{font-size:8px;color:#8792a0;margin-top:3px;line-height:1.45}
 .personnel-role-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
-.war-target-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}.war-target-btn{width:100%;text-align:left;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:#151c25;color:#e8edf2;padding:8px 9px;cursor:pointer}.war-target-btn.selected{border-color:rgba(231,194,104,.72);background:linear-gradient(135deg,rgba(231,194,104,.20),rgba(231,194,104,.06));box-shadow:0 0 0 1px rgba(231,194,104,.12) inset}.war-target-name{display:block;font-weight:1000;font-size:10px}.war-target-meta{display:block;color:#8e99a6;font-size:8px;margin-top:3px}.war-target-btn:active{transform:translateY(1px)}@media(max-width:620px){.war-target-grid{grid-template-columns:1fr}}
 .personnel-role-card{padding:10px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(0,0,0,.12)}
 .personnel-role-top{display:flex;justify-content:space-between;gap:8px;align-items:center}.personnel-role-name{font-size:11px;font-weight:1000}.personnel-role-count{font-size:10px;font-weight:1000;color:#e4c06b}
 .personnel-role-desc{font-size:8px;color:#8b96a4;line-height:1.45;margin-top:4px}.personnel-role-actions{display:grid;grid-template-columns:80px 1fr;gap:6px;margin-top:8px}
@@ -872,7 +871,7 @@ body::selection{background:rgba(231,194,104,.26)}
 @media(max-width:800px){.quality-bar{right:10px;top:10px}.grind-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.grind-summary{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.quality-bar{display:none}.grind-grid{grid-template-columns:1fr}.grind-records{grid-template-columns:1fr}.grind-modal{height:94vh}.grind-title{font-size:19px}}
 </style>
-<meta name="nation-territory-build" content="2m-initial-v14-stable-war-targets-blank-expansion-foothprints">
+<meta name="nation-territory-build" content="2m-initial-v13-64cell-warcenter-ai-growth">
 <meta name="nation-territory-verified" content="nation initial 2m; city territory 38m; 64-cell 8m grid selection; war center; AI growth; tax-sensitive economy">
 </head>
 
@@ -3236,7 +3235,7 @@ function addSeaChunk(cx,cz){
 }
 
 function addTerritorySite(site){
-  // 開拓後の土地には目印を残さない。土地データだけを保存する。
+  /* 開発済み土地を示す旗は廃止。土地データ自体は保存して、領地システムだけを維持する。 */
 }
 
 
@@ -3246,9 +3245,35 @@ function addTerritorySite(site){
 ========================================================= */
 
 function rebuildPersistentExpansionClaims(){
-  // 開拓完了後の土地は、地図上に線・ラベル・旗・塗りを一切残さない。
-  // state.territoryClaims 自体は建設可能判定のため保持する。
-  if(territoryClaimGroup) clearGroupContents(territoryClaimGroup);
+  if(!territoryClaimGroup)return;
+  clearGroupContents(territoryClaimGroup);
+  const claims=Array.isArray(state.territoryClaims)?state.territoryClaims:[];
+  for(const c of claims){
+    const x=Number(c.x)||0;
+    const z=Number(c.z)||0;
+    const half=getExpansionClaimRadius(c);
+    if(half<=0)continue;
+
+    const fill=new THREE.Mesh(
+      new THREE.PlaneGeometry(half*2,half*2),
+      new THREE.MeshBasicMaterial({color:0xe6c36b,transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false})
+    );
+    fill.rotation.x=-Math.PI/2;
+    fill.position.set(x,.58,z);
+    fill.renderOrder=80;
+    territoryClaimGroup.add(fill);
+
+    const ring=makeSquareOutline(half,new THREE.LineBasicMaterial({color:0xffd66f,transparent:true,opacity:.98,depthTest:false}),.64);
+    ring.position.set(x,0,z);
+    ring.renderOrder=82;
+    territoryClaimGroup.add(ring);
+
+    const inner=makeSquareOutline(Math.max(.05,half*.72),new THREE.LineBasicMaterial({color:0xffe4a0,transparent:true,opacity:.32,depthTest:false}),.63);
+    inner.position.set(x,0,z);
+    inner.renderOrder=81;
+    territoryClaimGroup.add(inner);
+
+  }
 }
 
 function buildTerritoryUnionVisual(){
@@ -3866,39 +3891,6 @@ function placementAllowed(def,x,z){
   return true;
 }
 
-const FACILITY_FOOTPRINTS={
-  house:[3.8,3.2],townhouse:[5.0,3.3],apartment:[5.8,4.6],warehouse:[7.2,5.0],bakery:[4.6,3.6],park:[8.2,6.8],courthouse:[6.8,5.6],bank:[6.8,5.2],theater:[7.8,5.6],workshop:[6.2,4.6],trainingGround:[8.0,6.8],academy:[7.8,5.6],garrison:[7.8,6.0],well:[2.6,2.6],granary:[4.8,4.0],farmPlot:[7.2,6.0],school:[7.0,5.0],sawmill:[7.6,5.6],quarryWorks:[7.8,5.8],forge:[6.6,5.0],ironworks:[7.8,5.8],market:[7.8,5.8],cityHall:[8.4,6.4],harbor:[8.6,4.8],bath:[6.6,5.2],fortress:[8.4,6.8],clinic:[6.4,5.0],factory:[8.4,6.4],railhub:[8.8,6.0],power:[7.8,6.4],research:[7.4,5.8],spaceport:[9.2,8.4],habitat:[8.6,8.2]
-};
-function getFacilityFootprint(id){const f=FACILITY_FOOTPRINTS[id]||[5.2,4.2];return {w:f[0],d:f[1]};}
-function facilityFootprintRadius(id){const f=getFacilityFootprint(id);return Math.hypot(f.w*.5,f.d*.5);}
-function footprintInsideTerritory(x,z,id,pad=.35){
-  const f=getFacilityFootprint(id), hx=f.w*.5+pad, hz=f.d*.5+pad;
-  return isInsideCityTerritory(x-hx,z-hz,0) && isInsideCityTerritory(x+hx,z-hz,0) && isInsideCityTerritory(x-hx,z+hz,0) && isInsideCityTerritory(x+hx,z+hz,0);
-}
-function facilityPlacementClear(x,z,id){
-  const rr=facilityFootprintRadius(id);
-  if(cityRoadDistance(x,z)<rr*.78+.65)return false;
-  for(const f of state.facilities||[]){
-    const d=facilityFootprintRadius(f.type);
-    if(Math.hypot(x-(Number(f.x)||0),z-(Number(f.z)||0))<rr+d+.45)return false;
-  }
-  for(const q of state.constructionQueue||[]){
-    const d=facilityFootprintRadius(q.type);
-    if(Math.hypot(x-(Number(q.x)||0),z-(Number(q.z)||0))<rr+d+.45)return false;
-  }
-  return true;
-}
-function normalizeBuildingMeshToFootprint(g,id,maxW,maxD){
-  try{
-    g.updateMatrixWorld(true);
-    const bb=new THREE.Box3().setFromObject(g);
-    const sx=Math.max(.001,bb.max.x-bb.min.x),sz=Math.max(.001,bb.max.z-bb.min.z);
-    const factor=Math.min(1,Number(maxW||0)/sx,Number(maxD||0)/sz);
-    if(Number.isFinite(factor)&&factor>0&&factor<.999)g.scale.multiplyScalar(factor);
-  }catch(_){ }
-  return g;
-}
-
 function facilityPlacementOk(def,x,z){
   if(placementAllowed(def,x,z)) return true;
   toast(`${def.icon}${def.name}は「${placementLabel(def)}」に建設してください`);
@@ -3976,8 +3968,6 @@ function buildFacilityVisual(f,p){
     console.error('realistic facility mesh failed',f.type,err);
     g=new THREE.Group();g.add(box(2.8,.18,2.2,makeMaterial(0x72777a,.9),0,.10,0));
   }
-  const fp=getFacilityFootprint(f.type);
-  normalizeBuildingMeshToFootprint(g,f.type,fp.w*.90,fp.d*.90);
   g.position.set(Number(f.x)||0,.02,Number(f.z)||0);
   g.rotation.y=nearestRoadAngle(f.x,f.z);
   g.userData.facilityId=f.id;g.userData.facilityType=f.type;g.userData.level=Math.max(1,Number(f.level)||1);
@@ -5329,17 +5319,34 @@ function cancelBuildMode(showToast=true){
   if(showToast && hadMode)toast('建設モードを解除');
 }
 window.cancelBuildMode=cancelBuildMode;
+function facilityFootprintRadius(type,level=1){
+  const lv=Math.max(1,Number(level)||1);
+  const base={
+    house:2.0,townhouse:2.2,apartment:3.0,warehouse:3.7,bakery:2.7,park:4.4,
+    courthouse:3.5,bank:3.4,theater:4.0,workshop:3.3,trainingGround:4.4,academy:4.1,
+    garrison:4.2,well:1.2,granary:2.5,farmPlot:3.7,school:3.2,sawmill:3.5,
+    quarryWorks:3.8,forge:3.0,ironworks:4.2,market:3.8,cityHall:4.0,harbor:4.2,
+    bath:3.4,fortress:4.6,clinic:3.5,factory:4.4,railhub:4.5,power:4.5,
+    research:4.4,spaceport:5.2,habitat:5.0
+  }[type]||2.8;
+  return base + Math.min(1.15,(lv-1)*.10);
+}
+function facilityPlacementClearance(type){ return facilityFootprintRadius(type)+.55; }
+
 function placeFacilityAt(x,z){
   const def=facilityById(buildMode);if(!def)return;
   const sx=Math.round(x),sz=Math.round(z);
-  if(!isInsideCityTerritory(sx,sz,.01)){toast('未開放地です。開拓隊で領地を獲得してから建設してください');return;}
-  if(!footprintInsideTerritory(sx,sz,def.id,.18)){toast(`${def.icon}${def.name}の敷地が領地からはみ出します。もう少し内側を選んでください`);return;}
+  if(!territoryClaimAt(sx,sz,.5)){toast('未開放地です。開拓隊で領地を獲得してから建設してください');return;}
   if(!facilityPlacementOk(def,sx,sz))return;
   if(Math.hypot(sx,sz)<5.0){toast('中央広場には建設できません');return;}
-  const rr=facilityFootprintRadius(def.id);
-  for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<rr+4.0){toast('既存地区に近すぎます');return;}}
-  if(!facilityPlacementClear(sx,sz,def.id)){toast('道路・既存建物・建設予定地と敷地が重なります。空き地へ配置してください');return;}
-  if(!cityPlacementClear(sx,sz,Math.max(2.0,rr*.70))){toast('都市設備・道路と近すぎます。もう少し離れた場所を選んでください');return;}
+  for(const d of DISTRICTS){if(Math.hypot(sx-d.x,sz-d.z)<4.8){toast('既存地区に近すぎます');return;}}
+  const newRadius=facilityPlacementClearance(def.id);
+  for(const f of state.facilities){
+    const clearance=newRadius+facilityFootprintRadius(f.type,f.level)+.15;
+    if(Math.hypot(sx-f.x,sz-f.z)<clearance){toast('建物の外形が他の設備と重なります。少し離れた空き地を選んでください');return;}
+  }
+  if(!cityPlacementClear(sx,sz,Math.max(2.2,newRadius*.55))){toast('道路・住宅・工事区画と重なるため建設できません。空き地を選んでください');return;}
+  if((state.constructionQueue||[]).some(q=>Math.hypot(sx-q.x,sz-q.z)<newRadius+3.4)){toast('その場所は別の建築予定と重なっています');return;}
   const cost=facilityCost(def);if(!canAfford(cost)){cancelBuildMode();toast('資源が足りなくなりました');return;}
   pay(cost);
   const id=`f_${Date.now()}_${Math.floor(Math.random()*100000)}`;
@@ -5630,23 +5637,10 @@ function personnelWarStatusText(w,playerId='player'){
   const enemyRatio=Math.round(enemy/enemyIni*100);
   return {isA,own,ini,enemy,enemyIni,ownRatio,enemyRatio};
 }
-let personnelWarTargetId='';
-function selectPersonnelWarTarget(id){
-  ensureNationState();
-  const ok=state.nations?.some(n=>n.id===id && n.id!=='player');
-  if(!ok){toast('その国は選択できません');return false;}
-  personnelWarTargetId=id;
-  if(state) state.personnelWarTargetId=id;
-  renderPersonnelCenter();
-  return true;
-}
-window.selectPersonnelWarTarget=selectPersonnelWarTarget;
-
 function personnelDeclareWar(targetId){
   ensureNationState();
   ensurePersonnelState();
-  const chosen=targetId || state.personnelWarTargetId || personnelWarTargetId || '';
-  const a=personnelPlayerNation(),b=state.nations?.find(n=>n.id===chosen);
+  const a=personnelPlayerNation(),b=state.nations?.find(n=>n.id===targetId);
   if(!a){toast('自国データを読み込めませんでした。');return false;}
   if(!b||a.id===b.id){toast('宣戦布告する相手国を選択してください。');return false;}
   if((state.wars||[]).some(w=>w.a==='player'||w.b==='player')){toast('現在すでに戦争中です。先に停戦または決着させてください。');return false;}
@@ -5658,7 +5652,6 @@ function personnelDeclareWar(targetId){
     toast(`開戦資源不足：食料${Math.ceil(c.food)} / 木材${Math.ceil(c.wood)} / 石材${Math.ceil(c.stone)} / 鉄${Math.ceil(c.iron)} / 金${Math.ceil(c.gold)}が必要です。`);
     return false;
   }
-  state.personnelWarTargetId=b.id; personnelWarTargetId=b.id;
   addLog(`⚔ ${b.name}へ宣戦布告。前線を形成しました。`);
   selectedNationId=b.id;
   renderPersonnelCenter();renderAll();
@@ -5748,6 +5741,7 @@ function renderPersonnelCenter(){
       </div>
     </div>`;
   }).join('');
+  const previousWarTarget=document.getElementById('personnelWarTarget')?.value||'';
   body.innerHTML=`
     <div class="personnel-grid">
       ${card('未所属人員',fmt(unassigned)+'人','養成開始前の市民')}
@@ -5778,24 +5772,9 @@ function renderPersonnelCenter(){
     <div class="personnel-section" style="border-color:rgba(211,103,92,.22)">
       <div class="personnel-section-title">⚔️ 戦争司令室</div>
       <div class="personnel-section-sub">宣戦布告・前線確認・増援・補給・停戦まで、この画面だけで戦争を管理できます。</div>
-      <div style="display:grid;grid-template-columns:1fr;gap:7px">
-        <div style="font-size:8px;color:#8f99a5">攻撃対象を選択（選択してもこの画面は閉じません）</div>
-        <div class="war-target-grid">
-          ${(() => {
-            const free=others.filter(q=>!wars.some(w=>w.a===q.id||w.b===q.id));
-            if(state.personnelWarTargetId && free.some(q=>q.id===state.personnelWarTargetId)) personnelWarTargetId=state.personnelWarTargetId;
-            if(!free.some(q=>q.id===personnelWarTargetId)) personnelWarTargetId=free[0]?.id||'';
-            if(personnelWarTargetId) state.personnelWarTargetId=personnelWarTargetId;
-            return free.map(q=>{
-              const selected=personnelWarTargetId===q.id;
-              const profile=({industrial:'工業',commerce:'交易',science:'科学',welfare:'福祉',military:'軍事',agriculture:'農業',urban:'都市',expansion:'拡張',balanced:'均衡'}[nationAIProfile(q)]||'均衡');
-              return `<button type="button" class="war-target-btn ${selected?'selected':''}" onclick="event.preventDefault();event.stopPropagation();selectPersonnelWarTarget('${q.id}')"><span class="war-target-name">${selected?'◉ ':'○ '}${q.name}</span><span class="war-target-meta">軍事力 ${Math.round(q.military||0)}　人口 ${fmt(Math.round(q.population||0))}　AI: ${profile}</span></button>`;
-            }).join('') || '<div class="overview-empty">宣戦可能な他国がありません。</div>';
-          })()}
-        </div>
-        <div class="personnel-role-actions" style="margin-top:2px">
-          <button type="button" onclick="event.preventDefault();event.stopPropagation();personnelDeclareWar((state.personnelWarTargetId||personnelWarTargetId||''))" style="height:36px;background:#8f3b35;color:#fff;border:0;border-radius:8px;font-weight:1000;padding:0 14px;cursor:pointer" ${!others.length?'disabled':''}>⚔️ 選択国へ宣戦布告</button>
-        </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:end">
+        <label style="font-size:8px;color:#8f99a5">攻撃対象<select id="personnelWarTarget" style="display:block;margin-top:4px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#151c25;color:#eef3f8">${others.filter(q=>!wars.some(w=>w.a===q.id||w.b===q.id)).map(q=>`<option value="${q.id}">${q.name}　軍事力 ${Math.round(q.military||0)}　${({industrial:'工業',commerce:'交易',science:'科学',welfare:'福祉',military:'軍事',agriculture:'農業',urban:'都市',expansion:'拡張',balanced:'均衡'}[nationAIProfile(q)]||'均衡')}</option>`).join('')||'<option value="">対象なし</option>'}</select></label>
+        <button type="button" onclick="event.preventDefault();event.stopPropagation();personnelDeclareWar(document.getElementById('personnelWarTarget')?.value||'')" style="height:34px;background:#8f3b35;color:#fff;border:0;border-radius:8px;font-weight:1000;padding:0 12px;cursor:pointer" ${!others.length?'disabled':''}>⚔️ 宣戦布告</button>
       </div>
       <div class="personnel-list" style="margin-top:8px">
         <div class="personnel-list-row"><span>① 開戦</span><b>軍隊4人以上＋資源・国庫が必要</b></div>
@@ -7777,7 +7756,7 @@ function renderAll(){
   const po=document.getElementById('politicsOverlay');
   if(po?.classList.contains('show'))renderPolitics();
   const pco=document.getElementById('personnelOverlay');
-  if(pco?.classList.contains('show') && !pco.contains(document.activeElement))renderPersonnelCenter();
+  if(pco?.classList.contains('show'))renderPersonnelCenter();
 
 }
 
@@ -8451,7 +8430,7 @@ function adminSaveNow(){saveGameSilent();toast('管理者モードからセー�
 window.adminSaveNow=adminSaveNow;
 function adminResetSettings(){adminState.speed=1;adminState.paused=false;adminUpdatePanel();toast('管理者設定を1×へ戻しました');}
 window.adminResetSettings=adminResetSettings;
-window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){e.preventDefault();adminState.open?closeAdminPanel():openAdminPanel();}if(e.key==='Escape'){if(adminState.open)closeAdminPanel();closeNationTravel();closePolitics();closeOverview();closeCityPlan();cancelDispatch();cancelRoadBuildMode();stopDemolishMode();}});
+window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==='a'){e.preventDefault();adminState.open?closeAdminPanel():openAdminPanel();}if(e.key==='Escape'){if(adminState.open)closeAdminPanel();closePolitics();closeOverview();closeCityPlan();cancelDispatch();cancelRoadBuildMode();stopDemolishMode();}});
 
 
 /* =========================================================
@@ -8882,49 +8861,63 @@ function nationChooseFacility(n){
   const top=defs.slice(0,Math.min(5,defs.length));
   return top[Math.floor(Math.random()*top.length)];
 }
-function nationCityBuildHalf(n){
-  const expansion=Math.max(0,Number(n?.expansionLevel)||0);
-  return Math.min(260,Math.max(17.5,CITY_INITIAL_TERRITORY_HALF + expansion*5 + Math.min(40,Number(n?.cityLevel||1)*1.3)));
-}
 function nationBuildPosition(n,def,index=0){
-  const half=nationCityBuildHalf(n), a=(index*2.399963 + (Number(n.era)||0)*.41 + (def.id.length%7)*.17)%(Math.PI*2);
-  const base=Math.min(half-2.0,5.2+Math.floor(index/4)*3.2+(Number(n.era)||0)*.4);
-  return {x:n.x+Math.cos(a)*base,z:n.z+Math.sin(a)*base};
+  const a=(index*2.399963 + (Number(n.era)||0)*.41 + (def.id.length%7)*.17)%(Math.PI*2);
+  const ring=Math.max(26,54+Math.floor(index/5)*24+(Number(n.era)||0)*8);
+  if(def.placement==='edge')return {x:n.x+Math.cos(a)*Math.max(ring,Math.min(Number(n.territoryHalf||780)*.75,460)),z:n.z+Math.sin(a)*Math.max(ring,Math.min(Number(n.territoryHalf||780)*.75,460))};
+  if(def.placement==='nearWater')return {x:n.x+Math.cos(a)*Math.min(ring,260),z:n.z+Math.sin(a)*Math.min(ring,260)};
+  if(def.placement==='nearRoad')return {x:n.x+Math.cos(a)*ring,z:n.z+Math.sin(a)*ring};
+  return {x:n.x+Math.cos(a)*Math.min(ring,520),z:n.z+Math.sin(a)*Math.min(ring,520)};
 }
 function nationFacilityPlacementScore(n,def,x,z){
-  const biome=worldBiomeAt(x,z),half=nationCityBuildHalf(n);
-  if(Math.max(Math.abs(x-n.x),Math.abs(z-n.z))>half-1.2)return false;
+  const biome=worldBiomeAt(x,z);
   if(def.placement==='land') return ['plains','forest','hills',null].includes(biome);
-  if(def.placement==='nearCity') return Math.hypot(x-n.x,z-n.z)<=Math.max(8,half*.72);
-  if(def.placement==='nearWater') return ['lake','river'].includes(worldBiomeAt(x+8,z))||['lake','river'].includes(worldBiomeAt(x-8,z))||['lake','river'].includes(worldBiomeAt(x,z+8))||['lake','river'].includes(worldBiomeAt(x,z-8));
-  if(def.placement==='nearRoad') return (n.roadsData||[]).some(r=>pointToSegmentDistance2D(x,z,r.x1,r.z1,r.x2,r.z2)<=4.0);
-  if(def.placement==='nearRiver') return worldBiomeAt(x,z)==='river'||worldBiomeAt(x+8,z)==='river'||worldBiomeAt(x-8,z)==='river'||worldBiomeAt(x,z+8)==='river'||worldBiomeAt(x,z-8)==='river';
-  if(def.placement==='nearTraining') return nationHasFacility(n,'trainingGround') && (n.facilitiesData||[]).some(b=>b.type==='trainingGround'&&Math.hypot(x-(b.x??(n.x+(b.dx||0))),z-(b.z??(n.z+(b.dz||0))))<12);
+  if(def.placement==='nearCity') return Math.hypot(x-n.x,z-n.z)<=Math.max(28,Number(n.territoryHalf||780)*.55);
+  if(def.placement==='nearWater') return ['lake','river'].includes(worldBiomeAt(x+18,z))||['lake','river'].includes(worldBiomeAt(x-18,z))||['lake','river'].includes(worldBiomeAt(x,z+18))||['lake','river'].includes(worldBiomeAt(x,z-18));
+  if(def.placement==='nearRoad') return (n.roadsData||[]).some(r=>pointToSegmentDistance2D(x,z,r.x1,r.z1,r.x2,r.z2)<=3.2);
+  if(def.placement==='nearRiver') return worldBiomeAt(x,z)==='river'||worldBiomeAt(x+16,z)==='river'||worldBiomeAt(x-16,z)==='river'||worldBiomeAt(x,z+16)==='river'||worldBiomeAt(x,z-16)==='river';
+  if(def.placement==='nearTraining') return nationHasFacility(n,'trainingGround') && (n.facilitiesData||[]).some(b=>b.type==='trainingGround'&&Math.hypot(x-(b.x??(n.x+(b.dx||0))),z-(b.z??(n.z+(b.dz||0))))<22);
   if(def.placement==='nearFarm') return nationHasFacility(n,'farmPlot')||nationHasFacility(n,'granary');
-  if(def.placement==='forestEdge') return biome==='forest'||worldBiomeAt(x+8,z)==='forest'||worldBiomeAt(x-8,z)==='forest';
+  if(def.placement==='forestEdge') return biome==='forest'||worldBiomeAt(x+18,z)==='forest'||worldBiomeAt(x-18,z)==='forest';
   if(def.placement==='nearQuarry') return nationHasFacility(n,'quarryWorks')||biome==='hills';
   if(def.placement==='nearMine') return nationHasFacility(n,'ironworks')||biome==='hills';
-  if(def.placement==='hillsOrEdge') return biome==='hills'||Math.hypot(x-n.x,z-n.z)>=half*.55;
-  if(def.placement==='edge') return Math.hypot(x-n.x,z-n.z)>=Math.max(9,half*.60);
+  if(def.placement==='hillsOrEdge') return biome==='hills'||Math.hypot(x-n.x,z-n.z)>=Number(n.territoryHalf||780)*.55;
+  if(def.placement==='edge') return Math.hypot(x-n.x,z-n.z)>=Math.max(30,Number(n.territoryHalf||780)*.58);
+  return 1;
+}
+function nationBuildFootprint(type,level=1){
+  return facilityFootprintRadius(type,level)+.65;
+}
+function nationBuildPositionClear(n,def,x,z){
+  const r=nationBuildFootprint(def.id,1);
+  const items=[...(n.facilitiesData||[]),...(n.constructionQueue||[])];
+  for(const b of items){
+    const bx=Number(b.x);
+    const bz=Number(b.z);
+    const px=Number.isFinite(bx)?bx:Number(n.x)+(Number(b.dx)||0);
+    const pz=Number.isFinite(bz)?bz:Number(n.z)+(Number(b.dz)||0);
+    const br=nationBuildFootprint(b.type||b.facilityId,Number(b.level)||1);
+    if(Math.hypot(x-px,z-pz)<r+br) return false;
+  }
   return true;
 }
 function nationFindBuildPosition(n,def,index){
-  const half=nationCityBuildHalf(n), fp=getFacilityFootprint(def.id), rr=Math.hypot(fp.w*.5,fp.d*.5);
-  for(let tries=0;tries<32;tries++){
+  const territory=Math.max(12,Number(n.territoryHalf||NATION_INITIAL_HALF));
+  const maxR=Math.max(6,Math.min(territory*.72,Math.max(18,territory-5)));
+  for(let tries=0;tries<42;tries++){
     const a=(index*2.399963+tries*1.618+def.id.length*.17)%(Math.PI*2);
-    const ring=Math.min(half-rr-0.8,4.5+((index+tries)%8)*2.4);
-    const x=n.x+Math.cos(a)*Math.max(2,ring),z=n.z+Math.sin(a)*Math.max(2,ring);
-    if(!nationFacilityPlacementScore(n,def,x,z))continue;
-    let clear=true;
-    for(const b of (n.facilitiesData||[])){
-      const br=facilityFootprintRadius(b.type);
-      const bx=Number.isFinite(Number(b.x))?Number(b.x):n.x+(Number(b.dx)||0), bz=Number.isFinite(Number(b.z))?Number(b.z):n.z+(Number(b.dz)||0);
-      if(Math.hypot(x-bx,z-bz)<rr+br+.65){clear=false;break;}
-    }
-    if(clear)for(const q of (n.constructionQueue||[])){const qr=facilityFootprintRadius(q.type);if(Math.hypot(x-q.x,z-q.z)<rr+qr+.65){clear=false;break;}}
-    if(clear)return {x,z};
+    const ring=Math.min(maxR,Math.max(7,10+((index+tries)%9)*Math.min(8,maxR*.16)));
+    const x=nationClamp(n.x+Math.cos(a)*ring),z=nationClamp(n.z+Math.sin(a)*ring);
+    if(nationFacilityPlacementScore(n,def,x,z) && nationBuildPositionClear(n,def,x,z))return {x,z};
   }
-  return {x:n.x+Math.cos(index*2.4)*Math.max(2,half*.30),z:n.z+Math.sin(index*2.4)*Math.max(2,half*.30)};
+  // 最後は中心から少しずつ離すが、既存建物の中心には置かない。
+  for(let i=0;i<24;i++){
+    const a=i*2.399963;
+    const r=Math.min(maxR,7+i*.9);
+    const x=nationClamp(n.x+Math.cos(a)*r),z=nationClamp(n.z+Math.sin(a)*r);
+    if(nationBuildPositionClear(n,def,x,z))return {x,z};
+  }
+  return {x:nationClamp(n.x),z:nationClamp(n.z)};
 }
 
 function nationStartConstruction(n,def){
@@ -9087,13 +9080,11 @@ function nationStartWar(a,b){
   if(!a||!b||a.id===b.id)return false;
   const exists=state.wars.some(w=>(w.a===a.id&&w.b===b.id)||(w.a===b.id&&w.b===a.id));if(exists)return false;
   const ca=warMobilizationCost(a),cb=warMobilizationCost(b);
-  // プレイヤーの宣戦だけは実際の国庫・資源をチェックする。
-  // AI側は戦争開始を自国の資源不足だけで無反応にしないため、支払える分だけ負担する。
+  /* 開戦側（プレイヤー）は自国の資源だけ確認。防衛側AIまで資源不足で開戦不能になるのは不自然なので、AIは国庫・備蓄から自動動員する。 */
   if(a.id==='player' && !nationCanAffordResources(a,ca))return false;
   nationPayResources(a,ca);
-  // 防衛側に開戦前の支払いを要求しない。AI同士でも「相手国の資源不足」で戦争開始が止まらない。
-  // 実際の戦費は開戦後の補給消費で両国へ発生する。
-  for(const [k,v] of Object.entries(cb||{}))b.resources[k]=Math.max(0,Number(b.resources?.[k]||0)-Number(v||0));
+  if(nationCanAffordResources(b,cb)) nationPayResources(b,cb);
+  else { b.treasury=Math.max(0,(b.treasury||0)-Math.min(b.treasury||0,cb.gold*.20)); b.politics.treasury=b.treasury; }
   a.treasury=Math.max(0,(a.treasury||0)-ca.gold*.42);a.politics.treasury=a.treasury;
   b.treasury=Math.max(0,(b.treasury||0)-cb.gold*.42);b.politics.treasury=b.treasury;
   syncPlayerWarEconomy(a);syncPlayerWarEconomy(b);
@@ -9392,204 +9383,315 @@ function nationFacilityVisualKind(id){
 }
 
 function nationBuildingMesh(kind,level=1,scale=1,era=0){
+  /*
+   * 実在建築の「用途→平面構成→構造→外構」の順で組み立てる建築タイポロジー層。
+   * 単純な箱へ装飾を貼る方式を廃し、時代に応じて構造そのものが変わるようにする。
+   */
   const facilityId=kind;
   const g=new THREE.Group();
   g.userData.facilityId=facilityId;
-  const lv=Math.max(1,Number(level)||1), e=Math.max(0,Number(era)||0), s=Math.max(.34,Number(scale)||1);
-  const mat=(c,rough=.88,metal=0)=>makeMaterial(c,rough,metal);
-  const wall=mat(e>=6?0x9aa8b2:e>=4?0x9c9b8f:0xc3ae8e,.83);
-  const wall2=mat(e>=6?0x667781:e>=4?0x817e75:0x9d876d,.88);
-  const roof=mat(e>=6?0x344854:e>=4?0x4e5559:0x5c4438,.76);
-  const roof2=mat(e>=6?0x202f39:e>=4?0x3e4448:0x4c382f,.82);
-  const glass=mat(e>=7?0x9de7f5:0x8abdc6,.22,.14);
-  const glassDark=mat(0x47646c,.22,.16);
-  const wood=mat(0x7a5132,.87);
-  const wood2=mat(0x9d6d43,.91);
-  const stone=mat(0x777a78,.92);
-  const stoneLight=mat(0xb8b5a9,.84);
-  const concrete=mat(0x9aa0a0,.91);
-  const steel=mat(0x505960,.64,.45);
-  const white=mat(0xe0dfd7,.82);
-  const red=mat(0xa45149,.75);
-  const green=mat(0x668553,.94);
-  const gold=mat(0xd0aa53,.68,.15);
-  const blue=mat(0x668fc1,.25,.20);
-  const road=mat(0x676767,.95);
+  const lv=Math.max(1,Number(level)||1);
+  const e=Math.max(0,Math.min(9,Number(era)||0));
+  const s=Math.max(.34,Number(scale)||1);
   const q=v=>v*s;
-  const yv=v=>q(v);
-  const addBox=(w,d,h,m,x=0,y=0,z=0)=>g.add(box(q(w),q(d),q(h),m,q(x),q(y)+q(h)/2,q(z)));
-  const addSlab=(w,d,h,m,x=0,y=0,z=0)=>g.add(box(q(w),q(d),q(h),m,q(x),q(y)+q(h)/2,q(z)));
-  const addRoof=(w,d,h,m,shape=4,x=0,y=0,z=0,rot=Math.PI/4)=>{const r=new THREE.Mesh(new THREE.ConeGeometry(q(w),q(h),shape),m);r.rotation.y=rot;r.position.set(q(x),q(y)+q(h)/2,q(z));g.add(r);return r;};
-  const addCylinder=(r,h,m,x=0,y=0,z=0,seg=12)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(q(r),q(r*1.05),q(h),seg),m);o.position.set(q(x),q(y)+q(h)/2,q(z));g.add(o);return o;};
-  const addDoor=(w=.58,d=.04,h=1.0,m=wood,x=0,y=0,z=-1)=>addBox(w,d,h,m,x,y,z);
-  const addWindow=(w=.44,h=.52,x=0,y=1,z=-1.01,m=glass,frame=wood2)=>{addBox(w+.08,.055,.08,frame,x,y+h*.48,z);addBox(w,.045,h,m,x,y+h*.48,z-.025);};
-  const addWindowRow=(count,w,spacing,y,z,d=0,m=glass)=>{for(let i=0;i<count;i++){const x=(i-(count-1)/2)*spacing;addWindow(w,.48,x,y,z+d,m,wood2);}};
-  const addBalcony=(w,d,x,y,z)=>{addBox(w,d,.10,concrete,x,y,z);addBox(w,.06,.72,steel,x,y+.05,z-d/2+.05);for(let i=-1;i<=1;i++)addBox(.045,.045,.62,steel,x+i*w*.32,y+.05,z-d/2+.05);};
-  const addParapet=(w,d,h=.45,m=concrete)=>{addBox(w,.12,h,m,0,0, -d/2);addBox(w,.12,h,m,0,0,d/2);addBox(.12,d,h,m,-w/2,0,0);addBox(.12,d,h,m,w/2,0,0);};
-  const addChimney=(x,z,h=1.2)=>{addBox(.34,.34,h,roof2,x,2.0,z);addBox(.48,.48,.12,roof2,x,2.0+h,z);};
-  const addSign=(w,h,m,x,y,z)=>addBox(w,.06,h,m,x,y,z);
-  const addTree=(x,z,r=.42)=>{addCylinder(.09,.62,wood,x,.02,z,7);const t=new THREE.Mesh(new THREE.SphereGeometry(q(r),9,7),green);t.position.set(q(x),q(1.12+r*.18),q(z));g.add(t);};
-  const addFence=(w,d,h=.65)=>{addBox(w,.045,.08,wood,0,h, -d/2);addBox(w,.045,.08,wood,0,h, d/2);addBox(.045,d,.08,wood,-w/2,h,0);addBox(.045,d,.08,wood,w/2,h,0);for(let x=-w/2;x<=w/2+.01;x+=Math.max(.7,w/6))addBox(.055,.055,h,wood,x,0, -d/2);};
-  const addDome=(r,h,m,x=0,y=0,z=0)=>{const d=new THREE.Mesh(new THREE.SphereGeometry(q(r),18,10,0,Math.PI*2,0,Math.PI/2),m);d.position.set(q(x),q(y),q(z));g.add(d);return d;};
-  const addTower=(w,d,h,m,roofM=roof,x=0,z=0)=>{addBox(w,d,h,m,x,0,z);const r=new THREE.Mesh(new THREE.ConeGeometry(q(Math.max(w,d)*.68),q(Math.max(.7,h*.24)),4),roofM);r.position.set(q(x),q(h+.32),q(z));r.rotation.y=Math.PI/4;g.add(r);};
-  const addSolarPanels=(x,z,w,d)=>{for(let i=-1;i<=1;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(q(w),q(.06),q(d)),blue);p.position.set(q(x+i*w*1.2),q(4.0+lv*.15),q(z));p.rotation.x=-.16;p.rotation.z=.05;g.add(p);}};
-  const addAircon=(x,z)=>{addBox(.38,.28,.28,white,x,2.1,z);addBox(.18,.06,.18,steel,x,2.18,z-.16);};
-  const addFacadeWindows=(cols,rows,wx=.42,wh=.48,spanX=4.2,topY=1.0,z=-1.02,m=glass)=>{
-    const cc=Math.max(1,cols),rr=Math.max(1,rows);
-    for(let j=0;j<rr;j++){
-      const yy=topY+j*Math.max(.62,Math.min(1.38,4.6/rr));
-      for(let i=0;i<cc;i++){
-        const xx=cc===1?0:-spanX/2+i*(spanX/(cc-1));
-        addWindow(wx,wh,xx,yy,z,m,steel);
-      }
+  const H=1+Math.min(6,lv-1)*.055;
+  const add=(obj)=>{g.add(obj);return obj;};
+  const M=(c,r=.88,metal=0)=>makeMaterial(c,r,metal);
+
+  /* 時代別の建築材料・表現。史実の建築技術の流れに合わせ、木造→煉瓦/石→鉄骨RC→ガラス/先進材へ移行。 */
+  const vernacular=e<=1, masonry=e<=3, industrial=e===4||e===5, modern=e===6||e===7, future=e>=8;
+  const W=M(vernacular?0xb99b70:masonry?0xc7bca7:industrial?0x9a6754:modern?0xaab5ba:0xd5e6ea,.84);
+  const W2=M(vernacular?0x8d6c47:masonry?0x877e74:industrial?0x71483d:modern?0x6b7b84:0x86afbf,.88);
+  const ST=M(vernacular?0x74695a:masonry?0x777877:industrial?0x686b6b:modern?0x90999b:0x6a7f88,.92);
+  const LT=M(masonry?0xc7c0b0:industrial?0xa58b78:modern?0xd9e1e3:0xdff1f5,.84);
+  const ROOF=M(vernacular?0x654534:masonry?0x4c4b49:industrial?0x3f4245:modern?0x435766:0x273847,.76);
+  const ROOF2=M(vernacular?0x4b382e:masonry?0x3d3c3b:industrial?0x2e3235:modern?0x253641:0x172833,.82);
+  const WOOD=M(0x805a3b,.88);
+  const WOOD2=M(0xa2774e,.91);
+  const BRICK=M(industrial?0xa45845:masonry?0x9a604e:0x9b806d,.91);
+  const GLASS=M(future?0xb7f3ff:0x8bc7d3,.20,.18);
+  const GLASSD=M(0x4d6974,.22,.12);
+  const STEEL=M(future?0x5e7b88:0x4e565c,.58,.52);
+  const COPPER=M(0x9a6947,.52,.55);
+  const WHITE=M(0xe4e5df,.80);
+  const GOLD=M(0xd5b15f,.68,.15);
+  const RED=M(0xa9534b,.75);
+  const GREEN=M(0x668552,.95);
+  const DARK=M(future?0x233640:modern?0x27343c:0x403936,.70,modern||future?.22:0);
+  const ROAD=M(industrial||modern||future?0x606467:0x847b6e,.95);
+
+  const objBox=(w,d,h,m,x=0,y=0,z=0)=>add(box(q(w),q(d),q(h),m,q(x),q(y)+q(h)/2,q(z)));
+  const slab=(w,d,h,m,x=0,y=0,z=0)=>objBox(w,d,h,m,x,y,z);
+
+  function C(r,h,m,x=0,y=0,z=0,seg=12){const o=new THREE.Mesh(new THREE.CylinderGeometry(q(r),q(r*1.04),q(h),seg),m);o.position.set(q(x),q(y)+q(h)/2,q(z));return add(o);}
+  function windowAt(x,y,z,w=.48,h=.58,front=WOOD2,glass=GLASS,depth=-.02){
+    objBox(w+.10,.055,.08,front,x,y+h*.5,z);
+    objBox(w,.045,h,glass,x,y+h*.5,z+depth);
+  }
+  function rowWindows(count,span,y,z,w=.46,h=.56,front=STEEL){
+    count=Math.max(1,count);
+    for(let i=0;i<count;i++){
+      const x=count===1?0:-span/2+i*(span/(count-1));
+      windowAt(x,y,z,w,h,front);
     }
-  };
-  const addFacadeBand=(w,h,y,material=stoneLight,z=-1.05)=>{addBox(w,.07,h,material,0,y,z);};
-  const addEntrySteps=(w,depth,h=0.18,m=stoneLight,z=-2.0)=>{
-    for(let i=0;i<2;i++)addBox(w-i*.28,depth,h,m,0,i*h,z-i*.13);
-  };
-  const addAwning=(w,d,y,m=roof,z=-2.0)=>{const a=new THREE.Mesh(new THREE.BoxGeometry(q(w),q(.10),q(d)),m);a.position.set(0,q(y),q(z));a.rotation.x=-.10;g.add(a);};
-  const addRoofUnits=(count,w,d,y=3.0)=>{
-    for(let i=0;i<count;i++){const x=(i-(count-1)/2)*w*1.15;addBox(w*.56,d*.62,.28,steel,x,y,-.10);addBox(w*.42,d*.42,.12,white,x,y+.28,-.10);}
-  };
-  const addStreetLamp=(x,z,h=2.6)=>{addCylinder(.055,h,steel,x,.05,z,8);addBox(.38,.06,.10,gold,x,h+.02,z);};
-  const addParkingLot=(w,d,x=0,z=0)=>{addSlab(w,d,.035,mat(0x8a8a84,.99),x,.025,z);for(let i=-2;i<=2;i++)addBox(.05,d*.75,.012,white,x+i*w*.18,.07,z);};
-  const addSignLetters=(w,h,y,z,m=gold)=>{addBox(w,.055,h,m,0,y,z);addBox(.07,.055,h*1.1,m,-w*.3,y,z-.02);addBox(.07,.055,h*1.1,m,w*.3,y,z-.02);};
+  }
+  function sideWindows(count,span,y,x,z,w=.42,h=.52,front=STEEL){
+    count=Math.max(1,count);
+    for(let i=0;i<count;i++){
+      const zz=count===1?0:-span/2+i*(span/(count-1));
+      objBox(.055,w+.10,.08,front,x,y+h*.5,zz+z);
+      objBox(.045,w,h,GLASS,x-.025,y+h*.5,zz+z);
+    }
+  }
+  function door(x=0,z=-1.6,w=.7,h=1.18,m=WOOD2,back=GLASSD){
+    objBox(w,.065,h,m,x,.30,z);
+    objBox(Math.min(.42,w*.58),.035,h*.72,back,x,.54,z-.035);
+  }
+  function steps(w=1.4,d=.65,h=.16,z=-2.0,m=LT){
+    const n=3;
+    for(let i=0;i<n;i++)objBox(w-i*.22,d,h,m,0,i*h,z-i*.16);
+  }
+  function gableRoof(w,d,h,m,x=0,y=0,z=0){
+    const shape=new THREE.Shape();shape.moveTo(-q(w/2),0);shape.lineTo(q(w/2),0);shape.lineTo(0,q(h));shape.lineTo(-q(w/2),0);
+    const geo=new THREE.ExtrudeGeometry(shape,{depth:q(d),bevelEnabled:false,steps:1});
+    geo.translate(0,0,-q(d/2));
+    const r=new THREE.Mesh(geo,m);r.position.set(q(x),q(y),q(z));return add(r);
+  }
+  function flatRoof(w,d,y,m=ROOF2){return slab(w,d,.16,m,0,y,0);}
+  function canopy(w,d,y,m=ROOF,z=-2.0){
+    const c=new THREE.Mesh(new THREE.BoxGeometry(q(w),q(.11),q(d)),m);c.position.set(0,q(y),q(z));c.rotation.x=-.08;return add(c);
+  }
+  function awning(w,d,y,m=ROOF,z=-2.0){return canopy(w,d,y,m,z);}
+  function tower(x,z,w,d,h,m=ST,cap=ROOF){
+    objBox(w,d,h,m,x,0,z);
+    const r=new THREE.Mesh(new THREE.ConeGeometry(q(Math.max(w,d)*.63),q(Math.max(.45,h*.20)),4),cap);
+    r.rotation.y=Math.PI/4;r.position.set(q(x),q(h+.08),q(z));add(r);
+  }
+  function chimney(x,z,h=2.0,m=BRICK){
+    objBox(.34,.34,h,m,x,2.0,z);objBox(.46,.46,.12,ROOF2,x,2+h,z);
+  }
+  function tree(x,z,r=.45){C(.08,.55,WOOD,x,.03,z,7);const t=new THREE.Mesh(new THREE.SphereGeometry(q(r),10,7),GREEN);t.position.set(q(x),q(1.0+r*.16),q(z));add(t);}
+  function fence(w,d,h=.72,m=WOOD){
+    objBox(w,.05,.08,m,0,h,-d/2);objBox(w,.05,.08,m,0,h,d/2);objBox(.05,d,.08,m,-w/2,h,0);objBox(.05,d,.08,m,w/2,h,0);
+    for(let x=-w/2;x<=w/2+.01;x+=Math.max(.65,w/6))objBox(.06,.06,h,m,x,0,-d/2);
+  }
+  function courtyard(w,d){
+    slab(w,d,.06,ROAD,0,.08,0);
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(q(Math.max(1,w-1.0)),q(Math.max(1,d-1.0))),new THREE.MeshStandardMaterial({color:0x9b8c70,roughness:.98}));p.rotation.x=-Math.PI/2;p.position.set(0,q(.13),0);add(p);
+  }
+  function arcadeFront(w,z,y,h=2.6,count=5){
+    for(let i=0;i<count;i++){
+      const x=count===1?0:-w/2+i*(w/(count-1));
+      C(.12,h,LT,x,y,z,12);
+      if(i<count-1) objBox(w/(count-1),.18,.12,LT,(x+(count===1?0:-w/2+(i+1)*(w/(count-1))))/2,y+h-.08,z);
+    }
+  }
+  function signPanel(w,y,z,labelColor=GOLD){objBox(w,.055,.26,labelColor,0,y,z);}
+  function balcony(x,y,z,w=.9){
+    objBox(w,.62,.10,LT,x,y,z);objBox(w,.055,.68,STEEL,x,y+.05,z-.28);
+    for(let i=-1;i<=1;i++)objBox(.04,.05,.58,STEEL,x+i*w*.34,y+.07,z-.27);
+  }
+  function parking(w,d,x=0,z=0){slab(w,d,.035,ROAD,x,.03,z);for(let i=-2;i<=2;i++)objBox(.045,d*.72,.012,WHITE,x+i*w*.18,.06,z);}
+  function solar(count=3,y=3.6,z=0,w=.78,d=.58){
+    for(let i=0;i<count;i++){const x=(i-(count-1)/2)*w*1.4;const p=new THREE.Mesh(new THREE.BoxGeometry(q(w),q(.055),q(d)),GLASSD);p.position.set(q(x),q(y),q(z));p.rotation.x=-.18;p.rotation.z=.04;add(p);}
+  }
+  function hvac(x,z){objBox(.40,.28,.28,WHITE,x,2.05,z);objBox(.18,.06,.18,STEEL,x,2.20,z-.16);}
+  function lamp(x,z,h=2.5){C(.045,h,STEEL,x,.05,z,8);objBox(.34,.06,.09,GOLD,x,h+.02,z);}
+  function serviceBlock(x,z,w=1.7,d=1.2,h=1.5,m=W2){objBox(w,d,h,m,x,.14,z);flatRoof(w+.08,d+.08,h+.14,ROOF2);}
 
   switch(facilityId){
-    case 'house':
-      addSlab(3.8,3.0,.18,stone,0,0,0);addBox(3.35,2.6,2.1,wall,0,.18,0);
-      addRoof(2.55,2.15,1.35,roof,4,0,2.28,0,Math.PI/4);addDoor(.62,.06,1.08,wood2,0,.35,-1.34);
-      addWindowRow(3,.43,.82,.72,-1.33,0,glass);addWindow(.48,.50,-1.05,1.32,1.31,glass);addWindow(.48,.50,1.05,1.32,1.31,glass);
-      addChimney(1.00,.50,1.15);addBox(.45,.75,.10,concrete,0,.20,1.75);break;
-    case 'townhouse':
-      for(const x of [-1.55,0,1.55]){addSlab(1.40,2.9,.18,stone,x);addBox(1.26,2.55,2.9,wall,x,.18,0);addRoof(.84,1.95,1.05,roof,4,x,3.05,0);addDoor(.44,.05,.92,wood2,x,.34,-1.30);addWindow(.36,.52,x,.0===1?1.55:1.38,1.31,glass);addBox(.72,.08,.72,wood2,x,1.95,-1.31);}
-      addChimney(1.08,.48,1.0);addChimney(-1.08,-.42,1.0);break;
-    case 'apartment':
-      addSlab(5.0,4.0,.30,concrete,0,.02,0);addBox(4.45,3.55,9.0,wall,0,.30,0);addParapet(4.45,3.55,.36,wall2);
-      addSlab(5.0,4.0,.24,roof2,0,9.28,0);addSlab(1.9,1.0,1.8,glassDark,0,9.5,.7);
-      for(let floor=0;floor<6;floor++){const yy=1.00+floor*1.30;addWindowRow(5,.48,.72,yy,-1.82);for(const x of [-1.45,0,1.45])addBalcony(.90,.56,x,yy+.02, -2.03);}addAircon(-1.55,1.75);addAircon(1.55,1.75);break;
-    case 'warehouse':
-      addSlab(7.0,4.8,.20,concrete,0,.02,0);addBox(6.5,4.3,2.9,wall2,0,.20,0);
-      for(const x of [-2.4,-1.2,0,1.2,2.4])addBox(.08,4.25,2.55,steel,x,.35,0);
-      for(const z of [-1.7,0,1.7])addBox(6.35,.08,.06,steel,0,2.15,z);
-      addRoof(3.65,2.25,1.15,roof,3,0,3.1,0,Math.PI/2);addBox(1.8,.08,2.0,roof2,0,.32,-2.18);break;
-    case 'bakery':
-      addBox(4.4,3.2,2.4,wall,0,.16,0);addRoof(2.55,1.95,.95,red,4,0,2.55,0);addDoor(.64,.05,1.1,wood2,0,.35,-1.62);addWindow(.65,.65,-1.25,1.05,1.61,glass);addWindow(.65,.65,1.25,1.05,1.61,glass);addSign(1.50,.28,gold,0,2.18,-1.66);addChimney(1.10,.55,1.4);break;
-    case 'park':
-      addSlab(8.0,6.5,.08,green,0,.02,0);for(const p of [[-2.5,-2],[0,-2.2],[2.5,-2],[-2.7,1.6],[2.7,1.6],[0,2.1]])addTree(p[0],p[1],.52);
-      const path1=new THREE.Mesh(new THREE.BoxGeometry(q(7),q(.07),q(.8)),mat(0xb3aa8f,.99));path1.position.set(0,.08,0);path1.rotation.y=.22;g.add(path1);
-      const fnt=new THREE.Mesh(new THREE.CylinderGeometry(q(1.05),q(1.2),q(.25),18),stoneLight);fnt.position.y=q(.26);g.add(fnt);addCylinder(.18,.50,stoneLight,0,.38,0,12);break;
+    case 'house': { 
+      slab(3.6,2.9,.18,ST); objBox(3.18,2.48,2.05,W,0,.18,0);
+      gableRoof(3.48,2.78,1.20,ROOF,0,2.23,0); door(0,-1.29,.62,1.08,WOOD2); rowWindows(3,2.1,.72,-1.33,.40,.48,WOOD2); chimney(1.05,.42,1.05);
+      if(e>=4) {objBox(3.22,.22,.24,BRICK,0,.24,-1.30); }
+      break;
+    }
+    case 'townhouse': {
+      const xs=[-1.48,0,1.48];
+      for(const x of xs){slab(1.28,2.75,.17,ST,x);objBox(1.14,2.45,2.75,W,x,.17,0);gableRoof(1.18,2.60,0.88,ROOF,x,2.89,0);door(x,-1.26,.42,.92,WOOD2);windowAt(x,0.98,-1.28,.34,.46,WOOD2);}
+      chimney(-1.0,.42,1.0);chimney(1.0,.42,1.0);break;
+    }
+    case 'apartment': {
+      const floors=4+Math.min(3,Math.floor(lv/3)); const h=floors*1.05;
+      slab(4.9,3.9,.26,ST);objBox(4.45,3.48,h,W,0,.26,0);flatRoof(4.6,3.62,h+.26,ROOF2);
+      objBox(1.15,.28,h-.5,GLASSD,0,.48,-1.78); rowWindows(5,3.55,0.75,-1.80,.34,.45,STEEL);
+      for(let floor=1;floor<floors;floor++) for(const x of [-1.42,0,1.42]) balcony(x,.35+floor*1.03,-2.03,.82);
+      if(e>=6){hvac(-1.55,1.72);hvac(1.55,1.72);} break;
+    }
+    case 'warehouse': {
+      const hallH=industrial||modern||future?3.15:2.55;
+      slab(6.8,4.5,.20,ST);objBox(6.25,4.08,hallH,industrial?BRICK:W2,0,.20,0);gableRoof(6.40,4.18,1.08,ROOF,0,.20+hallH,0);
+      objBox(1.55,.08,1.95,ROOF2,0,.35,-2.08);rowWindows(5,5.1,1.15,1.12,-2.10,.28,.42,STEEL);objBox(1.9,.85,.12,STEEL,0,.28,-2.38);break;
+    }
+    case 'bakery': {
+      slab(4.15,3.05,.17,ST);objBox(3.78,2.72,2.35,W,0,.17,0);gableRoof(4.0,2.86,.95,ROOF,0,2.52,0);door(0,-1.46,.66,1.1,WOOD2);windowAt(-1.15,1.00,-1.49,.62,.60,WOOD2);windowAt(1.15,1.00,-1.49,.62,.60,WOOD2);awning(2.35,.78,2.02,ROOF,-1.52);chimney(1.18,.55,1.45,BRICK);signPanel(1.35,2.05,-1.55,RED);break;
+    }
+    case 'park': {
+      slab(8.0,6.2,.08,GREEN,0,.02,0);
+      const paths=[[0,0,7.0,.52],[0,0,5.8,.52]];
+      for(const [x,z,w,d] of paths){const p=new THREE.Mesh(new THREE.BoxGeometry(q(w),q(.06),q(d)),M(0xb3a787,.99));p.position.set(q(x),q(.09),q(z));add(p);}
+      for(const p of [[-2.7,-2.0,.52],[0,-2.25,.58],[2.7,-2,.52],[-2.6,1.7,.5],[2.6,1.7,.5],[0,2.2,.6]])tree(...p);
+      C(1.0,.24,LT,0,.22,0,20);C(.18,.62,LT,0,.34,0,12);lamp(-3.0,-2.1,2.2);lamp(3.0,-2.1,2.2);break;
+    }
     case 'courthouse':
-      addSlab(6.4,4.8,.24,stoneLight);addBox(5.9,4.3,3.1,white,0,.24,.20);for(const x of [-2.1,-1.05,0,1.05,2.1])addCylinder(.18,3.0,stoneLight,x,.25,-2.0,12);addSlab(6.5,1.2,.25,stoneLight,0,.24,-2.55);
-      const tri=new THREE.Mesh(new THREE.ConeGeometry(q(3.2),q(1.4),3),white);tri.rotation.y=Math.PI/2;tri.position.set(0,3.9,-1.98);g.add(tri);addDoor(.90,.06,1.35,wood,0,.45,-2.66);break;
     case 'bank':
-      addSlab(6.2,4.6,.25,stoneLight);addBox(5.7,4.2,3.2,wall,0,.25,0);for(const x of [-2.0,-.7,.7,2.0])addCylinder(.22,2.8,stoneLight,x,.25,-2.05,12);
-      addDome(1.9,0,gold,0,3.45,0);addCylinder(.30,.65,gold,0,4.2,0,10);addSign(1.15,.25,gold,0,2.2,-2.15);addDoor(.76,.06,1.30,wood2,0,.42,-2.18);break;
-    case 'theater':
-      addSlab(7.2,4.8,.24,concrete);addBox(6.7,4.35,2.9,dark,0,.24,.25);addBox(6.9,.35,.55,gold,0,2.62,-2.05);addSlab(7.1,1.0,.18,red,0,2.95,-1.82);
-      addDome(2.2,0,roof,0,3.05,.65);for(const x of [-2.5,-1.25,0,1.25,2.5]){addCylinder(.14,.55,gold,x,2.85,-2.20,10);addBox(.72,.08,.08,gold,x,3.36,-2.20);}addDoor(1.3,.06,1.05,wood2,0,.44,-2.22);break;
-    case 'workshop':
-      addSlab(5.8,4.0,.20,concrete);addBox(5.4,3.65,2.55,wall2,0,.20,0);for(const x of [-1.75,-.58,.58,1.75]){const saw=new THREE.Mesh(new THREE.ConeGeometry(q(.76),q(.95),3),roof);saw.rotation.z=Math.PI/2;saw.position.set(q(x),q(3.25),0);g.add(saw);}for(const x of [-1.5,1.5])addDoor(1.0,.05,1.35,steel,x,.34,-1.86);addChimney(1.8,.75,1.4);break;
-    case 'trainingGround':
-      addSlab(7.6,6.4,.10,green);addFence(7.2,6.0,.72);addBox(3.2,2.5,1.45,wood2,-1.7,.10,1.45);addRoof(1.55,1.25,.85,roof,4,-1.7,1.55,1.45);addBox(3.0,2.3,1.45,wall,-1.7,.10,-1.25);addRoof(1.45,1.15,.80,roof,4,-1.7,1.55,-1.25);
-      for(const x of [-.3,.6,1.5]){addCylinder(.10,1.2,wood2,x,.10,.65,8);addBox(.75,.10,.10,wood2,x,.95,.65);}addBox(.75,.04,.12,road,2.0,.08,0);addCylinder(.08,4.2,steel,2.65,.10,-1.85,8);addSlab(1.20,.08,.70,red,3.00,3.65,-1.85);break;
+    case 'cityHall': {
+      const isBank=facilityId==='bank', isHall=facilityId==='cityHall';
+      const mainW=isHall?6.7:isBank?5.9:6.15, mainD=isHall?4.7:4.15, mainH=isHall?3.7:3.2;
+      slab(mainW+1.0,mainD+1.0,.24,ST);objBox(mainW,mainD,mainH,LT,0,.24,.08);
+      if(masonry||industrial){objBox(mainW+.02,.20,.32,masonry?STONE:BRICK,0,.42,-mainD/2-.02);}
+      // 中央玄関＋左右の公共空間。列柱を「構造」として扱う。
+      steps(isHall?2.3:1.8,.84,.20,-mainD/2-.52);
+      const cols=isHall?6:5; arcadeFront(isHall?5.6:4.8,-mainD/2-.32,.30,mainH-.35,cols);
+      rowWindows(isHall?5:4,4.0,1.18,-mainD/2-.07,.44,.56,STEEL);
+      door(0,-mainD/2-.06,isHall?1.0:.88,1.35,isHall?WOOD2:GLASSD);
+      if(isHall){tower(0,0,1.30,1.30,5.2,LT,ROOF);if(e>=5)objBox(1.0,1.0,.22,GOLD,0,5.2,0);}
+      else if(isBank){tower(0,.0,1.25,1.25,4.0,LT,ROOF2);signPanel(1.45,2.25,-mainD/2-.35,GOLD);}
+      else{objBox(mainW*.22,.32,1.85,GOLD,-2.5,.55,-mainD/2-.42);objBox(mainW*.22,.32,1.85,GOLD,2.5,.55,-mainD/2-.42);}
+      // 公共建築らしい側翼と中庭。
+      objBox(1.18,mainD*.82,2.25,W2,-(mainW/2-.58),.24,.18);objBox(1.18,mainD*.82,2.25,W2,(mainW/2-.58),.24,.18);
+      if(lv>=4){parking(3.5,2.1,isHall?0:0,mainD/2+2.0);}
+      break;
+    }
+    case 'theater': {
+      slab(6.8,5.0,.22,ST);objBox(5.9,4.25,3.5,W,0,.22,.15);objBox(4.7,2.1,1.7,W2,0,.32,1.68);gableRoof(6.1,4.3,1.0,ROOF,0,3.72,.15);
+      steps(2.2,.7,.16,-2.42);canopy(4.4,.9,3.02,ROOF,-2.30);rowWindows(5,4.15,1.18,-2.14,.40,.58,STEEL);door(0,-2.20,1.1,1.35,WOOD2);signPanel(4.9,2.48,-2.29,GOLD);
+      for(const x of [-2.3,2.3])C(.12,2.9,LT,x,.27,-2.33,12);break;
+    }
+    case 'workshop': {
+      slab(5.7,4.0,.18,ST);objBox(5.15,3.5,2.55,vernacular?WOOD:industrial?BRICK:W,0,.18,0);gableRoof(5.3,3.65,1.0,ROOF,0,2.72,0);door(0,-1.78,.86,1.2,WOOD2);rowWindows(4,4.1,1.05,1.0,-1.82,.34,.46,WOOD2);chimney(1.4,.42,1.2);canopy(2.6,.85,1.95,ROOF,-1.88);break;
+    }
+    case 'trainingGround': {
+      /* 養成所 = 教育棟 + 宿舎2棟 + 食堂/倉庫 + 中央訓練中庭 + 正門。施設として成立する平面構成。 */
+      slab(8.4,7.0,.12,ST);
+      courtyard(4.2,3.15);
+      // 正面教育・管理棟
+      objBox(4.8,1.28,2.55,vernacular?W:industrial?BRICK:W,0,.14,-2.38);gableRoof(4.95,1.42,.82,ROOF,0,2.70,-2.38);
+      rowWindows(4,3.8,1.04,-3.01,.34,.46,WOOD2);steps(1.55,.52,.15,-3.25);door(0,-3.03,.72,1.10,WOOD2);
+      // 左右宿舎/教室棟
+      for(const x of [-3.05,3.05]){objBox(1.35,4.0,2.35,vernacular?WOOD2:industrial?BRICK:W,x,.14,.45);gableRoof(1.46,4.08,.72,ROOF,x,2.48,.45);sideWindows(3,2.9,0.82,x-0.70,.45,.32,.46,WOOD2);door(x,-1.25,.5,1.0,WOOD2);}
+      // 食堂・装備庫
+      objBox(2.25,1.32,1.75,W2,0,.14,2.45);gableRoof(2.38,1.44,.60,ROOF2,0,1.88,2.45);objBox(1.10,.07,1.15,ROOF2,0,.38,1.76);
+      // 正門と訓練器具
+      tower(-3.95,-2.0,.42,.42,1.55,ST,ROOF2);tower(3.95,-2.0,.42,.42,1.55,ST,ROOF2);objBox(6.8,.12,.14,STEEL,0,.55,-2.0);fence(8.0,6.5,.60);
+      for(const x of [-1.3,0,1.3]){C(.12,1.3,WOOD,x,.14,.2,8);objBox(.42,.42,.12,WOOD,x,1.26,.2);}
+      lamp(-3.55,2.55,2.2);lamp(3.55,2.55,2.2);
+      break;
+    }
     case 'academy':
-      addSlab(7.4,5.0,.24,stoneLight);addBox(6.8,4.45,3.0,white,0,.24,0);addTower(1.35,1.20,5.2,wall2,roof2,0,1.15);addSlab(7.0,1.0,.18,stoneLight,0,.22,-2.55);for(const x of [-2.3,-1.15,1.15,2.3])addCylinder(.18,2.6,stoneLight,x,.25,-2.05,10);addSign(1.45,.28,gold,0,2.35,-2.62);addWindowRow(5,.46,.90,1.2,-2.25);break;
-    case 'garrison':
-      addSlab(7.0,5.2,.20,concrete);addBox(5.8,3.5,2.1,wall2,0,.20,0);addRoof(3.15,1.95,1.0,roof,4,0,2.25,0);for(const x of [-2.4,2.4])addTower(1.0,1.0,3.8,stone,roof2,x,1.6);addDoor(1.0,.06,1.25,steel,0,.42,-1.82);addFence(6.5,4.7,1.0);break;
-    case 'well':
-      addCylinder(1.0,.48,stoneLight,0,.02,0,18);addCylinder(.70,.18,glassDark,0,.50,0,18);addBox(.12,.12,1.9,wood, -.72,.45,-.70);addBox(.12,.12,1.9,wood, .72,.45,-.70);addRoof(1.25,1.15,.72,roof,4,0,2.02,-.70);addBox(1.55,.09,.10,wood,0,3.02,-.70);break;
-    case 'granary':
-      addSlab(4.0,3.4,.18,concrete);addCylinder(1.45,3.6,wall,0,.18,0,20);addRoof(1.62,1.62,1.1,roof,12,0,3.75,0,0);addCylinder(.26,4.5,steel,0,.25,0,10);addBox(1.0,.06,.75,wood2,0,.60,-1.42);break;
-    case 'farmPlot':
-      addSlab(7.0,6.2,.06,green);for(let row=-2;row<=2;row++){for(let i=-3;i<=3;i++){addCylinder(.035,.16,green,i*.72,.06,row*1.0,6);}}addBox(2.0,1.65,1.35,wall,2.05,.06,-1.8);addRoof(1.05,.92,.58,roof,4,2.05,1.42,-1.8);addFence(6.6,5.8,.56);break;
-    case 'school':
-      addSlab(7.0,4.8,.22,concrete);addBox(6.4,4.2,2.8,white,0,.22,0);addTower(1.35,1.2,4.4,wall2,roof2,0,1.2);for(const x of [-2.0,-.7,.7,2.0]){addWindow(.52,.58,x,1.05,-2.12,glass);addWindow(.52,.58,x,1.90,-2.12,glass);}addDoor(.70,.06,1.22,wood2,0,.35,-2.15);addSign(1.3,.22,red,0,2.10,-2.20);break;
-    case 'sawmill':
-      addBox(5.6,3.6,2.3,wood2);addRoof(2.9,1.9,1.15,roof,4,0,2.3,0);addCylinder(1.15,.40,stone,-2.0,.45,0,12);for(let i=0;i<5;i++)addCylinder(.13,1.8,wood2,1.65,.15,-1.5+i*.72,8);addBox(2.1,.08,.20,steel,0,1.0,-2.0);break;
-    case 'quarryWorks':
-      addSlab(6.6,4.6,.16,concrete);addBox(3.2,2.5,1.8,wall2,-1.35,.16,0);addRoof(1.75,1.30,.70,roof,3,-1.35,1.95,0);addBox(3.6,.40,.28,steel,1.2,.55,.10);addCylinder(.55,2.1,steel,2.55,.40,.10,12);for(let i=0;i<7;i++){const rr=.38+(i%3)*.15;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(q(rr),1),stone);rock.position.set(q(-2.2+(i%4)*1.1),q(.3+rr*.5),q(-1.8+Math.floor(i/4)*1.4));g.add(rock);}break;
-    case 'forge':
-      addBox(4.4,3.3,2.2,wall2);addRoof(2.4,1.7,.9,roof,4,0,2.2,0);addChimney(1.0,.55,1.5);addBox(1.8,.06,.95,steel,0,.40,-1.62);addCylinder(.22,1.0,stoneLight,-.9,.35,.15,8);addBox(1.0,.5,.22,steel,.4,.45,.15);break;
-    case 'ironworks':
-      addSlab(7.2,5.0,.18,concrete);addBox(4.2,3.6,3.2,dark,0,.18,0);for(const x of [-2.3,-.8,.8,2.3])addCylinder(.48,5.8,steel,x,.20,.5,12);addCylinder(1.0,4.6,steel,2.0,.20,-1.3,16);addBox(2.2,.10,1.7,glass,0,1.85,-1.85);addBox(7.0,.14,.20,steel,0,3.85,2.0);break;
-    case 'market':
-      addSlab(7.0,5.4,.16,stoneLight);addBox(6.4,4.8,2.25,wall,0,.16,0);for(const x of [-2.7,-1.35,0,1.35,2.7])addCylinder(.13,2.4,wood,x,.16,-2.10,8);addSlab(6.6,1.0,.12,red,0,2.45,-2.0);for(const x of [-2.2,0,2.2]){addBox(1.3,.85,.18,wood2,x,.40,-1.35);addBox(1.0,.05,.65,gold,x,.58,-1.35);}break;
-    case 'cityHall':
-      addSlab(7.6,5.4,.26,stoneLight);addBox(7.0,4.9,3.8,white,0,.26,0);for(const x of [-2.6,-1.3,0,1.3,2.6])addCylinder(.19,3.3,stoneLight,x,.28,-2.35,12);addDome(2.25,0,gold,0,4.05,0);addCylinder(.22,1.2,gold,0,4.25,0,10);addBox(.9,.06,1.55,wood2,0,.40,-2.52);addSign(1.4,.26,gold,0,2.55,-2.55);break;
-    case 'harbor':
-      addSlab(5.0,3.4,.18,wood2);addBox(4.4,2.8,1.0,wall2,0,.18,0);addSlab(9.5,1.15,.14,wood2,0,.10,2.4);for(const x of [-3.1,-1.1,1.1,3.1])addCylinder(.10,1.1,steel,x,.10,2.4,8);for(const x of [-2.1,2.1]){addCylinder(.16,4.3,steel,x,.15,.85,8);addBox(2.0,.06,.08,gold,x,3.45,.85);}addBox(1.7,1.4,1.45,wall2,2.2,.14,-.85);break;
-    case 'bath':
-      addBox(5.8,4.2,2.4,wall);addRoof(3.0,2.0,1.1,roof,4,0,2.5,0);for(const x of [-1.5,0,1.5])addDome(.65,0,glass,x,.20,1.45);addBox(1.4,.06,.9,wood2,0,.38,-2.10);addCylinder(.30,1.2,stoneLight,2.1,.25,.25,10);break;
-    case 'fortress':
-      addSlab(7.5,6.0,.22,stone);addBox(6.6,4.9,1.8,stone,0,.22,0);for(const [x,z] of [[-3.1,-2.2],[3.1,-2.2],[-3.1,2.2],[3.1,2.2]]){addTower(1.15,1.15,4.8,stone,roof2,x,z);}
-      addBox(1.5,.08,1.55,wood2,0,.48,-2.55);addBox(7.1,.35,.75,stone,0,2.0,-2.80);break;
-    case 'clinic':
-      addSlab(6.2,4.6,.20,concrete);addBox(5.7,4.15,3.0,white);for(const x of [-2.0,-.7,.7,2.0])addWindow(.58,.62,x,1.15,-2.12,glass);addDoor(.78,.06,1.28,glassDark,0,.35,-2.15);addBox(.48,.07,1.9,red,0,1.25,-2.24);addBox(1.9,.07,.48,red,0,1.96,-2.24);addBox(1.4,.5,.55,white,-3.25,.65,2.0);addBox(.65,.05,.35,red,-3.25,1.2,2.0);break;
-    case 'factory':
-      addSlab(7.8,5.4,.22,concrete);addBox(7.2,4.8,3.9,dark,0,.22,0);for(const x of [-2.8,-1.4,0,1.4,2.8])addBox(.08,4.7,3.6,steel,x,.32,0);addRoof(3.8,2.45,1.0,roof,3,0,4.15,0,Math.PI/2);for(const x of [-2.6,2.6])addCylinder(.48,6.2,steel,x,.22,.7,14);addCylinder(1.15,4.8,concrete,1.55,.22,-1.25,18);addBox(2.0,.08,1.5,glass,0,2.0,-2.42);break;
-    case 'railhub':
-      addSlab(7.8,4.0,.20,concrete);addBox(6.8,2.8,2.8,wall);addRoof(3.9,2.0,1.25,roof,4,0,3.0,0);for(const z of [-1.35,1.35])addBox(8.4,.12,.14,steel,0,.08,z);for(const x of [-2.8,0,2.8])addCylinder(.09,2.1,steel,x,.20,1.8,8);addBox(6.8,2.2,.08,glass,0,2.45,0);addSlab(8.0,.7,.10,concrete,0,.12,-2.05);break;
-    case 'power':
-      addSlab(7.3,5.2,.22,concrete);addBox(4.9,4.2,3.8,dark,-.8,.22,.15);addCylinder(1.65,5.2,white,1.75,.22,1.0,20);addCylinder(1.45,5.6,white,-2.2,.22,1.1,20);addCylinder(.28,7.0,steel,2.1,.22,-1.55,12);addBox(1.7,1.7,1.9,glass,0,.22,-1.75);break;
-    case 'research':
-      addSlab(7.2,5.0,.24,concrete);addBox(6.5,4.3,3.0,white);addDome(2.15,0,glass,0,3.25,0);for(const x of [-2.2,2.2])addTower(.70,.70,4.2,wall2,roof2,x,0);addSolarPanels(0,1.35,1.0,1.6);addBox(1.8,.06,1.1,blue,0,.65,-2.18);break;
-    case 'spaceport':
-      addSlab(8.4,8.0,.16,concrete);const pad2=new THREE.Mesh(new THREE.CylinderGeometry(q(3.4),q(3.4),q(.14),32),stoneLight);pad2.position.y=q(.22);g.add(pad2);
-      addCylinder(.50,6.8,white,0,.30,0,14);const tip2=new THREE.Mesh(new THREE.ConeGeometry(q(.50),q(1.25),14),gold);tip2.position.set(0,q(7.4),0);g.add(tip2);for(const x of [-2.2,2.2])addCylinder(.13,4.2,steel,x,.30,0,10);addBox(2.3,1.7,3.0,wall2,3.0,.18,-2.2);addCylinder(.22,8.0,steel,3.0,.30,-2.2,10);break;
-    case 'habitat':
-      addSlab(8.0,8.0,.18,concrete);const core3=new THREE.Mesh(new THREE.SphereGeometry(q(1.25),18,12),glass);core3.position.y=q(3.8);g.add(core3);for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(q(2.4+i*.75),q(.22),10,32),gold);ring.rotation.x=Math.PI/2;ring.position.y=q(2.7+i*.75);g.add(ring);}for(let i=0;i<6;i++){const a=i*Math.PI/3;addBox(1.1,.8,1.2,white,Math.cos(a)*3.7,2.3,Math.sin(a)*3.7);}addSolarPanels(0,0,1.3,2.2);break;
-    default:
-      addBox(4.2,3.5,2.8,wall);addRoof(2.8,2.1,1.2,roof,4,0,2.8,0);addWindowRow(3,.45,.95,1.0,-1.8);addDoor(.68,.05,1.12,wood2,0,.38,-1.86);
+    case 'school': {
+      const academy=facilityId==='academy';
+      const mainW=academy?5.9:5.0, wingW=academy?1.55:1.35;
+      slab(7.8,6.0,.15,ST);courtyard(3.0,2.4);
+      objBox(mainW,1.45,3.0,academy?LT:W,0,.16,-2.05);gableRoof(mainW+.1,1.55,.75,ROOF,0,3.16,-2.05);steps(1.7,.55,.15,-2.84);door(0,-2.70,.86,1.20,WOOD2);rowWindows(academy?5:4,academy?4.8:3.9,1.06,-2.76,.38,.50,STEEL);
+      for(const x of [-(mainW/2-wingW/2),mainW/2-wingW/2]){objBox(wingW,3.7,2.65,W2,x,.16,.48);gableRoof(wingW+.1,3.80,.70,ROOF,x,2.90,.48);door(x,-1.18,.48,1.0,WOOD2);}
+      if(academy){objBox(2.0,1.2,2.2,GLASSD,0,.18,2.25);flatRoof(2.1,1.3,2.38,ROOF2);solar(3,2.55,2.10,0.52);}else{
+        const playground=new THREE.Mesh(new THREE.PlaneGeometry(q(3.8),q(1.9)),new THREE.MeshStandardMaterial({color:0x7e9560,roughness:.95}));playground.rotation.x=-Math.PI/2;playground.position.set(0,q(.20),q(2.15));add(playground);
+      }
+      break;
+    }
+    case 'garrison': {
+      slab(8.0,6.8,.15,ST);courtyard(4.1,3.0);
+      objBox(2.15,1.12,2.65,W2,0,.16,-2.55);gableRoof(2.26,1.22,.68,ROOF,0,2.82,-2.55);door(0,-3.10,.72,1.05,WOOD2);
+      for(const x of [-3.0,3.0]){objBox(1.48,3.45,2.45,W,x,.16,.45);gableRoof(1.58,3.56,.68,ROOF,x,2.65,.45);sideWindows(3,2.35,0.78,x-0.75,.45,.30,.44,WOOD2);door(x,-1.15,.48,1.0,WOOD2);}
+      objBox(2.2,1.35,1.65,BRICK,0,.16,2.42);gableRoof(2.32,1.45,.58,ROOF2,0,1.90,2.42);fence(8.0,6.5,.62);lamp(-3.5,2.55,2.5);lamp(3.5,2.55,2.5);break;
+    }
+    case 'well': {
+      C(1.0,.38,ST,0,.02,0,16);C(.74,.36,LT,0,.36,0,16);C(.06,1.15,WOOD2,0,.72,-.10,8);objBox(1.15,.10,.10,WOOD2,0,1.72,-.10);break;
+    }
+    case 'granary': {
+      slab(3.0,2.45,.14,ST);for(const x of [-.95,.95])for(const z of [-.75,.75])C(.09,1.1,ST,x,.14,z,8);objBox(2.45,1.95,1.65,WOOD2,0,1.15,0);gableRoof(2.58,2.08,.72,ROOF,0,2.80,0);objBox(.58,.06,.9,WOOD2,0,1.45,-1.02);objBox(2.2,.18,.10,ROAD,0,.22,1.48);break;
+    }
+    case 'farmPlot': {
+      slab(6.8,6.0,.05,GREEN,0,.02,0);
+      for(let z=-2.3;z<=2.31;z+=1.15){objBox(6.2,.055,.04,WOOD,0,.11,z);for(let x=-2.5;x<=2.51;x+=1.0){C(.045,.22,GREEN,x,.12,z+.20,6);}}
+      // 小納屋・灌漑水路
+      objBox(1.45,1.10,1.05,WOOD2,2.2,.10,1.55);gableRoof(1.55,1.20,.48,ROOF,2.2,1.15,1.55);objBox(.16,4.9,.05,0?ROAD:ROAD,-3.0,.13,0);break;
+    }
+    case 'sawmill': {
+      slab(6.6,4.8,.18,ST);objBox(4.0,3.45,2.45,industrial?BRICK:W2,-.55,.18,0);gableRoof(4.15,3.58,.85,ROOF,-.55,2.63,0);objBox(1.2,.08,1.8,DARK,-.55,.38,-1.78);C(.55,.16,WOOD2,2.25,.24,.4,16);for(let i=0;i<4;i++)objBox(.10,3.2,.10,WOOD2,1.55+i*.34,.42,1.4);parking(2.2,1.8,1.8,-1.5);break;
+    }
+    case 'quarryWorks': {
+      slab(7.0,5.5,.10,ST);objBox(2.4,2.0,1.45,W2,-1.45,.10,1.0);gableRoof(2.52,2.12,.58,ROOF,-1.45,1.55,1.0);objBox(4.0,2.3,.28,ST,1.0,.12,-.75);
+      for(let i=0;i<7;i++){const a=i*.89;const r=1.2+(i%3)*.7;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(q(.35+(i%2)*.1),1),ST);rock.position.set(q(1.1+Math.cos(a)*r),q(.28+(i%2)*.1),q(-.7+Math.sin(a)*r*.6));add(rock);}
+      C(.08,2.4,STEEL,2.55,.18,1.0,8);objBox(2.2,.08,.08,GOLD,2.55,2.45,1.0);break;
+    }
+    case 'forge': {
+      slab(4.8,3.8,.18,ST);objBox(4.3,3.3,2.35,BRICK,0,.18,0);gableRoof(4.45,3.42,.82,ROOF,0,2.52,0);door(0,-1.69,.68,1.12,WOOD2);rowWindows(3,2.65,1.0,-1.72,.40,.46,STEEL);chimney(1.2,.42,1.6);objBox(1.25,.85,.12,STEEL,0,.34,-2.12);break;
+    }
+    case 'ironworks': {
+      slab(8.0,5.8,.20,ST);objBox(4.8,3.9,3.3,BRICK,0,.20,.20);gableRoof(5.0,4.05,1.05,ROOF,0,3.50,.20);objBox(1.75,.10,2.05,DARK,0,.34,-1.82);rowWindows(5,4.0,1.25,1.18,-1.94,.30,.40,STEEL);
+      for(const x of [-2.85,2.85])chimney(x,.90,5.2,BRICK);C(.95,4.0,STEEL,2.0,.20,1.35,16);objBox(5.8,.10,.16,STEEL,0,4.15,1.75);for(const x of [-2.2,0,2.2])C(.06,1.4,STEEL,x,.25,-2.0,8);break;
+    }
+    case 'market': {
+      slab(7.3,5.6,.15,ST);objBox(6.5,4.8,2.1,W,0,.15,.15);gableRoof(6.65,4.9,.92,ROOF,0,2.22,.15);
+      arcadeFront(6.0,-2.25,.25,2.0,7);canopy(6.2,.95,2.36,RED,-2.48);steps(2.0,.48,.14,-2.76);door(0,-2.46,.95,1.18,WOOD2);parking(4.0,1.5,0,2.95);lamp(-3.1,-2.45,2.3);lamp(3.1,-2.45,2.3);break;
+    }
+    case 'harbor': {
+      slab(4.6,3.4,.16,ST);objBox(4.1,2.8,1.65,W2,0,.16,0);flatRoof(4.2,2.9,1.82,ROOF2);door(0,-1.45,.72,1.0,WOOD2);
+      objBox(9.0,.72,.12,WOOD2,0,.10,2.45);for(const x of [-3.3,-1.1,1.1,3.3])C(.09,1.05,STEEL,x,.10,2.45,8);
+      C(.14,4.0,STEEL,-2.1,.14,.95,8);objBox(2.1,.06,.08,GOLD,-2.1,3.30,.95);objBox(3.0,.10,.08,WOOD2,2.0,.28,.95);break;
+    }
+    case 'bath': {
+      slab(6.0,4.6,.18,ST);objBox(5.4,4.0,2.35,W,0,.18,0);gableRoof(5.55,4.10,.82,ROOF,0,2.57,0);steps(1.7,.55,.15,-2.10);door(0,-2.04,.78,1.18,WOOD2);rowWindows(4,4.05,1.08,-2.00,.42,.52,STEEL);for(const x of [-1.4,0,1.4])C(.58,.18,LT,x,.30,1.35,16);C(.24,1.0,LT,2.15,.26,.35,12);break;
+    }
+    case 'fortress': {
+      slab(8.0,6.4,.20,ST);objBox(5.65,4.15,2.35,ST,0,.20,0);flatRoof(5.8,4.3,2.72,ROOF2);
+      for(const [x,z] of [[-3.15,-2.25],[3.15,-2.25],[-3.15,2.25],[3.15,2.25]])tower(x,z,1.05,1.05,4.7,ST,ROOF2);
+      objBox(1.55,.10,1.55,WOOD2,0,.45,-2.20);objBox(6.9,.35,.72,ST,0,2.0,-2.72);for(const x of [-2.3,-.75,.75,2.3])objBox(.20,.12,.70,STEEL,x,.72,-2.75);break;
+    }
+    case 'clinic': {
+      slab(6.8,5.0,.20,ST);objBox(4.5,3.75,2.85,WHITE,0,.20,0);objBox(1.15,2.9,2.35,W2,-2.55,.20,.25);objBox(1.15,2.9,2.35,W2,2.55,.20,.25);flatRoof(4.6,3.85,3.12,ROOF2);
+      steps(1.45,.55,.16,-2.05);door(0,-1.95,.78,1.25,GLASSD);rowWindows(4,4.0,1.04,-1.98,.48,.56,STEEL);objBox(.50,.07,1.78,RED,0,.72,-2.10);objBox(1.8,.07,.42,RED,0,1.40,-2.10);parking(2.9,1.7,2.5,2.75);break;
+    }
+    case 'factory': {
+      slab(8.4,6.0,.22,ST);objBox(6.9,4.9,3.7,DARK,0,.22,.15);gableRoof(7.0,5.0,1.10,ROOF,0,3.92,.15);
+      for(const x of [-2.8,-1.4,0,1.4,2.8])objBox(.08,4.6,3.25,STEEL,x,.34,.15);
+      objBox(1.9,.10,1.75,GLASS,0,1.75,-2.40);objBox(2.0,.10,1.50,RED,0,2.08,-2.48);for(const x of [-2.75,2.75])chimney(x,.95,6.0,industrial?BRICK:STEEL);parking(4.0,1.45,0,2.95);
+      break;
+    }
+    case 'railhub': {
+      slab(8.0,4.8,.18,ST);objBox(6.5,2.8,2.8,LT,0,.18,-.35);gableRoof(6.6,2.9,1.0,ROOF,0,3.0,-.35);rowWindows(5,4.8,1.0,-1.80,.44,.56,STEEL);steps(1.8,.7,.16,-2.18);door(0,-2.00,1.0,1.25,GLASSD);
+      for(const z of [-2.75,2.05])objBox(8.8,.10,.12,STEEL,0,.08,z);for(const x of [-2.7,0,2.7])C(.08,2.1,STEEL,x,.18,1.15,8);objBox(7.5,1.05,.08,GLASS,0,2.35,1.15);break;
+    }
+    case 'power': {
+      slab(8.0,5.8,.22,ST);objBox(4.6,3.7,3.3,DARK,-.9,.22,.15);flatRoof(4.7,3.8,3.58,ROOF2,-0);
+      for(const x of [1.45,2.65])C(.85,5.0,WHITE,x,.22,.95,20);C(.28,6.5,STEEL,2.45,.25,-1.45,12);
+      objBox(1.7,1.55,1.9,GLASS,0,.22,-1.62);for(const x of [-2.7,-1.8,-.9,0,.9,1.8,2.7]){C(.035,1.7,STEEL,x,.25,-2.55,8);objBox(.65,.05,.05,STEEL,x,.95,-2.55);}
+      break;
+    }
+    case 'research': {
+      slab(7.8,5.8,.22,ST);objBox(4.8,3.9,3.15,WHITE,0,.22,.05);objBox(1.25,3.25,2.55,W2,-2.8,.22,.20);objBox(1.25,3.25,2.55,W2,2.8,.22,.20);flatRoof(4.9,4.0,3.42,ROOF2);
+      const dome=new THREE.Mesh(new THREE.SphereGeometry(q(1.85),20,12,0,Math.PI*2,0,Math.PI/2),GLASS);dome.position.set(0,q(3.40),q(.25));add(dome);
+      rowWindows(5,4.0,1.02,-1.92,.42,.50,STEEL);steps(1.65,.65,.16,-2.20);door(0,-2.02,.92,1.26,GLASSD);solar(3,4.05,.70,.55);break;
+    }
+    case 'spaceport': {
+      slab(8.8,8.2,.16,ST);const pad=new THREE.Mesh(new THREE.CylinderGeometry(q(3.45),q(3.45),q(.12),36),LT);pad.position.set(0,q(.24),q(.55));add(pad);
+      C(.48,7.0,WHITE,0,.30,.55,16);const nose=new THREE.Mesh(new THREE.ConeGeometry(q(.48),q(1.25),16),GOLD);nose.position.set(0,q(7.92),q(.55));add(nose);
+      for(const x of [-2.2,2.2])C(.12,4.4,STEEL,x,.30,.55,10);objBox(2.55,1.75,2.75,W2,3.0,.20,-2.20);flatRoof(2.7,1.85,3.02,ROOF2);C(.18,8.2,STEEL,3.0,.30,-2.20,10);objBox(2.2,.14,.14,GOLD,0,.36,-3.10);break;
+    }
+    case 'habitat': {
+      slab(8.2,8.2,.18,ST);const core=new THREE.Mesh(new THREE.SphereGeometry(q(1.2),20,14),GLASS);core.position.set(0,q(3.85),0);add(core);
+      for(let i=0;i<3;i++){const ring=new THREE.Mesh(new THREE.TorusGeometry(q(2.25+i*.78),q(.20),10,36),GOLD);ring.rotation.x=Math.PI/2;ring.position.y=q(2.65+i*.72);add(ring);}
+      for(let i=0;i<6;i++){const a=i*Math.PI/3;objBox(1.05,.82,1.18,WHITE,Math.cos(a)*3.7,2.25,Math.sin(a)*3.7);}
+      solar(5,6.0,0,0.82,.55);break;
+    }
+    default: {
+      slab(4.4,3.5,.18,ST);objBox(3.9,3.0,2.6,W,0,.18,0);gableRoof(4.0,3.1,.88,ROOF,0,2.80,0);door(0,-1.58,.68,1.10,WOOD2);rowWindows(3,2.8,1.0,-1.60,.42,.48,WOOD2);
+    }
   }
 
-  // 第2設計層：同じ箱を装飾するのではなく、用途ごとにファサード・設備・外構まで違う実在建築の構成へ。
-  switch(facilityId){
-    case 'house': addEntrySteps(.95,.38,.16,stoneLight,-1.72); addFacadeWindows(2,2,.42,.46,2.15,1.05,-1.34); break;
-    case 'townhouse': addFacadeBand(3.9,.12,2.25,wall2,-1.34); addFacadeWindows(3,2,.30,.42,2.75,1.05,-1.34); break;
-    case 'apartment': addFacadeWindows(6,6,.38,.50,3.45,1.05,-1.83); addRoofUnits(3,.75,.62,9.75); break;
-    case 'warehouse': addFacadeBand(6.0,.16,2.22,steel,-2.20); addBox(.38,.12,2.25,red,-2.75,.30,-2.24); addBox(.38,.12,2.25,red,2.75,.30,-2.24); break;
-    case 'bakery': addAwning(2.25,1.05,2.15,red,-1.72); addFacadeWindows(2,1,.58,.58,2.20,1.05,-1.67); addEntrySteps(.92,.34,.14,stoneLight,-1.78); break;
-    case 'park': addStreetLamp(-2.7,-1.9,2.2); addStreetLamp(2.7,-1.9,2.2); break;
-    case 'courthouse': addEntrySteps(2.15,.90,.20,stoneLight,-2.72); addFacadeWindows(5,2,.36,.55,3.9,1.05,-2.12); addBox(.16,.30,1.9,gold,-2.6,.45,-2.62); addBox(.16,.30,1.9,gold,2.6,.45,-2.62); break;
-    case 'bank': addEntrySteps(1.45,.65,.18,stoneLight,-2.28); addFacadeWindows(4,2,.42,.52,3.3,1.05,-2.12); addBox(.45,.25,.85,steel,-1.9,.45,-2.20); addBox(.45,.25,.85,steel,1.9,.45,-2.20); break;
-    case 'theater': addAwning(4.7,1.1,3.18,red,-2.18); addEntrySteps(2.1,.80,.16,stoneLight,-2.35); addFacadeBand(5.6,.18,2.52,gold,-2.19); break;
-    case 'workshop': addFacadeBand(4.9,.15,2.05,steel,-1.90); addRoofUnits(2,.65,.48,3.55); break;
-    case 'trainingGround': addBox(2.2,.20,1.6,steel,2.2,.10,-2.1); addFacadeBand(2.1,.10,.95,red,-2.23); addStreetLamp(2.55,-.8,2.4); break;
-    case 'academy': addEntrySteps(2.0,.70,.16,stoneLight,-2.62); addFacadeWindows(5,2,.40,.52,3.8,1.05,-2.27); addBox(1.0,.10,.80,gold,0,2.15,-2.62); break;
-    case 'garrison': addEntrySteps(1.6,.70,.18,stone,-1.96); addBox(2.0,.08,1.75,red,0,.50,-1.98); addBox(.14,.14,3.7,steel,-2.45,.45,0); addBox(.14,.14,3.7,steel,2.45,.45,0); break;
-    case 'well': addBox(.75,.09,.18,wood,0,.96,-.72); addBox(.75,.09,.18,wood,0,.96,-.12); break;
-    case 'granary': addRoofUnits(2,.56,.44,4.55); addEntrySteps(.90,.30,.14,stoneLight,-1.44); break;
-    case 'farmPlot': for(const z of [-2.3,-1.15,0,1.15,2.3])addBox(5.7,.06,.025,wood,0,.09,z); addStreetLamp(2.9,-2.5,2.0); break;
-    case 'school': addEntrySteps(1.45,.60,.16,stoneLight,-2.23); addFacadeWindows(4,2,.48,.58,3.6,1.05,-2.15); addBox(.16,.10,1.55,red,0,.50,-2.26); break;
-    case 'sawmill': addParkingLot(3.2,2.2,1.45,-1.25); addBox(.65,.12,2.1,steel,-2.55,.25,1.45); addBox(.65,.12,2.1,steel,2.55,.25,1.45); break;
-    case 'quarryWorks': addBox(2.7,.12,2.0,steel,1.25,.25,-2.13); addBox(.14,2.2,.14,steel,2.55,.55,-2.13); break;
-    case 'forge': addFacadeBand(3.8,.15,1.98,steel,-1.72); addRoofUnits(2,.55,.42,3.15); addBox(.40,.18,.95,red,1.45,.35,-1.75); break;
-    case 'ironworks': addRoofUnits(4,.55,.45,4.30); addFacadeWindows(5,2,.34,.46,3.8,1.15,-1.86); break;
-    case 'market': addAwning(5.5,1.0,2.60,red,-2.25); addEntrySteps(2.2,.55,.14,stoneLight,-2.42); for(const x of [-2.5,2.5])addStreetLamp(x,-2.2,2.4); break;
-    case 'cityHall': addEntrySteps(2.3,.95,.20,stoneLight,-2.72); addFacadeWindows(5,2,.42,.54,4.2,1.15,-2.38); addBox(.16,.14,2.1,gold,-3.05,.55,-2.46); addBox(.16,.14,2.1,gold,3.05,.55,-2.46); break;
-    case 'harbor': addBox(1.0,.14,1.8,steel,-2.25,.22,-1.15); addBox(1.0,.14,1.8,steel,2.25,.22,-1.15); addBox(3.0,.18,.12,gold,0,.42,2.45); break;
-    case 'bath': addDome(.45,0,glass,-1.45,.26,1.5); addDome(.45,0,glass,1.45,.26,1.5); addFacadeBand(4.8,.14,2.05,red,-2.12); break;
-    case 'fortress': addEntrySteps(1.8,.65,.18,stone,-2.86); addFacadeBand(5.4,.18,1.78,stoneLight,-2.86); for(const x of [-2.25,-.75,.75,2.25])addBox(.24,.12,.70,steel,x,.72,-2.84); break;
-    case 'clinic': addEntrySteps(1.45,.55,.16,stoneLight,-2.18); addFacadeWindows(4,2,.44,.55,3.5,1.00,-2.16); addBox(.48,.10,1.7,red,0,.78,-2.25); break;
-    case 'factory': addRoofUnits(4,.85,.52,4.35); addBox(1.8,.10,1.2,red,0,2.20,-2.48); addStreetLamp(-3.25,-2.10,2.8); addStreetLamp(3.25,-2.10,2.8); break;
-    case 'railhub': addFacadeWindows(5,2,.46,.55,4.2,1.05,-2.06); addEntrySteps(1.8,.70,.16,stoneLight,-2.15); break;
-    case 'power': addRoofUnits(3,.80,.55,4.35); addBox(.22,.22,1.6,red,0,.55,-2.18); addBox(1.35,.14,.14,steel,0,3.75,-1.85); break;
-    case 'research': addFacadeWindows(5,2,.42,.50,3.8,1.05,-2.20); addEntrySteps(1.65,.65,.16,stoneLight,-2.28); addBox(1.2,.08,.65,blue,0,2.00,-2.28); break;
-    case 'spaceport': addBox(1.9,.18,.18,gold,0,.32,-3.1); addStreetLamp(-3.1,-2.2,3.2); addStreetLamp(3.1,-2.2,3.2); break;
-    case 'habitat': addFacadeWindows(6,3,.33,.43,6.0,1.25,-3.65); addRoofUnits(3,1.0,.65,6.35); break;
-  }
-
-  // 共通ではなく施設用途ごとに「実建物らしい」増築要素だけを追加。
+  /* レベル成長：装飾ではなく、増築・設備更新として表現。 */
   if(lv>=3){
-    if(['house','townhouse','apartment'].includes(facilityId))addAircon(s*.85, s*1.1);
-    if(['office','bank','courthouse','cityHall','clinic','school','academy','research'].includes(facilityId))addSign(Math.min(q(1.7),q(3.4/s)),.20,gold,0,q(2.9+Math.min(2,e*.18)),q(-2.18));
+    if(['house','townhouse'].includes(facilityId)) chimney(.95,.50,1.0);
+    if(['apartment','clinic','bank','courthouse','cityHall','school','academy','research'].includes(facilityId)) hvac(1.55,1.75);
+    if(['factory','ironworks','warehouse','railhub'].includes(facilityId)) parking(3.0,1.25,0,3.0);
   }
-  if(lv>=5 && e>=3 && ['apartment','bank','research','factory','power'].includes(facilityId))addSolarPanels(0,.65,Math.min(1.0,2.8/s),1.3);
-  if(lv>=7 && e>=5 && ['research','spaceport','habitat','railhub'].includes(facilityId)){
-    const beacon=new THREE.Mesh(new THREE.SphereGeometry(q(.11),8,6),makeMaterial(0xe9fbff,.16,.18));beacon.position.y=q(facilityId==='habitat'?6.2:5.6);g.add(beacon);
+  if(lv>=5 && e>=4 && ['apartment','bank','cityHall','clinic','factory','power','research','railhub'].includes(facilityId)) solar(3,4.0,.0,.72,.55);
+  if(lv>=7 && e>=6 && ['research','spaceport','habitat','railhub'].includes(facilityId)){
+    const beacon=new THREE.Mesh(new THREE.SphereGeometry(q(.12),10,8),M(0xe9fbff,.15,.22));beacon.position.set(0,q(facilityId==='habitat'?6.2:5.6),0);add(beacon);
   }
+
   return g;
 }
 function nationVisualBuildingLimit(n){
@@ -9644,8 +9746,6 @@ function addNationStarterSettlement(g,n){
   const well=new THREE.Mesh(new THREE.CylinderGeometry(1.0*scale,1.15*scale,.34*scale,12),makeMaterial(0x6a6c69,.97));well.position.y=.38;g.add(well);
   g.add(cyl(.06*scale,1.35*scale,wood,0,1.05*scale,-.72*scale,7));
   g.add(box(1.3*scale,.08*scale,.08*scale,wood,0,1.60*scale,-.72*scale));
-  const flagPole=cyl(.045*scale,2.8*scale,makeMaterial(0x5e554d,.95),0,1.45*scale,2.2*scale,7);g.add(flagPole);
-  const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.15*scale,.68*scale),makeMaterial(n.color||0xe4b960,.82));flag.position.set(.55*scale,2.35*scale,2.2*scale);flag.rotation.y=-Math.PI/2;g.add(flag);
   g.userData.sharedStarter=true;
 }
 
@@ -9680,7 +9780,7 @@ function buildNationVisual(n,index){
   if(hasDeveloped){
     const profileShape=profile==='military'||profile==='expansion'?'fortress':profile==='science'?'research':profile==='commerce'?'market':profile==='agriculture'?'farm':profile==='welfare'?'park':profile==='industrial'?'workshop':'hall';
     const identity=nationBuildingMesh(profileShape,Math.max(1,Math.min(8,Number(n.cityLevel)||1)),.72,Number(n.era)||0);
-    identity.scale.multiplyScalar(.62); identity.position.set(0,.02,-1.9); identity.userData.aiIdentity=true; identity.userData.nationId=n.id; g.add(identity);
+    identity.position.set(0,.02,-1.9); identity.userData.aiIdentity=true; identity.userData.nationId=n.id; g.add(identity);
   }
   /* 初期条件が同じことを3Dでも確認できる共通中心広場。以後のAI建設はこの周囲に増築され、領土の外へ出るときはAIが先に拡張を選ぶ。 */
   const starterRadius=Math.max(.60,Math.min(.72,NATION_INITIAL_HALF*.72,Number(n.territoryHalf||NATION_INITIAL_HALF)*.72));
@@ -9698,12 +9798,21 @@ function buildNationVisual(n,index){
     const road=box(len,.06,1.25,roadMat,(r.x1+r.x2)/2,.34,(r.z1+r.z2)/2);road.rotation.y=Math.atan2(dz,dx);g.add(road);
   }
   const buildingLimit=nationVisualBuildingLimit(n);
+  const occupied=[];
   for(const b of data.slice(0,buildingLimit)){
     const visualScale=(Number(b.scale)||1)*(1+Math.min(6,n.era||0)*.022+Math.min(8,(b.level||1)-1)*.018);
+    let bx=Number(b.dx)||0,bz=Number(b.dz)||0;
+    const br=nationBuildFootprint(b.type,b.level||1)*Math.min(1.0,Math.max(.42,visualScale));
+    // 古いセーブに重なった座標が残っていても、表示時だけ建物同士をずらしてレイアウトを成立させる。
+    for(let tries=0;tries<18;tries++){
+      if(occupied.every(o=>Math.hypot(bx-o.x,bz-o.z)>=br+o.r))break;
+      const a=(occupied.length+tries+1)*2.399963;
+      const rr=2.2+tries*.85;
+      bx=Number(b.dx||0)+Math.cos(a)*rr;bz=Number(b.dz||0)+Math.sin(a)*rr;
+    }
     const bm=nationBuildingMesh(b.type,b.level||1,visualScale,n.era||0);
-    const fp=getFacilityFootprint(b.type);
-    normalizeBuildingMeshToFootprint(bm,b.type,fp.w*.90,fp.d*.90);
-    bm.position.set(Number(b.dx)||0,.02,Number(b.dz)||0);bm.userData.nationId=n.id;g.add(bm);
+    bm.position.set(bx,.02,bz);bm.userData.nationId=n.id;g.add(bm);
+    occupied.push({x:bx,z:bz,r:br});
   }
   if(nationShowLabels()){
     const label=makeNationLabel(`${n.id==='player'?'★ ':''}${n.name}`,col,false);label.position.set(0,Math.max(18,10+Math.min(60,n.buildings)*.12),0);g.add(label);
@@ -9868,7 +9977,7 @@ function renderNationPanel(id=selectedNationId){
   const body=document.getElementById('politicsBody');if(!body)return;ensureNationState();selectedNationId=id||'player';const me=state.nations[0];const selected=nationalPanelNation(selectedNationId)||me;const sorted=[...state.nations].sort((a,b)=>b.population-a.population);
   const playerPolitics=state.politics||{};
   const countryRows=sorted.map((n,i)=>`<div class="overview-row" style="cursor:pointer" onclick="selectNationInPanel('${n.id}')"><div class="overview-row-main"><div class="overview-row-title">${n.id==='player'?'★ ':''}${n.name}</div><div class="overview-row-sub">${n.government} · ${n.policy} · 領土 ${Math.round(n.territoryHalf*2)}m · 安定 ${Math.round(n.stability)}%</div></div><div style="display:flex;align-items:center;gap:7px"><div class="overview-badge">#${i+1}　${fmt(Math.round(n.population))}人</div><button class="politics-btn" onclick="event.stopPropagation();focusNation('${n.id}')">📍 見る</button></div></div>`).join('');
-  const selectedInfo=`<section class="politics-card" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🗺 ${selected.id==='player'?'あなたの国家':selected.name}</h3><button class="politics-btn active" onclick="focusNation('${selected.id}')">📍 この国を見る</button></div><div class="politics-stat"><span>人口</span><b>${fmt(Math.round(selected.population))} / ${fmt(Math.round(selected.popMax))}</b></div><div class="politics-bar"><i style="width:${Math.min(100,Math.round(selected.population/Math.max(1,selected.popMax)*100))}%"></i></div><div class="politics-stat"><span>領土</span><b>${fmt(Math.round(selected.territoryHalf*2))}m × ${fmt(Math.round(selected.territoryHalf*2))}m</b></div><div class="politics-stat"><span>領土状態</span><b>他国領土との重複なし</b></div><div class="politics-stat"><span>幸福度</span><b>${Math.round(selected.happiness)}%</b></div><div class="politics-stat"><span>政治安定</span><b>${Math.round(selected.stability)}%</b></div><div class="politics-stat"><span>支持率</span><b>${Math.round(selected.approval)}%</b></div><div class="politics-stat"><span>政府</span><b>${selected.government}</b></div><div class="politics-stat"><span>政策</span><b>${selected.policy}</b></div><div class="politics-stat"><span>AI国家方針</span><b>${({industrial:'工業立国',commerce:'交易国家',science:'科学国家',welfare:'福祉国家',military:'軍事国家',agriculture:'農業国家',urban:'都市国家',expansion:'拡張国家',balanced:'均衡国家'}[nationAIProfile(selected)]||'均衡国家')}</b></div><div class="politics-stat"><span>税率</span><b>${Math.round((selected.taxRate||0)*100)}%</b></div><div class="politics-stat"><span>内閣 / 経済 / 外交</span><b>${politicsCabinetLabel(selected.politics?.cabinet||'balanced')} / ${selected.politics?.economyPolicy||'market'} / ${selected.politics?.foreignPolicy||'trade'}</b></div><div class="politics-stat"><span>法律 / 国家計画</span><b>${Object.values(selected.politics?.laws||{}).filter(Boolean).length}件 / ${Object.keys(selected.politics?.projects||{}).length}件</b></div><div class="politics-stat"><span>国庫</span><b>${fmt(Math.round(selected.treasury))}</b></div><div class="politics-stat"><span>交易量</span><b>${fmt(Math.round(selected.tradeVolume))}</b></div><div class="politics-stat"><span>研究 / 文化</span><b>${fmt(Math.round(selected.science))} / ${fmt(Math.round(selected.culture))}</b></div><div class="politics-stat"><span>建造物 / 道路</span><b>${fmt(Math.round(selected.buildings))} / ${fmt(Math.round(selected.roads))}本</b></div><div class="politics-stat"><span>文明段階</span><b>Lv.${Math.round(selected.cityLevel||1)} · ${ERA[Math.max(0,Math.min(ERA.length-1,selected.era||0))].name} · YEAR ${fmt(Math.round(selected.age||1))}</b></div><div class="politics-stat"><span>軍事力</span><b>${fmt(Math.round(selected.military||0))} / ${fmt(Math.round(selected.militaryMax||0))}</b></div><div class="politics-stat"><span>戦争状態</span><b>${state.wars?.some(w=>w.a===selected.id||w.b===selected.id)?'⚔ 戦争中':'平時'}</b></div>${(()=>{const ww=state.wars?.find(w=>w.a===selected.id||w.b===selected.id);if(!ww)return '';const isA=ww.a===selected.id;const force=Number(isA?ww.forceA:ww.forceB)||0,initial=Number(isA?ww.initialForceA:ww.initialForceB)||1;return `<div class="politics-stat"><span>前線 / 消耗</span><b>${Math.round((ww.front||.5)*100)}% / ${fmt(Math.round((ww.supplyUsedA||0)+(ww.supplyUsedB||0)))}資源</b></div><div class="politics-stat"><span>戦争戦力</span><b>${fmt(Math.round(force))} / ${fmt(Math.round(initial))}（敗北ライン 1/3）</b></div>`})()}${selected.id!=='player'&&!state.wars?.some(w=>(w.a===selected.id||w.b===selected.id))?`<div class="politics-actions"><button class="politics-btn warn" onclick="declareWarOnNation('${selected.id}')">⚔ 出陣する</button></div>`:''}</section>`;
+  const selectedInfo=`<section class="politics-card" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">🗺 ${selected.id==='player'?'あなたの国家':selected.name}</h3><button class="politics-btn active" onclick="focusNation('${selected.id}')">📍 この国を見る</button></div><div class="politics-stat"><span>人口</span><b>${fmt(Math.round(selected.population))} / ${fmt(Math.round(selected.popMax))}</b></div><div class="politics-bar"><i style="width:${Math.min(100,Math.round(selected.population/Math.max(1,selected.popMax)*100))}%"></i></div><div class="politics-stat"><span>領土</span><b>${fmt(Math.round(selected.territoryHalf*2))}m × ${fmt(Math.round(selected.territoryHalf*2))}m</b></div><div class="politics-stat"><span>領土状態</span><b>他国領土との重複なし</b></div><div class="politics-stat"><span>幸福度</span><b>${Math.round(selected.happiness)}%</b></div><div class="politics-stat"><span>政治安定</span><b>${Math.round(selected.stability)}%</b></div><div class="politics-stat"><span>支持率</span><b>${Math.round(selected.approval)}%</b></div><div class="politics-stat"><span>政府</span><b>${selected.government}</b></div><div class="politics-stat"><span>政策</span><b>${selected.policy}</b></div><div class="politics-stat"><span>AI国家方針</span><b>${({industrial:'工業立国',commerce:'交易国家',science:'科学国家',welfare:'福祉国家',military:'軍事国家',agriculture:'農業国家',urban:'都市国家',expansion:'拡張国家',balanced:'均衡国家'}[nationAIProfile(selected)]||'均衡国家')}</b></div><div class="politics-stat"><span>税率</span><b>${Math.round((selected.taxRate||0)*100)}%</b></div><div class="politics-stat"><span>内閣 / 経済 / 外交</span><b>${politicsCabinetLabel(selected.politics?.cabinet||'balanced')} / ${selected.politics?.economyPolicy||'market'} / ${selected.politics?.foreignPolicy||'trade'}</b></div><div class="politics-stat"><span>法律 / 国家計画</span><b>${Object.values(selected.politics?.laws||{}).filter(Boolean).length}件 / ${Object.keys(selected.politics?.projects||{}).length}件</b></div><div class="politics-stat"><span>国庫</span><b>${fmt(Math.round(selected.treasury))}</b></div><div class="politics-stat"><span>交易量</span><b>${fmt(Math.round(selected.tradeVolume))}</b></div><div class="politics-stat"><span>研究 / 文化</span><b>${fmt(Math.round(selected.science))} / ${fmt(Math.round(selected.culture))}</b></div><div class="politics-stat"><span>建造物 / 道路</span><b>${fmt(Math.round(selected.buildings))} / ${fmt(Math.round(selected.roads))}本</b></div><div class="politics-stat"><span>文明段階</span><b>Lv.${Math.round(selected.cityLevel||1)} · ${ERA[Math.max(0,Math.min(ERA.length-1,selected.era||0))].name} · YEAR ${fmt(Math.round(selected.age||1))}</b></div><div class="politics-stat"><span>軍事力</span><b>${fmt(Math.round(selected.military||0))} / ${fmt(Math.round(selected.militaryMax||0))}</b></div><div class="politics-stat"><span>戦争状態</span><b>${state.wars?.some(w=>w.a===selected.id||w.b===selected.id)?'⚔ 戦争中':'平時'}</b></div>${(()=>{const ww=state.wars?.find(w=>w.a===selected.id||w.b===selected.id);if(!ww)return '';const isA=ww.a===selected.id;const force=Number(isA?ww.forceA:ww.forceB)||0,initial=Number(isA?ww.initialForceA:ww.initialForceB)||1;return `<div class="politics-stat"><span>前線 / 消耗</span><b>${Math.round((ww.front||.5)*100)}% / ${fmt(Math.round((ww.supplyUsedA||0)+(ww.supplyUsedB||0)))}資源</b></div><div class="politics-stat"><span>戦争戦力</span><b>${fmt(Math.round(force))} / ${fmt(Math.round(initial))}（敗北ライン 1/3）</b></div>`})()}${selected.id!=='player'&&!state.wars?.some(w=>(w.a===selected.id||w.b===selected.id))?`<div class="politics-actions"><button type="button" class="politics-btn warn" onclick="event.preventDefault();event.stopPropagation();selectedNationId='${selected.id}';openPersonnelCenter();setTimeout(()=>{const el=document.getElementById('personnelWarTarget');if(el){el.value='${selected.id}';el.dispatchEvent(new Event('change'));}},0)">⚔ 軍事センターで宣戦</button></div>`:''}</section>`;
   const p0=playerPolitics;
   const lawDefs=[['education','教育振興法'],['welfare','公共福祉法'],['roads','全国道路整備法'],['trade','交易自由化令'],['security','国家防衛法'],['housing','住宅安定法'],['health','公衆衛生法'],['commerce','商業振興法'],['environment','環境保全法']];
   const lawHtml=lawDefs.map(([id,name])=>`<button class="politics-btn ${p0.laws?.[id]?'active':''}" onclick="toggleLaw('${id}')">${p0.laws?.[id]?'✓ ':''}${name}</button>`).join('');
@@ -9883,6 +9992,19 @@ function renderNationPanel(id=selectedNationId){
 function closeNationTravel(){document.getElementById('nationTravelOverlay')?.classList.remove('show');}
 window.closeNationTravel=closeNationTravel;
 
+function selectNationInTravel(id='player'){
+  ensureNationState();
+  const n=state.nations?.find(q=>q.id===id);
+  if(!n)return;
+  selectedNationId=n.id;
+  openNationTravel();
+  const body=document.getElementById('nationTravelBody');
+  if(body){
+    for(const el of body.querySelectorAll('.nation-travel-card')) el.classList.toggle('selected',el.dataset.nationId===n.id);
+  }
+}
+window.selectNationInTravel=selectNationInTravel;
+
 function openNationTravel(){
   ensureNationState();
   const body=document.getElementById('nationTravelBody');
@@ -9890,9 +10012,14 @@ function openNationTravel(){
   const sorted=[...state.nations].sort((a,b)=>{if(a.id==='player')return -1;if(b.id==='player')return 1;return String(a.name).localeCompare(String(b.name),'ja');});
   body.innerHTML=sorted.map(n=>{
     const isPlayer=n.id==='player';
-    return `<div class="nation-travel-card ${n.id===selectedNationId?'selected':''}" role="button" tabindex="0" onclick="travelToNation('${n.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();travelToNation('${n.id}')}">
-      <div class="nation-travel-top"><span class="nation-travel-dot" style="background:#${new THREE.Color(n.color||nationColor(1)).getHexString()}"></span><span class="nation-travel-name">${isPlayer?'★ ':''}${n.name}</span><span class="nation-travel-badge">${isPlayer?'自国':'他国'}</span></div>
-      <div class="nation-travel-meta"><span>人口 <b>${fmt(Math.round(n.population))}</b></span><span>領土 <b>${fmt(Math.round(n.territoryHalf*2))}m</b></span><span>政府 <b>${n.government}</b></span><span>安定 <b>${Math.round(n.stability)}%</b></span></div>
+    const warBusy=state.wars?.some(w=>w.a===n.id||w.b===n.id);
+    return `<div class="nation-travel-card ${n.id===selectedNationId?'selected':''}" data-nation-id="${n.id}" role="button" tabindex="0" onclick="selectNationInTravel('${n.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectNationInTravel('${n.id}')}" style="cursor:pointer">
+      <div class="nation-travel-top"><span class="nation-travel-dot" style="background:#${new THREE.Color(n.color||nationColor(1)).getHexString()}" ></span><span class="nation-travel-name">${isPlayer?'★ ':''}${n.name}</span><span class="nation-travel-badge">${isPlayer?'自国':'他国'}</span></div>
+      <div class="nation-travel-meta"><span>人口 <b>${fmt(Math.round(n.population))}</b></span><span>領土 <b>${fmt(Math.round(n.territoryHalf*2))}m</b></span><span>Lv.${Math.round(n.cityLevel||1)}</span><span>${warBusy?'⚔ 戦争中':'平時'}</span></div>
+      <div style="display:flex;gap:6px;margin-top:7px">
+        <button type="button" class="politics-btn" onclick="event.preventDefault();event.stopPropagation();travelToNation('${n.id}')">📍 この国を見る</button>
+        ${!isPlayer&&!warBusy?`<button type="button" class="politics-btn warn" onclick="event.preventDefault();event.stopPropagation();selectNationInTravel('${n.id}');openPersonnelCenter();closeNationTravel();setTimeout(()=>{const el=document.getElementById('personnelWarTarget');if(el){el.value='${n.id}';el.dispatchEvent(new Event('change'));}},0)">⚔ 戦争</button>`:''}
+      </div>
     </div>`;
   }).join('');
   document.getElementById('nationTravelOverlay')?.classList.add('show');
@@ -10609,21 +10736,6 @@ function updateMissionPreviewFromState(){
   }
 }
 
-function makeRangeLabel(text,color){
-  const c=document.createElement('canvas');c.width=384;c.height=96;
-  const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);
-  ctx.fillStyle='rgba(6,10,16,.84)';ctx.beginPath();ctx.roundRect(10,10,364,76,24);ctx.fill();
-  ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f8e6b4';ctx.fillText(text,c.width/2,c.height/2);
-  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
-  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false});
-  const sprite=new THREE.Sprite(mat);sprite.scale.set(4.2,1.05,1);
-  sprite.userData.setText=(next)=>{
-    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='rgba(6,10,16,.84)';ctx.beginPath();ctx.roundRect(10,10,364,76,24);ctx.fill();
-    ctx.font='900 34px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f8e6b4';ctx.fillText(next,c.width/2,c.height/2);tex.needsUpdate=true;
-  };
-  return sprite;
-}
-
 function createMissionPreview(m){
   removeMissionPreview();pendingMission=m;pendingMissionWorkers=Math.max(1,m.workers||1);
   const info=missionTypeInfo(m.type);const g=new THREE.Group();
@@ -10893,11 +11005,7 @@ function makeExpeditionVisual(e){
   }
   const unit=makeExpeditionWorkerVisual(e);
   root.add(unit);
-  const countLabel=document.createElement('canvas');countLabel.width=256;countLabel.height=72;
-  const ctx=countLabel.getContext('2d');ctx.clearRect(0,0,256,72);ctx.fillStyle='rgba(8,13,20,.82)';ctx.beginPath();ctx.roundRect(8,8,240,56,18);ctx.fill();ctx.font='bold 32px sans-serif';ctx.fillStyle='#f3dfad';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${e.workers||0}人`,128,37);
-  const tex=new THREE.CanvasTexture(countLabel);tex.colorSpace=THREE.SRGBColorSpace;
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));label.scale.set(3.2,.9,1);label.position.set(0,2.0,0);root.add(label);
-  root.userData={expeditionId:e.id,unit,targetRings,targetFills,origin:new THREE.Vector3(ox,.52,oz),label,count:e.workers||0,claimRadius:Number(e.claimRadius)||EXPANSION_CELL_HALF,cells};
+  root.userData={expeditionId:e.id,unit,targetRings,targetFills,origin:new THREE.Vector3(ox,.52,oz),count:e.workers||0,claimRadius:Number(e.claimRadius)||EXPANSION_CELL_HALF,cells};
   return root;
 }
 
@@ -10923,7 +11031,6 @@ function animateExpeditions(dt,t){
       unit.position.set(px,.48+Math.sin(t*.006+e.id.length)*.035,pz);
       unit.rotation.y=Math.atan2(ez-sz,ex-sx);
     }
-    if(g.userData.label) g.userData.label.position.set(0,2.0+Math.sin(t*.004)*.05,0);
     const pulse=1+Math.sin(t*.005+progress*5)*.045;
     const rings=g.userData.targetRings||[];
     const fills=g.userData.targetFills||[];
